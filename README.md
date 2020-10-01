@@ -56,7 +56,11 @@ make proxy-test
 
 ## grpc-web
 ```sh
+# grpc service + envoy proxy
 make grpc-web
+
+# grpc js client
+make grpc-web-client
 
 # testing
 curl -X GET localhost:8081
