@@ -8,6 +8,8 @@ services:
       dockerfile: Dockerfile.service
     environment: 
       GRPC_PORT: 9090
+    networks:
+      - grpc-rest
 
   grpc-gateway:
     image: grpc-gateway:gw
@@ -20,6 +22,8 @@ services:
       PROXY_PORT: 8000
     ports:
         - 8000:8000
+    networks:
+      - grpc-rest
     depends_on:
       - client-service
 
@@ -34,6 +38,8 @@ services:
     #   PROXY_PORT: 8000
     ports:
         - 8000:80
+    networks:
+      - grpc-rest
     depends_on:
       - client-service
 
@@ -45,15 +51,10 @@ services:
     ports:
         - 7070:8080
         - 9901:9901
+    networks:
+      - grpc-rest
     depends_on:
       - client-service
 
-  client:
-    image: grpc-web-client
-    container_name: grpc-web-client
-    build:
-      context: ./pkg/api/v2/gen/grpc-web
-    ports:
-        - 8081:8081
-    depends_on:
-      - envoy
+networks:
+    grpc-rest:

@@ -81,12 +81,15 @@ gateway-gen:
 # grpc-web with envoy & node client
 grpc-web:
 	@echo "===grpc-web with envoy & node client===="
-	docker-compose down
-	docker-compose up --build client-service envoy client
+	# docker-compose down
+	docker-compose up --build client-service envoy
+
+grpc-web-client:
+	docker-compose -f docker-compose.client.yml up --build
 
 # cleaning
 clean:
 	@echo "====cleaning env==="
-	docker-compose down
+	docker-compose down -v
 	docker system prune -af --volumes
 	# docker rm $(docker ps -aq -f "status=exited")

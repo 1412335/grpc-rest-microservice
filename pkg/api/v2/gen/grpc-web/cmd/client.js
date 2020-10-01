@@ -1,4 +1,4 @@
-const { MessagePing } = require('../gen/common_pb.js');
+const { MessagePing, MessagePong } = require('../gen/common_pb.js');
 
 const { ServiceAClient: ServiceAClient } = require('../gen/rest-service_grpc_web_pb.js');
 const { ServiceAClient: ServiceAClientBinary } = require('../gen/rest-service_grpc_web_pb.js');
@@ -14,6 +14,7 @@ const TARGET = {
     ENVOY: "http://localhost:7070"
 }
 
+// request testing
 console.log("envoy_host =>", TARGET.ENVOY)
 
 var clientText = new ServiceAClient(TARGET.ENVOY);
@@ -26,7 +27,7 @@ clientText.ping(request, {}, (err, response) => {
     if (err) {
         console.log(err)
     } else {
-        console.log(response);
+        console.log("grpcwebtext ping =>", response);
     }
 });
 
@@ -34,6 +35,20 @@ clientBinary.ping(request, {}, (err, response) => {
     if (err) {
         console.log(err)
     } else {
-        console.log(response);
+        console.log("grpcWeb ping =>", response);
     }
 });
+
+
+// 
+const { Service } = require('./service');
+console.log('Init services with grpcwebtext mode...')
+var service = new Service(
+    clientText,
+    {
+        MessagePing: MessagePing,
+        MessagePong: MessagePong
+    }
+)
+
+service.load()
