@@ -1,6 +1,12 @@
 # grpc-rest-microservice
 
+# Install
+
+```sh
 # protoc
+https://github.com/protocolbuffers/protobuf/releases
+
+# protoc go
 go get -u github.com/golang/protobuf/protoc-gen-go
 
 # grpc-gateway
@@ -9,14 +15,18 @@ go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
 # grpc-gateway with swagger
 go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
 
+# grpc-web
+https://github.com/grpc/grpc-web/releases
+```
+
 # grpc-gen-protoc
 
-## protoc direct
+## Using `protoc`
 ```sh
 make gen
 ```
 
-## Using namely/gen-grpc-gateway
+## Using `namely/gen-grpc-gateway`
 
 ### On Linux/Mac
 ```sh
@@ -31,6 +41,8 @@ docker run --rm --name protoc-gen -v ${pwd}:/defs namely/gen-grpc-gateway -f . -
 ```
 
 # Running
+
+## grpc-gateway
 ```sh
 # with automatically generated server
 make gateway-gen
@@ -42,5 +54,23 @@ make gateway-man
 make proxy-test
 ```
 
-# NOTE
+## grpc-web
+```sh
+make grpc-web
+
+# testing
+curl -X GET localhost:8081
+```
+
+# Note
 - Copy & paste /include/google into protobuf folder (eg: ./api/proto/v2)
+
+# Docs
+
+- https://github.com/namely/docker-protoc
+- https://github.com/grpc/grpc-web  
+
+- https://github.com/grpc/grpc-web/tree/master/net/grpc/gateway/examples/helloworld
+- https://github.com/thinhdanggroup/benchmark-grpc-web-gateway/
+- https://medium.com/zalopay-engineering/buildingdocker-grpc-gateway-e2efbdcfe5c
+- https://zalopay-oss.github.io/go-advanced/ch3-rpc/ch3-05-grpc-ext.html
