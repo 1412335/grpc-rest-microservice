@@ -11,9 +11,7 @@ RUN npm install
 COPY . .
 
 # RUN npx webpack /app/cmd/client.js
-# RUN npx webpack --config webpack.config.js
+RUN npx webpack --config webpack.product.js
 
 EXPOSE 8081
-# CMD ["python", "-m", "SimpleHTTPServer", "8081"]
-
-CMD npx webpack-dev-server --config webpack.config.js
+CMD ["python", "-m", "SimpleHTTPServer", "8081"]

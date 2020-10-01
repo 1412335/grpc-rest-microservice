@@ -9,6 +9,7 @@ app.Service.INTERVAL = 500;
 app.Service.MAX_STREAM_MESSAGES = 10;
 
 app.Service.addMessage = function (message, cssClass) {
+    console.log(`add message "${message}" with css class "${cssClass}"`)
     $("#first").after(
         $("<div/>").addClass("row").append(
             $("<h2/>").append(
