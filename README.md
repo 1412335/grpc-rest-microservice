@@ -79,3 +79,5 @@ curl -X GET localhost:8081
 - https://github.com/thinhdanggroup/benchmark-grpc-web-gateway/
 - https://medium.com/zalopay-engineering/buildingdocker-grpc-gateway-e2efbdcfe5c
 - https://zalopay-oss.github.io/go-advanced/ch3-rpc/ch3-05-grpc-ext.html
+  
+- https://webpack.js.org/configuration/dev-server/

@@ -1,7 +1,9 @@
 const app = {};
 
-app.Service = function (service, ctors) {
-    this.service = service
+app.Service = function (service, serviceBin, ctors) {
+    this.serviceText = service
+    this.serviceBin = serviceBin
+    this.service = null
     this.ctors = ctors
 };
 
@@ -66,7 +68,14 @@ app.Service.prototype.send = function (e) {
 app.Service.prototype.load = function () {
     var self = this
     $(document).ready(function () {
-        $('#send').click(self.send.bind(self))
+        $('#send').click(function (e) {
+            self.service = self.serviceText
+            self.send(e)
+        })
+        $('#send-binary').click(function (e) {
+            self.service = self.serviceBin
+            self.send(e)
+        })
         $('#msg').keyup(function (e) {
             if (e.keyCode == 13) self.send()
             return false

@@ -31,7 +31,7 @@ proto.v2 = require('./rest-service_pb.js');
 proto.v2.ServiceAClient =
     function(hostname, credentials, options) {
   if (!options) options = {};
-  options['format'] = 'text';
+  options['format'] = 'binary';
 
   /**
    * @private @const {!grpc.web.GrpcWebClientBase} The client
@@ -57,7 +57,7 @@ proto.v2.ServiceAClient =
 proto.v2.ServiceAPromiseClient =
     function(hostname, credentials, options) {
   if (!options) options = {};
-  options['format'] = 'text';
+  options['format'] = 'binary';
 
   /**
    * @private @const {!grpc.web.GrpcWebClientBase} The client

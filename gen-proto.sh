@@ -34,9 +34,10 @@ protoc -I $GOPATH/src \
     ./api/proto/v2/*.proto
 
 echo "gen v2 grpc-web (grpcweb with binary protobuf supported)"
+echo "NOTE: add prefix _binary"
 protoc -I $GOPATH/src \
     -I $GOPATH/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
     -I ./api/proto/v2/ \
-    --js_out=import_style=commonjs:./pkg/api/v2/gen/grpc-web/gen \
+    --js_out=import_style=commonjs,binary:./pkg/api/v2/gen/grpc-web/gen \
     --grpc-web_out=import_style=commonjs,mode=grpcweb:./pkg/api/v2/gen/grpc-web/gen \
     ./api/proto/v2/*.proto

@@ -18,7 +18,7 @@ grpc.web = require('grpc-web');
 
 var common_pb = require('./common_pb.js')
 const proto = {};
-proto.v2 = require('./rest-service_pb.js');
+proto.v2 = require('./rest-service-extra_pb.js');
 
 /**
  * @param {string} hostname
@@ -28,10 +28,10 @@ proto.v2 = require('./rest-service_pb.js');
  * @struct
  * @final
  */
-proto.v2.ServiceAClient =
+proto.v2.ServiceExtraClient =
     function(hostname, credentials, options) {
   if (!options) options = {};
-  options['format'] = 'text';
+  options['format'] = 'binary';
 
   /**
    * @private @const {!grpc.web.GrpcWebClientBase} The client
@@ -54,10 +54,10 @@ proto.v2.ServiceAClient =
  * @struct
  * @final
  */
-proto.v2.ServiceAPromiseClient =
+proto.v2.ServiceExtraPromiseClient =
     function(hostname, credentials, options) {
   if (!options) options = {};
-  options['format'] = 'text';
+  options['format'] = 'binary';
 
   /**
    * @private @const {!grpc.web.GrpcWebClientBase} The client
@@ -78,8 +78,8 @@ proto.v2.ServiceAPromiseClient =
  *   !proto.v2.MessagePing,
  *   !proto.v2.MessagePong>}
  */
-const methodDescriptor_ServiceA_Ping = new grpc.web.MethodDescriptor(
-  '/v2.ServiceA/Ping',
+const methodDescriptor_ServiceExtra_Ping = new grpc.web.MethodDescriptor(
+  '/v2.ServiceExtra/Ping',
   grpc.web.MethodType.UNARY,
   common_pb.MessagePing,
   common_pb.MessagePong,
@@ -100,7 +100,7 @@ const methodDescriptor_ServiceA_Ping = new grpc.web.MethodDescriptor(
  *   !proto.v2.MessagePing,
  *   !proto.v2.MessagePong>}
  */
-const methodInfo_ServiceA_Ping = new grpc.web.AbstractClientBase.MethodInfo(
+const methodInfo_ServiceExtra_Ping = new grpc.web.AbstractClientBase.MethodInfo(
   common_pb.MessagePong,
   /**
    * @param {!proto.v2.MessagePing} request
@@ -123,13 +123,13 @@ const methodInfo_ServiceA_Ping = new grpc.web.AbstractClientBase.MethodInfo(
  * @return {!grpc.web.ClientReadableStream<!proto.v2.MessagePong>|undefined}
  *     The XHR Node Readable Stream
  */
-proto.v2.ServiceAClient.prototype.ping =
+proto.v2.ServiceExtraClient.prototype.ping =
     function(request, metadata, callback) {
   return this.client_.rpcCall(this.hostname_ +
-      '/v2.ServiceA/Ping',
+      '/v2.ServiceExtra/Ping',
       request,
       metadata || {},
-      methodDescriptor_ServiceA_Ping,
+      methodDescriptor_ServiceExtra_Ping,
       callback);
 };
 
@@ -142,13 +142,13 @@ proto.v2.ServiceAClient.prototype.ping =
  * @return {!Promise<!proto.v2.MessagePong>}
  *     Promise that resolves to the response
  */
-proto.v2.ServiceAPromiseClient.prototype.ping =
+proto.v2.ServiceExtraPromiseClient.prototype.ping =
     function(request, metadata) {
   return this.client_.unaryCall(this.hostname_ +
-      '/v2.ServiceA/Ping',
+      '/v2.ServiceExtra/Ping',
       request,
       metadata || {},
-      methodDescriptor_ServiceA_Ping);
+      methodDescriptor_ServiceExtra_Ping);
 };
 
 
@@ -158,8 +158,8 @@ proto.v2.ServiceAPromiseClient.prototype.ping =
  *   !proto.v2.MessagePing,
  *   !proto.v2.MessagePong>}
  */
-const methodDescriptor_ServiceA_Post = new grpc.web.MethodDescriptor(
-  '/v2.ServiceA/Post',
+const methodDescriptor_ServiceExtra_Post = new grpc.web.MethodDescriptor(
+  '/v2.ServiceExtra/Post',
   grpc.web.MethodType.UNARY,
   common_pb.MessagePing,
   common_pb.MessagePong,
@@ -180,7 +180,7 @@ const methodDescriptor_ServiceA_Post = new grpc.web.MethodDescriptor(
  *   !proto.v2.MessagePing,
  *   !proto.v2.MessagePong>}
  */
-const methodInfo_ServiceA_Post = new grpc.web.AbstractClientBase.MethodInfo(
+const methodInfo_ServiceExtra_Post = new grpc.web.AbstractClientBase.MethodInfo(
   common_pb.MessagePong,
   /**
    * @param {!proto.v2.MessagePing} request
@@ -203,13 +203,13 @@ const methodInfo_ServiceA_Post = new grpc.web.AbstractClientBase.MethodInfo(
  * @return {!grpc.web.ClientReadableStream<!proto.v2.MessagePong>|undefined}
  *     The XHR Node Readable Stream
  */
-proto.v2.ServiceAClient.prototype.post =
+proto.v2.ServiceExtraClient.prototype.post =
     function(request, metadata, callback) {
   return this.client_.rpcCall(this.hostname_ +
-      '/v2.ServiceA/Post',
+      '/v2.ServiceExtra/Post',
       request,
       metadata || {},
-      methodDescriptor_ServiceA_Post,
+      methodDescriptor_ServiceExtra_Post,
       callback);
 };
 
@@ -222,13 +222,13 @@ proto.v2.ServiceAClient.prototype.post =
  * @return {!Promise<!proto.v2.MessagePong>}
  *     Promise that resolves to the response
  */
-proto.v2.ServiceAPromiseClient.prototype.post =
+proto.v2.ServiceExtraPromiseClient.prototype.post =
     function(request, metadata) {
   return this.client_.unaryCall(this.hostname_ +
-      '/v2.ServiceA/Post',
+      '/v2.ServiceExtra/Post',
       request,
       metadata || {},
-      methodDescriptor_ServiceA_Post);
+      methodDescriptor_ServiceExtra_Post);
 };
 
 

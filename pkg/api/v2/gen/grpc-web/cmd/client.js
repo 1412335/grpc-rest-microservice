@@ -1,7 +1,7 @@
 const { MessagePing, MessagePong } = require('../gen/common_pb.js');
 
 const { ServiceAClient: ServiceAClient } = require('../gen/rest-service_grpc_web_pb.js');
-const { ServiceAClient: ServiceAClientBinary } = require('../gen/rest-service_grpc_web_pb.js');
+const { ServiceAClient: ServiceAClientBinary } = require('../gen/rest-service_grpc_web_pb_binary.js');
 
 
 // set xhr2 to nodeJs can call gRPC-Web
@@ -45,6 +45,7 @@ const { Service } = require('./service');
 console.log('Init services with grpcwebtext mode...')
 var service = new Service(
     clientText,
+    clientBinary,
     {
         MessagePing: MessagePing,
         MessagePong: MessagePong
