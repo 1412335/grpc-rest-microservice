@@ -1,0 +1,16 @@
+FROM node:13-alpine
+
+RUN apk add --no-cache python
+
+WORKDIR /app
+
+COPY package*.json .
+
+RUN npm install
+
+COPY . .
+
+RUN npx webpack /app/cmd/client.js
+
+EXPOSE 8081
+CMD ["python", "-m", "SimpleHTTPServer", "8081"]

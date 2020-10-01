@@ -1,0 +1,59 @@
+version: '3'
+services:
+  client-service:
+    image: grpc-gateway:service
+    container_name: grpc-gw-service
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+    environment: 
+      GRPC_PORT: 9090
+
+  grpc-gateway:
+    image: grpc-gateway:gw
+    container_name: grpc-gw
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      GRPC_HOST: "client-service:9090"
+      PROXY_PORT: 8000
+    ports:
+        - 8000:8000
+    depends_on:
+      - client-service
+
+  grpc-gateway-gen:
+    image: grpc-gateway:gw
+    container_name: grpc-gw
+    build:
+      context: ./pkg/api/v2/gen/grpc-gateway
+      dockerfile: Dockerfile
+    # environment:
+    #   GRPC_HOST: "client-service:9090"
+    #   PROXY_PORT: 8000
+    ports:
+        - 8000:80
+    depends_on:
+      - client-service
+
+  envoy:
+    image: envoy-proxy
+    container_name: envoy-proxy
+    build:
+      context: ./pkg/api/v2/gen/grpc-web/envoy
+    ports:
+        - 7070:8080
+        - 9901:9901
+    depends_on:
+      - client-service
+
+  client:
+    image: grpc-web-client
+    container_name: grpc-web-client
+    build:
+      context: ./pkg/api/v2/gen/grpc-web
+    ports:
+        - 8081:8081
+    depends_on:
+      - envoy
