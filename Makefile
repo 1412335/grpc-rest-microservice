@@ -40,11 +40,13 @@ proxy-client:
 proxy-test:
 	@echo "====Testing proxy====="
 	@echo "--- GET ---"
-	curl localhost:8000/core/serviceA/ping/70000
+	curl localhost:8000/v2/ping/70000
 	@echo ""
-	curl localhost:8000/core/serviceExtra/ping/70000
+	curl localhost:8000/v2/extra/ping/70000
 	@echo ""; echo "--- POST ---"
-	curl localhost:8000/post -X POST -d '{"timestamp": 7000}'
+	curl localhost:8000/v2/post -X POST -d '{"timestamp": 7000}'
+	@echo ""
+	curl localhost:8000/v2/extra/post -X POST -d '{"timestamp": 7000}'
 
 
 # run grpc gateway using docker
@@ -64,19 +66,21 @@ gateway-build-run:
 
 
 # run grpc gateway using docker-compose with server initialized manually
-gateway-man:
+grpc-gw-man:
 	@echo "===run grpc gateway with manually writted server===="
-	docker-compose down
+	# docker-compose down
 	docker-compose up --build client-service grpc-gateway
 
 
 # run grpc gateway using docker-compose with server auto generated
-gateway-gen:
+grpc-gw-gen:
 	@echo "===run grpc gateway with generated server===="
-	docker-compose down
+	# docker-compose down
 	docker-compose up --build client-service grpc-gateway-gen
 	# docker-compose -f docker-compose.gen.yml up --build
 
+grpc-gw-client:
+	docker-compose -f docker-compose.client.yml up --build client-gateway
 
 # grpc-web with envoy & node client
 grpc-web:
@@ -85,11 +89,11 @@ grpc-web:
 	docker-compose up --build client-service envoy
 
 grpc-web-client:
-	docker-compose -f docker-compose.client.yml up --build
+	docker-compose -f docker-compose.client.yml up --build client-web
 
 # cleaning
 clean:
 	@echo "====cleaning env==="
 	docker-compose down -v
-	docker system prune -af --volumes
+	# docker system prune -af --volumes
 	# docker rm $(docker ps -aq -f "status=exited")

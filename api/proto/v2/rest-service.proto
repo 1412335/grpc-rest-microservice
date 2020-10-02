@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 option java_multiple_files = true;
-option go_package = "api.v2";
+option go_package = ".;api_v2";
 
 package v2;
 
@@ -12,13 +12,13 @@ import "common.proto";
 service ServiceA {
     rpc Ping (v2.MessagePing) returns (v2.MessagePong) {
         option (google.api.http) = {
-            get: "/core/serviceA/ping/{timestamp}"
+            get: "/v2/ping/{timestamp}"
         };
     }
 
     rpc Post (v2.MessagePing) returns (v2.MessagePong) {
         option (google.api.http) = {
-            post: "/post",
+            post: "/v2/post",
             // MessagePing sẽ dưới dạng chuỗi Json khi gửi Request (vd: '{"timestamp":70000}')
             body: "*"
         };

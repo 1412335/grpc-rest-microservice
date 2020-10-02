@@ -1,0 +1,14 @@
+.git
+.vscode
+
+/api
+/node_modules
+
+.gitignore
+README.md
+
+Makefile
+docker-compose*.yml
+Dockerfile*
+*.sh
+*.txt

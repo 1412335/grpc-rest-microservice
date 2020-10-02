@@ -121,6 +121,148 @@ func local_request_ServiceExtra_Post_0(ctx context.Context, marshaler runtime.Ma
 
 }
 
+var (
+	filter_ServiceExtra_StreamingPing_0 = &utilities.DoubleArray{Encoding: map[string]int{"timestamp": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+)
+
+func request_ServiceExtra_StreamingPing_0(ctx context.Context, marshaler runtime.Marshaler, client ServiceExtraClient, req *http.Request, pathParams map[string]string) (ServiceExtra_StreamingPingClient, runtime.ServerMetadata, error) {
+	var protoReq StreamingMessagePing
+	var metadata runtime.ServerMetadata
+
+	var (
+		val string
+		ok  bool
+		err error
+		_   = err
+	)
+
+	val, ok = pathParams["timestamp"]
+	if !ok {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "timestamp")
+	}
+
+	protoReq.Timestamp, err = runtime.Int64(val)
+
+	if err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "timestamp", err)
+	}
+
+	if err := req.ParseForm(); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ServiceExtra_StreamingPing_0); err != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	stream, err := client.StreamingPing(ctx, &protoReq)
+	if err != nil {
+		return nil, metadata, err
+	}
+	header, err := stream.Header()
+	if err != nil {
+		return nil, metadata, err
+	}
+	metadata.HeaderMD = header
+	return stream, metadata, nil
+
+}
+
+func request_ServiceExtra_StreamingPost_0(ctx context.Context, marshaler runtime.Marshaler, client ServiceExtraClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var metadata runtime.ServerMetadata
+	stream, err := client.StreamingPost(ctx)
+	if err != nil {
+		grpclog.Infof("Failed to start streaming: %v", err)
+		return nil, metadata, err
+	}
+	dec := marshaler.NewDecoder(req.Body)
+	for {
+		var protoReq StreamingMessagePing
+		err = dec.Decode(&protoReq)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			grpclog.Infof("Failed to decode request: %v", err)
+			return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+		}
+		if err = stream.Send(&protoReq); err != nil {
+			if err == io.EOF {
+				break
+			}
+			grpclog.Infof("Failed to send request: %v", err)
+			return nil, metadata, err
+		}
+	}
+
+	if err := stream.CloseSend(); err != nil {
+		grpclog.Infof("Failed to terminate client stream: %v", err)
+		return nil, metadata, err
+	}
+	header, err := stream.Header()
+	if err != nil {
+		grpclog.Infof("Failed to get header from client: %v", err)
+		return nil, metadata, err
+	}
+	metadata.HeaderMD = header
+
+	msg, err := stream.CloseAndRecv()
+	metadata.TrailerMD = stream.Trailer()
+	return msg, metadata, err
+
+}
+
+func request_ServiceExtra_DuplexStreamingPing_0(ctx context.Context, marshaler runtime.Marshaler, client ServiceExtraClient, req *http.Request, pathParams map[string]string) (ServiceExtra_DuplexStreamingPingClient, runtime.ServerMetadata, error) {
+	var metadata runtime.ServerMetadata
+	stream, err := client.DuplexStreamingPing(ctx)
+	if err != nil {
+		grpclog.Infof("Failed to start streaming: %v", err)
+		return nil, metadata, err
+	}
+	dec := marshaler.NewDecoder(req.Body)
+	handleSend := func() error {
+		var protoReq StreamingMessagePing
+		err := dec.Decode(&protoReq)
+		if err == io.EOF {
+			return err
+		}
+		if err != nil {
+			grpclog.Infof("Failed to decode request: %v", err)
+			return err
+		}
+		if err := stream.Send(&protoReq); err != nil {
+			grpclog.Infof("Failed to send request: %v", err)
+			return err
+		}
+		return nil
+	}
+	if err := handleSend(); err != nil {
+		if cerr := stream.CloseSend(); cerr != nil {
+			grpclog.Infof("Failed to terminate client stream: %v", cerr)
+		}
+		if err == io.EOF {
+			return stream, metadata, nil
+		}
+		return nil, metadata, err
+	}
+	go func() {
+		for {
+			if err := handleSend(); err != nil {
+				break
+			}
+		}
+		if err := stream.CloseSend(); err != nil {
+			grpclog.Infof("Failed to terminate client stream: %v", err)
+		}
+	}()
+	header, err := stream.Header()
+	if err != nil {
+		grpclog.Infof("Failed to get header from client: %v", err)
+		return nil, metadata, err
+	}
+	metadata.HeaderMD = header
+	return stream, metadata, nil
+}
+
 // RegisterServiceExtraHandlerServer registers the http handlers for service ServiceExtra to "mux".
 // UnaryRPC     :call ServiceExtraServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
@@ -171,6 +313,27 @@ func RegisterServiceExtraHandlerServer(ctx context.Context, mux *runtime.ServeMu
 
 		forward_ServiceExtra_Post_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
+	})
+
+	mux.Handle("GET", pattern_ServiceExtra_StreamingPing_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		err := status.Error(codes.Unimplemented, "streaming calls are not yet supported in the in-process transport")
+		_, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+		return
+	})
+
+	mux.Handle("POST", pattern_ServiceExtra_StreamingPost_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		err := status.Error(codes.Unimplemented, "streaming calls are not yet supported in the in-process transport")
+		_, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+		return
+	})
+
+	mux.Handle("POST", pattern_ServiceExtra_DuplexStreamingPing_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		err := status.Error(codes.Unimplemented, "streaming calls are not yet supported in the in-process transport")
+		_, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+		return
 	})
 
 	return nil
@@ -254,17 +417,89 @@ func RegisterServiceExtraHandlerClient(ctx context.Context, mux *runtime.ServeMu
 
 	})
 
+	mux.Handle("GET", pattern_ServiceExtra_StreamingPing_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_ServiceExtra_StreamingPing_0(rctx, inboundMarshaler, client, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_ServiceExtra_StreamingPing_0(ctx, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_ServiceExtra_StreamingPost_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_ServiceExtra_StreamingPost_0(rctx, inboundMarshaler, client, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_ServiceExtra_StreamingPost_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_ServiceExtra_DuplexStreamingPing_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_ServiceExtra_DuplexStreamingPing_0(rctx, inboundMarshaler, client, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_ServiceExtra_DuplexStreamingPing_0(ctx, mux, outboundMarshaler, w, req, func() (proto.Message, error) { return resp.Recv() }, mux.GetForwardResponseOptions()...)
+
+	})
+
 	return nil
 }
 
 var (
-	pattern_ServiceExtra_Ping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"core", "serviceExtra", "ping", "timestamp"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_ServiceExtra_Ping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"v2", "extra", "ping", "timestamp"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_ServiceExtra_Post_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"post"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_ServiceExtra_Post_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v2", "extra", "post"}, "", runtime.AssumeColonVerbOpt(true)))
+
+	pattern_ServiceExtra_StreamingPing_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3, 1, 0, 4, 1, 5, 4}, []string{"v2", "extra", "ping", "stream", "timestamp"}, "", runtime.AssumeColonVerbOpt(true)))
+
+	pattern_ServiceExtra_StreamingPost_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "extra", "post", "stream"}, "", runtime.AssumeColonVerbOpt(true)))
+
+	pattern_ServiceExtra_DuplexStreamingPing_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v2", "extra", "post", "duplex-stream"}, "", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (
 	forward_ServiceExtra_Ping_0 = runtime.ForwardResponseMessage
 
 	forward_ServiceExtra_Post_0 = runtime.ForwardResponseMessage
+
+	forward_ServiceExtra_StreamingPing_0 = runtime.ForwardResponseStream
+
+	forward_ServiceExtra_StreamingPost_0 = runtime.ForwardResponseMessage
+
+	forward_ServiceExtra_DuplexStreamingPing_0 = runtime.ForwardResponseStream
 )

@@ -258,9 +258,9 @@ func RegisterServiceAHandlerClient(ctx context.Context, mux *runtime.ServeMux, c
 }
 
 var (
-	pattern_ServiceA_Ping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"core", "serviceA", "ping", "timestamp"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_ServiceA_Ping_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"v2", "ping", "timestamp"}, "", runtime.AssumeColonVerbOpt(true)))
 
-	pattern_ServiceA_Post_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"post"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_ServiceA_Post_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v2", "post"}, "", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (

@@ -1,7 +1,18 @@
 version: '3'
 services:
 
-  client:
+  client-gateway:
+    image: grpc-gateway:client
+    container_name: grpc-gw-client
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    environment:
+      GRPC_HOST: "client-service:9090"
+    networks:
+      - grpc-rest
+
+  client-web:
     image: grpc-web-client
     container_name: grpc-web-client
     build:

@@ -11,7 +11,62 @@
     "application/json"
   ],
   "paths": {
-    "/core/serviceExtra/ping/{timestamp}": {
+    "/v2/extra/ping/stream/{timestamp}": {
+      "get": {
+        "summary": "-- streaming\nresponse streaming",
+        "operationId": "ServiceExtra_StreamingPing",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/v2StreamingMessagePong"
+                },
+                "error": {
+                  "$ref": "#/definitions/runtimeStreamError"
+                }
+              },
+              "title": "Stream result of v2StreamingMessagePong"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "timestamp",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "message_count",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "message_interval",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "ServiceExtra"
+        ]
+      }
+    },
+    "/v2/extra/ping/{timestamp}": {
       "get": {
         "operationId": "ServiceExtra_Ping",
         "responses": {
@@ -22,7 +77,7 @@
             }
           },
           "default": {
-            "description": "An unexpected error response",
+            "description": "An unexpected error response.",
             "schema": {
               "$ref": "#/definitions/runtimeError"
             }
@@ -42,7 +97,7 @@
         ]
       }
     },
-    "/post": {
+    "/v2/extra/post": {
       "post": {
         "operationId": "ServiceExtra_Post",
         "responses": {
@@ -53,7 +108,7 @@
             }
           },
           "default": {
-            "description": "An unexpected error response",
+            "description": "An unexpected error response.",
             "schema": {
               "$ref": "#/definitions/runtimeError"
             }
@@ -66,6 +121,83 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/v2MessagePing"
+            }
+          }
+        ],
+        "tags": [
+          "ServiceExtra"
+        ]
+      }
+    },
+    "/v2/extra/post/duplex-stream": {
+      "post": {
+        "summary": "two-way streaming",
+        "operationId": "ServiceExtra_DuplexStreamingPing",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/v2StreamingMessagePong"
+                },
+                "error": {
+                  "$ref": "#/definitions/runtimeStreamError"
+                }
+              },
+              "title": "Stream result of v2StreamingMessagePong"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": " (streaming inputs)",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2StreamingMessagePing"
+            }
+          }
+        ],
+        "tags": [
+          "ServiceExtra"
+        ]
+      }
+    },
+    "/v2/extra/post/stream": {
+      "post": {
+        "summary": "request streaming",
+        "operationId": "ServiceExtra_StreamingPost",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2StreamingMessagePong"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": " (streaming inputs)",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2StreamingMessagePing"
             }
           }
         ],
@@ -109,6 +241,31 @@
         }
       }
     },
+    "runtimeStreamError": {
+      "type": "object",
+      "properties": {
+        "grpc_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "http_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "http_status": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
     "v2MessagePing": {
       "type": "object",
       "properties": {
@@ -119,6 +276,36 @@
       }
     },
     "v2MessagePong": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "serviceName": {
+          "type": "string"
+        }
+      }
+    },
+    "v2StreamingMessagePing": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "message_count": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message_interval": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "streaming"
+    },
+    "v2StreamingMessagePong": {
       "type": "object",
       "properties": {
         "timestamp": {

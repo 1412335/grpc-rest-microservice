@@ -11,7 +11,7 @@
     "application/json"
   ],
   "paths": {
-    "/core/serviceA/ping/{timestamp}": {
+    "/v2/ping/{timestamp}": {
       "get": {
         "operationId": "ServiceA_Ping",
         "responses": {
@@ -22,7 +22,7 @@
             }
           },
           "default": {
-            "description": "An unexpected error response",
+            "description": "An unexpected error response.",
             "schema": {
               "$ref": "#/definitions/runtimeError"
             }
@@ -42,7 +42,7 @@
         ]
       }
     },
-    "/post": {
+    "/v2/post": {
       "post": {
         "operationId": "ServiceA_Post",
         "responses": {
@@ -53,7 +53,7 @@
             }
           },
           "default": {
-            "description": "An unexpected error response",
+            "description": "An unexpected error response.",
             "schema": {
               "$ref": "#/definitions/runtimeError"
             }
