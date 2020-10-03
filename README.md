@@ -81,6 +81,7 @@ curl -X GET localhost:8081
 
 ## Official examples
 - https://github.com/grpc/grpc-go/blob/master/examples/route_guide
+- https://github.com/grpc-ecosystem/grpc-gateway/tree/master/examples/internal/proto/examplepb
 - https://github.com/grpc/grpc-web/tree/master/net/grpc/gateway/examples/helloworld
 - https://github.com/grpc/grpc-web/blob/master/net/grpc/gateway/examples/echo/tutorial.md
 
@@ -91,3 +92,4 @@ curl -X GET localhost:8081
   
 ## Others
 - https://webpack.js.org/configuration/dev-server/
+- https://github.com/Colt/webpack-demo-app/

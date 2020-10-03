@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 const (
@@ -103,23 +105,51 @@ func testingAPI_V2_ServiceA(ctx context.Context, client api_v2.ServiceAClient) {
 		Timestamp: 111,
 	}
 
-	reply, err := client.Ping(ctx, msg)
+	// Anything linked to this variable will transmit request headers.
+	md := metadata.New(map[string]string{"x-request-id": "req-service-a"})
+	ctx = metadata.NewOutgoingContext(ctx, md)
+
+	// Anything linked to this variable will fetch response headers.
+	var header metadata.MD
+
+	reply, err := client.Ping(ctx, msg, grpc.Header(&header))
 	if err != nil {
 		log.Fatalf("Ping failed: %v", err)
 	}
-	log.Println("Ping response:", reply)
+	xrid := header.Get("x-response-id")
+	if len(xrid) == 0 {
+		log.Fatal("Ping missing 'x-response-id' header")
+	}
+	if strings.Trim(xrid[0], " ") == "" {
+		log.Fatal("Ping empty 'x-response-id' header")
+	}
+	log.Printf("Ping response: %+v with 'x-response-id': %+v\n", reply, xrid[0])
 
-	reply, err = client.Post(ctx, msg)
+	reply, err = client.Post(ctx, msg, grpc.Header(&header))
 	if err != nil {
 		log.Fatalf("Post failed: %v", err)
 	}
-	log.Println("Post response:", reply)
+	xrid = header.Get("x-response-id")
+	if len(xrid) == 0 {
+		log.Fatal("Post missing 'x-response-id' header")
+	}
+	if strings.Trim(xrid[0], " ") == "" {
+		log.Fatal("Post empty 'x-response-id' header")
+	}
+	log.Printf("Post response: %+v with 'x-response-id': %+v\n", reply, xrid[0])
 
 	log.Println("done test api_v2 service")
 }
 
 func testingAPI_V2_ServiceExtra(ctx context.Context, client api_v2.ServiceExtraClient) {
 	log.Println("starting test api_v2 extra service....")
+
+	// Anything linked to this variable will transmit request headers.
+	md := metadata.New(map[string]string{"x-request-id": "req-service-extra"})
+	ctx = metadata.NewOutgoingContext(ctx, md)
+
+	// incoming response header
+	// header, ok := metadata.FromIncomingContext(ctx)
 
 	// grpc stream
 
@@ -139,6 +169,12 @@ func testingAPI_V2_ServiceExtra(ctx context.Context, client api_v2.ServiceExtraC
 				break
 			}
 			log.Fatalf("Ping streaming received failed: %v", err)
+		}
+		if header, ok := streamResp.Header(); ok == nil {
+			if v, ok := header["error"]; ok {
+				log.Fatalf("Ping streaming header error: %v", v)
+			}
+			log.Printf("Ping streaming headers: %+v\n", header)
 		}
 		log.Println("Ping streaming resp:", reply)
 	}
@@ -173,6 +209,12 @@ func testingAPI_V2_ServiceExtra(ctx context.Context, client api_v2.ServiceExtraC
 	} else {
 		log.Println("Post streaming received:", reply)
 	}
+	if header, ok := streamReq.Header(); ok == nil {
+		if v, ok := header["error"]; ok {
+			log.Fatalf("Post streaming header error: %v", v)
+		}
+		log.Printf("Post streaming headers: %+v\n", header)
+	}
 
 	// duplex stream
 	streamDuplex, err := client.DuplexStreamingPing(ctx)
@@ -197,6 +239,14 @@ func testingAPI_V2_ServiceExtra(ctx context.Context, client api_v2.ServiceExtraC
 		}
 	}()
 	for {
+		// receive response header
+		if header, ok := streamDuplex.Header(); ok == nil {
+			if v, ok := header["error"]; ok {
+				log.Fatalf("Duplex streaming header error: %v", v)
+			}
+			log.Printf("Duplex streaming headers: %+v\n", header)
+		}
+
 		reply, err := streamDuplex.Recv()
 		if err != nil {
 			if err == io.EOF {

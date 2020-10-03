@@ -40,7 +40,7 @@ type proxyConfig struct {
 	// Whether to log request headers
 	logHeaders bool
 	// Path to the swagger file to serve.
-	swagger string
+	swagger []string
 	// Value to set for Access-Control-Allow-Origin header.
 	corsAllowOrigin string
 	// Value to set for Access-Control-Allow-Credentials header.
@@ -248,9 +248,11 @@ func SetupMux(ctx context.Context, cfg proxyConfig) *http.ServeMux {
 	logrus.Infof("Creating grpc-gateway proxy with config: %v", cfg)
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/swagger.json", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, cfg.swagger)
-	})
+	for _, swagger := range cfg.swagger {
+		mux.HandleFunc("/"+swagger, func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, swagger)
+		})
+	}
 
 	gwmux := runtime.NewServeMux(
 		runtime.WithIncomingHeaderMatcher(incomingHeaderMatcher),
@@ -274,15 +276,15 @@ func SetupMux(ctx context.Context, cfg proxyConfig) *http.ServeMux {
 	// If you get a compilation error that gw.Register${SERVICE}HandlerFromEndpoint
 	// does not exist, it's because you haven't added any google.api.http annotations
 	// to your proto. Add some!
-	err := gw.RegisterServiceAHandlerFromEndpoint(ctx, gwmux, cfg.backend, opts)
-	if err != nil {
-		logrus.Fatalf("Could not register gateway: %v", err)
-	}
-
 	// NOTE: manual added other service
-	err = gw.RegisterServiceExtraHandlerFromEndpoint(ctx, gwmux, cfg.backend, opts)
-	if err != nil {
-		logrus.Fatalf("Could not register gateway: %v", err)
+	for _, f := range []func(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error{
+		gw.RegisterServiceAHandlerFromEndpoint,
+		gw.RegisterServiceExtraHandlerFromEndpoint,
+	} {
+		err := f(ctx, gwmux, cfg.backend, opts)
+		if err != nil {
+			logrus.Fatalf("Could not register gateway: %v", err)
+		}
 	}
 
 	prefix := sanitizeApiPrefix(cfg.apiPrefix)
@@ -356,7 +358,7 @@ func main() {
 		backend:              cfg.GetString("backend"),
 		logLevel:             cfg.GetString("log_level"),
 		logHeaders:           cfg.GetBool("log_headers"),
-		swagger:              cfg.GetString("swagger.file"),
+		swagger:              cfg.GetStringSlice("swagger"),
 		corsAllowOrigin:      cfg.GetString("cors.allow-origin"),
 		corsAllowCredentials: cfg.GetString("cors.allow-credentials"),
 		corsAllowMethods:     cfg.GetString("cors.allow-methods"),

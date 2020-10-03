@@ -11,6 +11,7 @@ grpc:
   max-call-recv-msg-size: 0
   max-call-send-msg-size: 0
 swagger:
-  file: "..swagger.json"
-
+  - rest-service.swagger.json
+  - rest-service-extra.swagger.json
+log_level: "DEBUG"
 
