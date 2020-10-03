@@ -52,4 +52,5 @@ var service = new Service(
     }
 )
 
+console.log(2)
 service.load()

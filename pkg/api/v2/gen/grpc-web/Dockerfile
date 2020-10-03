@@ -16,4 +16,5 @@ COPY . .
 EXPOSE 8081
 # CMD ["python", "-m", "SimpleHTTPServer", "8081"]
 
-CMD npx webpack-dev-server --config webpack.config.js
+# CMD npx webpack-dev-server --config webpack.config.js
+CMD npm start

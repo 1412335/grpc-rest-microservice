@@ -3,6 +3,7 @@
 
 /api
 /node_modules
+/dist
 
 .gitignore
 README.md

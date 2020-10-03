@@ -37,7 +37,9 @@ make gen-gateway-unix
 ```sh
 cd ./api/proto/v2
 
-docker run --rm --name protoc-gen -v ${pwd}:/defs namely/gen-grpc-gateway -f . -s ServiceA -o ..\..\..\pkg\api\v2\gen\grpc-gateway
+docker run --rm --name protoc-gen -v ${pwd}:/defs namely/gen-grpc-gateway \
+    -f . -s ServiceA \
+    -o ..\..\..\pkg\api\v2\gen\grpc-gateway
 ```
 
 # Running
