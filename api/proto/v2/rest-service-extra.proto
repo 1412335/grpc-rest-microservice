@@ -33,6 +33,7 @@ service ServiceExtra {
     }
 
     // request streaming
+    // DO NOT SUPPORT BY GRPC-WEB
     rpc StreamingPost (stream v2.StreamingMessagePing) returns (v2.StreamingMessagePong) {
         option (google.api.http) = {
             post: "/v2/extra/post/stream"
@@ -41,10 +42,17 @@ service ServiceExtra {
     }
 
     // two-way streaming
+    // DO NOT SUPPORT BY GRPC-WEB
     rpc DuplexStreamingPing (stream v2.StreamingMessagePing) returns (stream v2.StreamingMessagePong) {
         option (google.api.http) = {
             post: "/v2/extra/post/duplex-stream"
             body: "*"
         };
     }
+
+    // // A sequence of requests followed by a sequence of responses.
+    // // The server buffers all the client messages and then returns the same
+    // // client messages one by one after the client half-closes the stream.
+    // // This is how an image recognition API may work.
+    // rpc HalfDuplexEcho(stream EchoRequest) returns (stream EchoResponse);
 }
