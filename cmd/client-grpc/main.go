@@ -162,6 +162,15 @@ func testingAPI_V2_ServiceExtra(ctx context.Context, client api_v2.ServiceExtraC
 	if err != nil {
 		log.Fatalf("Ping streaming failed: %v", err)
 	}
+	if header, ok := streamResp.Header(); ok == nil {
+		if v, ok := header["error"]; ok {
+			log.Fatalf("Ping streaming header error: %v", v)
+		}
+		log.Printf("Ping streaming headers: %+v\n", header)
+	}
+	if md := streamResp.Trailer(); md != nil {
+		log.Printf("Ping streaming trailer: %+v\n", md)
+	}
 	for {
 		reply, err := streamResp.Recv()
 		if err != nil {
@@ -169,12 +178,6 @@ func testingAPI_V2_ServiceExtra(ctx context.Context, client api_v2.ServiceExtraC
 				break
 			}
 			log.Fatalf("Ping streaming received failed: %v", err)
-		}
-		if header, ok := streamResp.Header(); ok == nil {
-			if v, ok := header["error"]; ok {
-				log.Fatalf("Ping streaming header error: %v", v)
-			}
-			log.Printf("Ping streaming headers: %+v\n", header)
 		}
 		log.Println("Ping streaming resp:", reply)
 	}
@@ -198,22 +201,27 @@ func testingAPI_V2_ServiceExtra(ctx context.Context, client api_v2.ServiceExtraC
 			// time.Sleep(time.Second)
 			count++
 			if count >= 2 {
-				// streamReq.Send(nil)
+				if err := streamReq.CloseSend(); err != nil {
+					log.Fatalf("Post streaming close send failed: %v", err)
+				}
 				return
 			}
 		}
 	}(&wg)
 	wg.Wait()
-	if reply, err := streamReq.CloseAndRecv(); err != nil {
-		log.Fatalf("Post streaming received failed: %v", err)
-	} else {
-		log.Println("Post streaming received:", reply)
-	}
 	if header, ok := streamReq.Header(); ok == nil {
 		if v, ok := header["error"]; ok {
 			log.Fatalf("Post streaming header error: %v", v)
 		}
 		log.Printf("Post streaming headers: %+v\n", header)
+	}
+	if reply, err := streamReq.CloseAndRecv(); err != nil {
+		log.Fatalf("Post streaming received failed: %v", err)
+	} else {
+		log.Println("Post streaming received:", reply)
+	}
+	if md := streamReq.Trailer(); md != nil {
+		log.Printf("Post streaming trailer: %+v\n", md)
 	}
 
 	// duplex stream
@@ -230,28 +238,32 @@ func testingAPI_V2_ServiceExtra(ctx context.Context, client api_v2.ServiceExtraC
 			}); err != nil {
 				log.Fatalf("Duplex streaming sended failed: %v", err)
 			}
-			time.Sleep(time.Second)
+			// time.Sleep(time.Second)
 			count++
 			if count >= 3 {
-				// streamDuplex.Send(nil)
+				if err := streamDuplex.CloseSend(); err != nil {
+					log.Fatalf("Duplex streaming close send failed: %v", err)
+				}
 				return
 			}
 		}
 	}()
-	for {
-		// receive response header
-		if header, ok := streamDuplex.Header(); ok == nil {
-			if v, ok := header["error"]; ok {
-				log.Fatalf("Duplex streaming header error: %v", v)
-			}
-			log.Printf("Duplex streaming headers: %+v\n", header)
+	// receive response header
+	if header, ok := streamDuplex.Header(); ok == nil {
+		if v, ok := header["error"]; ok {
+			log.Fatalf("Duplex streaming header error: %v", v)
 		}
-
+		log.Printf("Duplex streaming headers: %+v\n", header)
+	}
+	for {
 		reply, err := streamDuplex.Recv()
-		if err != nil {
-			if err == io.EOF {
-				break
+		if err == io.EOF {
+			if md := streamDuplex.Trailer(); md != nil {
+				log.Printf("Duplex streaming trailer: %+v\n", md)
 			}
+			break
+		}
+		if err != nil {
 			log.Fatalf("Duplex streaming received failed: %v", err)
 		}
 		log.Println("Duplex streaming resp:", reply)
