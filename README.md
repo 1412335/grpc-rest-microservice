@@ -44,6 +44,15 @@ docker run --rm --name protoc-gen -v ${pwd}:/defs namely/gen-grpc-gateway \
 
 # Running
 
+## Internal grpc
+```sh
+# start grpc service
+docker-compose up --build client-service
+
+# run grpc client
+docker-compose -f docker-compose.client.yml up --build client
+```
+
 ## grpc-gateway
 ```sh
 # with automatically generated server

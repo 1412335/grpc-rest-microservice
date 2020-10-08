@@ -1,9 +1,9 @@
 version: '3'
 services:
 
-  client-gateway:
-    image: grpc-gateway:client
-    container_name: grpc-gw-client
+  client:
+    image: grpc:client
+    container_name: grpc-client
     build:
       context: .
       dockerfile: Dockerfile.client

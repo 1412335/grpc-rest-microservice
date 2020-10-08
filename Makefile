@@ -57,14 +57,14 @@ proxy-test:
 	curl localhost:8000/v2/extra/post -X POST -d '{"timestamp": 7000}'
 
 
-# run grpc gateway using docker
+# run grpc using docker
 .PHONY: service-build-run
 service-build-run:
 	@echo "===build grpc service image==="
-	docker build --build-arg GRPC_PORT=9090 -t grpc-gateway:client -f Dockerfile.service .
+	docker build --build-arg GRPC_PORT=9090 -t grpc:service -f Dockerfile.service .
 	@echo ""
 	@echo "===run grpc service container==="
-	docker run --rm --name grpc-gw-service -p 9090:9090 grpc-gateway:client
+	docker run --rm --name grpc-service -p 9090:9090 grpc:service
 
 .PHONY: gateway-build-run
 gateway-build-run:
@@ -93,7 +93,7 @@ grpc-gw-gen:
 
 .PHONY: grpc-gw-client
 grpc-gw-client:
-	docker-compose -f docker-compose.client.yml up --build client-gateway
+	docker-compose -f docker-compose.client.yml up --build client
 
 # grpc-web with envoy & node client
 .PHONY: grpc-web

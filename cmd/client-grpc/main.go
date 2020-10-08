@@ -11,6 +11,7 @@ import (
 	"time"
 
 	api_v1 "grpc-rest-microservice/pkg/api/v1"
+	"grpc-rest-microservice/pkg/api/v2/bridge"
 	api_v2 "grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
 
 	"github.com/golang/protobuf/ptypes"
@@ -276,8 +277,8 @@ var (
 	address = flag.String("grpc-host", "", "gRPC server in format host:port")
 )
 
-func main() {
-	flag.Parse()
+// remaining single connection to grpc server
+func singleConnection() {
 
 	conn, err := grpc.Dial(*address, grpc.WithInsecure())
 	if err != nil {
@@ -300,4 +301,38 @@ func main() {
 	testingAPI_V2_ServiceA(ctx, client_v2_serviceA)
 	testingAPI_V2_ServiceExtra(ctx, client_v2_serviceExtra)
 
+}
+
+// using pool connection with grpcpool
+func poolConnections() {
+	maxPoolSize := 100
+	timeOut := 10
+
+	managerClient := bridge.NewManagerClient(maxPoolSize, timeOut)
+	if managerClient == nil {
+		log.Fatalf("[Main] Create new manager client failed")
+	}
+
+	client, err := managerClient.GetClient(*address)
+	if err != nil {
+		log.Fatalf("[Main] Get client error: %+v", err)
+	}
+
+	timestamp := int64(2222)
+	if resp, err := client.Ping(timestamp); err != nil {
+		log.Fatalf("[Test] Ping error: %+v", err)
+	} else {
+		log.Println(resp)
+	}
+
+	if resp, err := client.Post(timestamp); err != nil {
+		log.Fatalf("[Test] Post error: %+v", err)
+	} else {
+		log.Println(resp)
+	}
+}
+
+func main() {
+	flag.Parse()
+	poolConnections()
 }
