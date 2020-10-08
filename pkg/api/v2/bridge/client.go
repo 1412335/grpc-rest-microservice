@@ -3,8 +3,11 @@ package bridge
 import (
 	"context"
 	api_v2 "grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	"log"
 
 	grpcpool "github.com/processout/grpc-go-pool"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 type Client interface {
@@ -24,16 +27,54 @@ func (c *ClientImpl) Close() error {
 	return c.conn.Close()
 }
 
+func (c *ClientImpl) setHeader(m map[string]string) (context.Context, error) {
+	md := metadata.New(m)
+	ctx := metadata.NewOutgoingContext(c.ctx, md)
+	return ctx, nil
+}
+
 func (c *ClientImpl) Ping(timestamp int64) (*api_v2.MessagePong, error) {
+	ctx, err := c.setHeader(map[string]string{"custom-req-header": "ping"})
+	if err != nil {
+		return nil, err
+	}
+
 	msg := &api_v2.MessagePing{
 		Timestamp: timestamp,
 	}
-	return c.client.Ping(c.ctx, msg)
+
+	// fetch response headers
+	var header metadata.MD
+
+	reply, err := c.client.Ping(ctx, msg, grpc.Header(&header))
+	if err != nil {
+		return nil, err
+	}
+	xrid := header.Get("x-response-id")
+	if len(xrid) > 0 {
+		log.Printf("'x-response-id': %v\n", xrid[0])
+	}
+	return reply, nil
 }
 
 func (c *ClientImpl) Post(timestamp int64) (*api_v2.MessagePong, error) {
+	ctx, err := c.setHeader(map[string]string{"custom-req-header": "post"})
+	if err != nil {
+		return nil, err
+	}
+
 	msg := &api_v2.MessagePing{
 		Timestamp: timestamp,
 	}
-	return c.client.Post(c.ctx, msg)
+
+	var header metadata.MD
+	reply, err := c.client.Post(ctx, msg, grpc.Header(&header))
+	if err != nil {
+		return nil, err
+	}
+	xrid := header.Get("x-response-id")
+	if len(xrid) > 0 {
+		log.Printf("'x-response-id': %v\n", xrid[0])
+	}
+	return reply, nil
 }

@@ -3,6 +3,7 @@ package bridge
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	api_v2 "grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
@@ -11,7 +12,9 @@ import (
 
 	cmap "github.com/orcaman/concurrent-map"
 	grpcpool "github.com/processout/grpc-go-pool"
+	uuid "github.com/satori/go.uuid"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 const (
@@ -47,8 +50,42 @@ func NewManagerClient(maxPoolSize, timeOut int) ManagerClient {
 	}
 }
 
+func interceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic: %v", r)
+		}
+	}()
+
+	start := time.Now()
+
+	// send x-request-id header
+	xrid := uuid.NewV4().String()
+	// header := metadata.New(map[string]string{"x-request-id": xrid})
+	// APPEND HEADER RESQUEST
+	ctx = metadata.AppendToOutgoingContext(ctx, []string{"x-request-id", xrid}...)
+
+	// fetch response header
+	var header metadata.MD
+	opts = append(opts, grpc.Header(&header))
+
+	// invoke request
+	err = invoker(ctx, method, req, reply, cc, opts...)
+
+	// get x-response-id header
+	xrespid := header.Get("x-response-id")
+
+	log.Printf("[gRPC client] Invoked RPC method=%s, xrid=%s, xrespid=%v, duration=%v, resp='%+v', error='%v'", method, xrid, xrespid, time.Since(start), reply, err)
+
+	return err
+}
+
 func (poolClient *PoolClient) newFactoryClient() (*grpc.ClientConn, error) {
-	conn, err := grpc.Dial(poolClient.host, grpc.WithInsecure())
+	conn, err := grpc.Dial(
+		poolClient.host,
+		grpc.WithInsecure(),
+		grpc.WithUnaryInterceptor(interceptor),
+	)
 	if err != nil {
 		return nil, err
 	}

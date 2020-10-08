@@ -23,7 +23,6 @@ func NewServiceExtraImpl() api_v2.ServiceExtraServer {
 }
 
 func (r *ServiceExtraImpl) Ping(ctx context.Context, req *api_v2.MessagePing) (*api_v2.MessagePong, error) {
-	log.Println("extra", req)
 	return &api_v2.MessagePong{
 		Timestamp:   req.GetTimestamp(),
 		ServiceName: "ServiceExtra: ping",
@@ -31,7 +30,6 @@ func (r *ServiceExtraImpl) Ping(ctx context.Context, req *api_v2.MessagePing) (*
 }
 
 func (r *ServiceExtraImpl) Post(ctx context.Context, req *api_v2.MessagePing) (*api_v2.MessagePong, error) {
-	log.Println("extra", req)
 	return &api_v2.MessagePong{
 		Timestamp:   req.GetTimestamp(),
 		ServiceName: "ServiceExtra: post",
