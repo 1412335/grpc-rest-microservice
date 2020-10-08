@@ -3,6 +3,7 @@ package bridge
 import (
 	"context"
 	api_v2 "grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	"io"
 	"log"
 
 	grpcpool "github.com/processout/grpc-go-pool"
@@ -14,7 +15,7 @@ type Client interface {
 	Ping(timestamp int64) (*api_v2.MessagePong, error)
 	Post(timestamp int64) (*api_v2.MessagePong, error)
 
-	// StreamingPing(timestamp int64, count, interval int32) error
+	StreamingPing(timestamp int64, count, interval int32) ([]*api_v2.StreamingMessagePong, error)
 }
 
 type ClientImpl struct {
@@ -77,4 +78,30 @@ func (c *ClientImpl) Post(timestamp int64) (*api_v2.MessagePong, error) {
 		log.Printf("'x-response-id': %v\n", xrid[0])
 	}
 	return reply, nil
+}
+
+func (c *ClientImpl) StreamingPing(timestamp int64, count, interval int32) ([]*api_v2.StreamingMessagePong, error) {
+	msg := &api_v2.StreamingMessagePing{
+		Timestamp:       timestamp,
+		MessageCount:    count,
+		MessageInterval: interval,
+	}
+	stream, err := c.client.StreamingPing(c.ctx, msg)
+	if err != nil {
+		return nil, err
+	}
+	var i int32
+	resp := make([]*api_v2.StreamingMessagePong, count)
+	for {
+		reply, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		resp[i] = reply
+		i++
+	}
+	return resp, nil
 }

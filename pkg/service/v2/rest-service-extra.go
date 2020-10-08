@@ -38,28 +38,14 @@ func (r *ServiceExtraImpl) Post(ctx context.Context, req *api_v2.MessagePing) (*
 
 func (r *ServiceExtraImpl) StreamingPing(req *api_v2.StreamingMessagePing, stream api_v2.ServiceExtra_StreamingPingServer) error {
 
-	// fetch request header
-	md, ok := metadata.FromIncomingContext(stream.Context())
-	if !ok {
-		return status.Errorf(codes.DataLoss, "failed to get metadata")
-	}
-	xrid := md.Get("x-request-id")
-	if len(xrid) == 0 {
-		return status.Errorf(codes.InvalidArgument, "missing 'x-request-id' header")
-	}
-	if strings.Trim(xrid[0], " ") == "" {
-		return status.Errorf(codes.InvalidArgument, "empty 'x-request-id' header")
-	}
-	log.Println("stream-ping x-request-id", xrid[0])
-
 	count := req.GetMessageCount()
 
 	// send header response
-	if err := stream.SendHeader(metadata.New(map[string]string{
-		"x-response-id": fmt.Sprintf("%d", count),
-	})); err != nil {
-		return status.Errorf(codes.Internal, "unable to send response 'x-response-id' header: %v", err)
-	}
+	// if err := stream.SendHeader(metadata.New(map[string]string{
+	// 	"x-response-id": fmt.Sprintf("%d", count),
+	// })); err != nil {
+	// 	return status.Errorf(codes.Internal, "unable to send response 'x-response-id' header: %v", err)
+	// }
 
 	for i := int32(0); i < count; i++ {
 		reply := &api_v2.StreamingMessagePong{

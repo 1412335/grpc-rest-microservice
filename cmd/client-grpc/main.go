@@ -318,17 +318,27 @@ func poolConnections() {
 		log.Fatalf("[Main] Get client error: %+v", err)
 	}
 
+	// unary request
 	timestamp := int64(2222)
 	if resp, err := client.Ping(timestamp); err != nil {
 		log.Fatalf("[Test] Ping error: %+v", err)
 	} else {
-		log.Println(resp)
+		log.Printf("[Test] Ping resp: %+v\n", resp)
 	}
 
 	if resp, err := client.Post(timestamp); err != nil {
 		log.Fatalf("[Test] Post error: %+v", err)
 	} else {
-		log.Println(resp)
+		log.Printf("[Test] Post resp: %+v\n", resp)
+	}
+
+	// server streaming
+	count := int32(2)
+	interval := int32(100)
+	if resp, err := client.StreamingPing(timestamp, count, interval); err != nil {
+		log.Fatalf("[Test] Streaming Ping error: %+v", err)
+	} else {
+		log.Printf("[Test] Streaming resp: %+v\n", resp)
 	}
 }
 

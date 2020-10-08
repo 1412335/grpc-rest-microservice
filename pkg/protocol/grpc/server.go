@@ -49,8 +49,8 @@ func RunServer(ctx context.Context, v1API api_v1.ToDoServiceServer, port string)
 	return server.Serve(listen)
 }
 
-// middleware for unary request to grpc server
-func interceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+// unary request to grpc server
+func unaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 
 	var xrid []string
 	var customHeader []string
@@ -104,6 +104,40 @@ func interceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInf
 	return resp, nil
 }
 
+// stream request interceptor
+func streamServerInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic: %v", r)
+		}
+	}()
+
+	// fetch x-request-id header
+	md, ok := metadata.FromIncomingContext(ss.Context())
+	if !ok {
+		return status.Errorf(codes.DataLoss, "failed to get metadata")
+	}
+	xrid := md.Get("x-request-id")
+	if len(xrid) == 0 {
+		return status.Errorf(codes.InvalidArgument, "missing 'x-request-id' header")
+	}
+	if strings.Trim(xrid[0], " ") == "" {
+		return status.Errorf(codes.InvalidArgument, "empty 'x-request-id' header")
+	}
+
+	log.Printf("[gRPC server] Received Stream RPC method=%s, serverStream=%v, xrid=%v, error='%v'", info.FullMethod, info.IsServerStream, xrid, err)
+	
+	// send x-response-id header
+	header := metadata.New(map[string]string{
+		"x-response-id": xrid[0],
+	})
+	if err := ss.SendHeader(header); err != nil {
+		return status.Errorf(codes.Internal, "unable to send response 'x-response-id' header: %v", err)
+	}
+
+	return handler(srv, ss)
+}
+
 func RunServerV2(ctx context.Context, v2API api_v2.ServiceAServer, v2API_extra api_v2.ServiceExtraServer, port string) error {
 	listen, err := net.Listen("tcp", fmt.Sprintf(":%v", port))
 	if err != nil {
@@ -111,7 +145,10 @@ func RunServerV2(ctx context.Context, v2API api_v2.ServiceAServer, v2API_extra a
 	}
 
 	// register implementation service with interceptor
-	server := grpc.NewServer(grpc.UnaryInterceptor(interceptor))
+	server := grpc.NewServer(
+		grpc.UnaryInterceptor(unaryServerInterceptor),
+		grpc.StreamInterceptor(streamServerInterceptor),
+	)
 
 	api_v2.RegisterServiceAServer(server, v2API)
 	api_v2.RegisterServiceExtraServer(server, v2API_extra)

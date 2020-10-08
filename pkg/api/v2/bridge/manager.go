@@ -50,7 +50,8 @@ func NewManagerClient(maxPoolSize, timeOut int) ManagerClient {
 	}
 }
 
-func interceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
+// client interceptor for unary request
+func unaryClientInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
@@ -80,11 +81,48 @@ func interceptor(ctx context.Context, method string, req, reply interface{}, cc 
 	return err
 }
 
+// client streaming interceptor
+func streamClientInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (clientStream grpc.ClientStream, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic: %v", r)
+		}
+	}()
+	start := time.Now()
+
+	// send x-request-id header
+	xrid := uuid.NewV4().String()
+	// header := metadata.New(map[string]string{"x-request-id": xrid})
+	// APPEND HEADER RESQUEST
+	ctx = metadata.AppendToOutgoingContext(ctx, []string{"x-request-id", xrid}...)
+
+	clientStream, err = streamer(ctx, desc, cc, method, opts...)
+
+	// get x-response-id header
+	// NOT WORK: not using stream context
+	// md, ok := metadata.FromIncomingContext(clientStream.Context())
+	// if !ok {
+	// 	return nil, status.Errorf(codes.DataLoss, "failed to get metadata")
+	// }
+	// xrespid := md.Get("x-response-id")
+
+	var xrespid []string
+	header, ok := clientStream.Header()
+	if ok == nil {
+		xrespid = header.Get("x-response-id")
+	}
+
+	log.Printf("[gRPC client] Stream RPC method=%s, xrid=%s, xrespid=%v, duration=%v, error='%v'", method, xrid, xrespid, time.Since(start), err)
+
+	return clientStream, err
+}
+
 func (poolClient *PoolClient) newFactoryClient() (*grpc.ClientConn, error) {
 	conn, err := grpc.Dial(
 		poolClient.host,
 		grpc.WithInsecure(),
-		grpc.WithUnaryInterceptor(interceptor),
+		grpc.WithUnaryInterceptor(unaryClientInterceptor),
+		grpc.WithStreamInterceptor(streamClientInterceptor),
 	)
 	if err != nil {
 		return nil, err
