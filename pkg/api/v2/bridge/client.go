@@ -16,6 +16,8 @@ type Client interface {
 	Post(timestamp int64) (*api_v2.MessagePong, error)
 
 	StreamingPing(timestamp int64, count, interval int32) ([]*api_v2.StreamingMessagePong, error)
+	StreamingPost(in []*api_v2.StreamingMessagePing) (*api_v2.StreamingMessagePong, error)
+	DuplexStreaming(in []*api_v2.StreamingMessagePing) ([]*api_v2.StreamingMessagePong, error)
 }
 
 type ClientImpl struct {
@@ -34,6 +36,7 @@ func (c *ClientImpl) setHeader(m map[string]string) (context.Context, error) {
 	return ctx, nil
 }
 
+// unary get
 func (c *ClientImpl) Ping(timestamp int64) (*api_v2.MessagePong, error) {
 	ctx, err := c.setHeader(map[string]string{"custom-req-header": "ping"})
 	if err != nil {
@@ -58,6 +61,7 @@ func (c *ClientImpl) Ping(timestamp int64) (*api_v2.MessagePong, error) {
 	return reply, nil
 }
 
+// unary post
 func (c *ClientImpl) Post(timestamp int64) (*api_v2.MessagePong, error) {
 	ctx, err := c.setHeader(map[string]string{"custom-req-header": "post"})
 	if err != nil {
@@ -80,13 +84,20 @@ func (c *ClientImpl) Post(timestamp int64) (*api_v2.MessagePong, error) {
 	return reply, nil
 }
 
+// server streaming
 func (c *ClientImpl) StreamingPing(timestamp int64, count, interval int32) ([]*api_v2.StreamingMessagePong, error) {
+
+	ctx, err := c.setHeader(map[string]string{"custom-req-header": "server-streaming-ping"})
+	if err != nil {
+		return nil, err
+	}
+
 	msg := &api_v2.StreamingMessagePing{
 		Timestamp:       timestamp,
 		MessageCount:    count,
 		MessageInterval: interval,
 	}
-	stream, err := c.client.StreamingPing(c.ctx, msg)
+	stream, err := c.client.StreamingPing(ctx, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -104,4 +115,78 @@ func (c *ClientImpl) StreamingPing(timestamp int64, count, interval int32) ([]*a
 		i++
 	}
 	return resp, nil
+}
+
+// client streaming
+func (c *ClientImpl) StreamingPost(in []*api_v2.StreamingMessagePing) (*api_v2.StreamingMessagePong, error) {
+
+	ctx, err := c.setHeader(map[string]string{"custom-req-header": "client-streaming-post"})
+	if err != nil {
+		return nil, err
+	}
+
+	stream, err := c.client.StreamingPost(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// send msg into stream
+	for _, msg := range in {
+		if err := stream.Send(msg); err != nil {
+			return nil, err
+		}
+	}
+	// close send stream
+	if err := stream.CloseSend(); err != nil {
+		return nil, err
+	}
+	// receive resp
+	reply, err := stream.CloseAndRecv()
+	if err != nil {
+		return nil, err
+	}
+	return reply, nil
+}
+
+// bi-directional streaming
+func (c *ClientImpl) DuplexStreaming(in []*api_v2.StreamingMessagePing) ([]*api_v2.StreamingMessagePong, error) {
+	ctx, err := c.setHeader(map[string]string{"custom-req-header": "duplex-streaming"})
+	if err != nil {
+		return nil, err
+	}
+
+	stream, err := c.client.DuplexStreamingPing(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// send msg into stream
+	errChan := make(chan error)
+	go func(errChan chan<- error) {
+		for _, msg := range in {
+			if err := stream.Send(msg); err != nil {
+				errChan <- err
+				break
+			}
+		}
+		// close send stream
+		if err := stream.CloseSend(); err != nil {
+			errChan <- err
+		}
+	}(errChan)
+	// receive resp
+	var resp []*api_v2.StreamingMessagePong
+	for {
+		select {
+		case err := <-errChan:
+			return nil, err
+		default:
+			reply, err := stream.Recv()
+			if err == io.EOF {
+				return resp, nil
+			}
+			if err != nil {
+				return nil, err
+			}
+			resp = append(resp, reply)
+		}
+	}
 }

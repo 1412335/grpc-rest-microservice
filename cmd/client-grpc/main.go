@@ -336,9 +336,33 @@ func poolConnections() {
 	count := int32(2)
 	interval := int32(100)
 	if resp, err := client.StreamingPing(timestamp, count, interval); err != nil {
-		log.Fatalf("[Test] Streaming Ping error: %+v", err)
+		log.Fatalf("[Test] Server Streaming Ping error: %+v", err)
 	} else {
-		log.Printf("[Test] Streaming resp: %+v\n", resp)
+		log.Printf("[Test] Server Streaming Ping resp: %+v\n", resp)
+	}
+
+	// client streaming
+	msg := []*api_v2.StreamingMessagePing{
+		{
+			Timestamp:    1,
+			MessageCount: 1,
+		},
+		{
+			Timestamp:    2,
+			MessageCount: 2,
+		},
+	}
+	if resp, err := client.StreamingPost(msg); err != nil {
+		log.Fatalf("[Test] Client Streaming Post error: %+v", err)
+	} else {
+		log.Printf("[Test] Client Streaming Post resp: %+v\n", resp)
+	}
+
+	// duplex streaming
+	if resp, err := client.DuplexStreaming(msg); err != nil {
+		log.Fatalf("[Test] Duplex Streaming error: %+v", err)
+	} else {
+		log.Printf("[Test] Duplex Streaming resp: %+v\n", resp)
 	}
 }
 

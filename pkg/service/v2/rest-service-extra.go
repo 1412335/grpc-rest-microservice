@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"strings"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -40,11 +39,11 @@ func (r *ServiceExtraImpl) StreamingPing(req *api_v2.StreamingMessagePing, strea
 
 	count := req.GetMessageCount()
 
-	// send header response
+	// set custom header response
 	// if err := stream.SendHeader(metadata.New(map[string]string{
-	// 	"x-response-id": fmt.Sprintf("%d", count),
+	// 	"custom-resp-header": fmt.Sprintf("count:%d", count),
 	// })); err != nil {
-	// 	return status.Errorf(codes.Internal, "unable to send response 'x-response-id' header: %v", err)
+	// 	return status.Errorf(codes.Internal, "unable to send 'custom-resp-header': %v", err)
 	// }
 
 	for i := int32(0); i < count; i++ {
@@ -71,34 +70,34 @@ func (r *ServiceExtraImpl) StreamingPost(stream api_v2.ServiceExtra_StreamingPos
 	var count int32
 	startTime := time.Now()
 
-	ctx := stream.Context()
+	// ctx := stream.Context()
 
 	// receive header from request
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return status.Errorf(codes.DataLoss, "failed to get metadata")
-	}
-	xrid := md.Get("x-request-id")
-	if len(xrid) == 0 {
-		return status.Errorf(codes.InvalidArgument, "missing 'x-request-id' header")
-	}
-	if strings.Trim(xrid[0], " ") == "" {
-		return status.Errorf(codes.InvalidArgument, "empty 'x-request-id' header")
-	}
-	log.Println("stream-post x-request-id", xrid[0])
+	// md, ok := metadata.FromIncomingContext(ctx)
+	// if !ok {
+	// 	return status.Errorf(codes.DataLoss, "failed to get metadata")
+	// }
+	// xrid := md.Get("x-request-id")
+	// if len(xrid) == 0 {
+	// 	return status.Errorf(codes.InvalidArgument, "missing 'x-request-id' header")
+	// }
+	// if strings.Trim(xrid[0], " ") == "" {
+	// 	return status.Errorf(codes.InvalidArgument, "empty 'x-request-id' header")
+	// }
+	// log.Println("stream-post x-request-id", xrid[0])
 
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF {
-				elapsedTime := int64(time.Now().Sub(startTime).Seconds())
+				elapsedTime := int64(time.Now().Sub(startTime).Seconds() * 1000)
 
-				// send header response
-				if err := stream.SendHeader(metadata.New(map[string]string{
-					"count": fmt.Sprintf("%d", count),
-				})); err != nil {
-					return status.Errorf(codes.Internal, "unable to send response header count")
-				}
+				// set custom header response
+				// if err := stream.SendHeader(metadata.New(map[string]string{
+				// 	"custom-resp-header": fmt.Sprintf("count:%d", count),
+				// })); err != nil {
+				// 	return status.Errorf(codes.Internal, "unable to send 'custom-resp-header': %v", err)
+				// }
 
 				stream.SetTrailer(metadata.New(map[string]string{
 					"foo": "foo2",
@@ -106,7 +105,7 @@ func (r *ServiceExtraImpl) StreamingPost(stream api_v2.ServiceExtra_StreamingPos
 				}))
 				return stream.SendAndClose(&api_v2.StreamingMessagePong{
 					Timestamp:   elapsedTime,
-					ServiceName: fmt.Sprintf("ServiceExtra: streaming post one-way => %d", count),
+					ServiceName: fmt.Sprintf("ServiceExtra: client streaming one-way => %d", count),
 				})
 			}
 			return status.Errorf(codes.Internal, "received stream failed: %v", err)
@@ -119,28 +118,28 @@ func (r *ServiceExtraImpl) StreamingPost(stream api_v2.ServiceExtra_StreamingPos
 
 func (r *ServiceExtraImpl) DuplexStreamingPing(stream api_v2.ServiceExtra_DuplexStreamingPingServer) error {
 
-	ctx := stream.Context()
+	// ctx := stream.Context()
 
-	// receive header from request
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return status.Errorf(codes.DataLoss, "failed to get metadata")
-	}
-	xrid := md.Get("x-request-id")
-	if len(xrid) == 0 {
-		return status.Errorf(codes.InvalidArgument, "missing 'x-request-id' header")
-	}
-	if strings.Trim(xrid[0], " ") == "" {
-		return status.Errorf(codes.InvalidArgument, "empty 'x-request-id' header")
-	}
-	log.Println("stream-duplex x-request-id", xrid[0])
+	// // receive header from request
+	// md, ok := metadata.FromIncomingContext(ctx)
+	// if !ok {
+	// 	return status.Errorf(codes.DataLoss, "failed to get metadata")
+	// }
+	// xrid := md.Get("x-request-id")
+	// if len(xrid) == 0 {
+	// 	return status.Errorf(codes.InvalidArgument, "missing 'x-request-id' header")
+	// }
+	// if strings.Trim(xrid[0], " ") == "" {
+	// 	return status.Errorf(codes.InvalidArgument, "empty 'x-request-id' header")
+	// }
+	// log.Println("stream-duplex x-request-id", xrid[0])
 
-	// send header response
-	if err := stream.SendHeader(metadata.New(map[string]string{
-		"x-response-id": "duplex-stream",
-	})); err != nil {
-		return status.Errorf(codes.Internal, "unable to send 'x-response-id' header: %v", err)
-	}
+	// // send header response
+	// if err := stream.SendHeader(metadata.New(map[string]string{
+	// 	"x-response-id": "duplex-stream",
+	// })); err != nil {
+	// 	return status.Errorf(codes.Internal, "unable to send 'x-response-id' header: %v", err)
+	// }
 
 	for {
 		in, err := stream.Recv()

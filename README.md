@@ -101,6 +101,8 @@ curl -X GET localhost:8081
 - https://medium.com/zalopay-engineering/buildingdocker-grpc-gateway-e2efbdcfe5c
 - https://zalopay-oss.github.io/go-advanced/ch3-rpc/ch3-05-grpc-ext.html
 - https://mycodesmells.com/post/pooling-grpc-connections
+- https://blog.gopheracademy.com/advent-2017/go-grpc-beyond-basics
+- https://medium.com/@shijuvar/writing-grpc-interceptors-in-go-bf3e7671fe48
 
 ## Others
 - https://webpack.js.org/configuration/dev-server/

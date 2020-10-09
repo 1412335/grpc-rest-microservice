@@ -107,12 +107,14 @@ func streamClientInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grp
 	// xrespid := md.Get("x-response-id")
 
 	var xrespid []string
+	var customHeader []string
 	header, ok := clientStream.Header()
 	if ok == nil {
 		xrespid = header.Get("x-response-id")
+		customHeader = header.Get("custom-resp-header")
 	}
 
-	log.Printf("[gRPC client] Stream RPC method=%s, xrid=%s, xrespid=%v, duration=%v, error='%v'", method, xrid, xrespid, time.Since(start), err)
+	log.Printf("[gRPC client] Stream RPC method=%s, xrid=%s, xrespid=%v, customHeader=%v, duration=%v, error='%v'", method, xrid, xrespid, customHeader, time.Since(start), err)
 
 	return clientStream, err
 }

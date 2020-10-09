@@ -125,8 +125,11 @@ func streamServerInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.S
 		return status.Errorf(codes.InvalidArgument, "empty 'x-request-id' header")
 	}
 
-	log.Printf("[gRPC server] Received Stream RPC method=%s, serverStream=%v, xrid=%v, error='%v'", info.FullMethod, info.IsServerStream, xrid, err)
-	
+	// fetch custom-request-header
+	customHeader := md.Get("custom-req-header")
+
+	log.Printf("[gRPC server] Received Stream RPC method=%s, serverStream=%v, xrid=%v, customHeader=%v, error='%v'", info.FullMethod, info.IsServerStream, xrid, customHeader, err)
+
 	// send x-response-id header
 	header := metadata.New(map[string]string{
 		"x-response-id": xrid[0],
