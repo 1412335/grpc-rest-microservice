@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"grpc-rest-microservice/pkg/interceptor"
 	"grpc-rest-microservice/pkg/protocol/grpc"
 	v1 "grpc-rest-microservice/pkg/service/v1"
 	v2 "grpc-rest-microservice/pkg/service/v2"
@@ -82,14 +83,19 @@ func RunServerV2() error {
 
 	v2API_extra := v2.NewServiceExtraImpl(jwtManager)
 
-	// server interceptor
-	// serverInterceptor := grpc.SimpleServerInterceptor{}
+	// simple server interceptor
+	// serverInterceptor := interceptor.SimpleServerInterceptor{}
 
-	const v2ServicePath = "/v2.ServiceExtra/"
-	accessibleRoles := map[string][]string{
-		v2ServicePath + "Post": {"admin"},
-	}
-	serverInterceptor := grpc.NewAuthServerInterceptor(jwtManager, accessibleRoles)
+	// auth server interceptor
+	// const v2ServicePath = "/v2.ServiceExtra/"
+	// accessibleRoles := map[string][]string{
+	// 	v2ServicePath + "Post": {"admin"},
+	// }
+	// serverInterceptor := interceptor.NewAuthServerInterceptor(jwtManager, accessibleRoles)
+
+	// auth with credentials interceptor
+	username, password := "lu", "yen"
+	serverInterceptor := interceptor.NewCredentialsServerInterceptor(username, password)
 
 	return grpc.RunServerV2(ctx, serverInterceptor, v2API, v2API_extra, config.GRPCPort)
 }

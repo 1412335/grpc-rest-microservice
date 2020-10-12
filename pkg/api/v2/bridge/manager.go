@@ -6,6 +6,7 @@ import (
 	"time"
 
 	api_v2 "grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	"grpc-rest-microservice/pkg/utils"
 
 	"log"
 
@@ -36,9 +37,9 @@ type ManagerClientImpl struct {
 }
 
 type PoolClient struct {
-	interceptor ClientInterceptor
-	pool        *grpcpool.Pool
-	host        string
+	// interceptor ClientInterceptor
+	pool *grpcpool.Pool
+	host string
 }
 
 func NewManagerClient(maxPoolSize, timeOut int) ManagerClient {
@@ -49,23 +50,23 @@ func NewManagerClient(maxPoolSize, timeOut int) ManagerClient {
 	}
 }
 
-func (poolClient *PoolClient) newFactoryClient() (*grpc.ClientConn, error) {
-	clientInterceptor := poolClient.interceptor
-	if clientInterceptor == nil {
-		clientInterceptor = &SimpleClientInterceptor{}
-		poolClient.interceptor = clientInterceptor
-	}
-	conn, err := grpc.Dial(
-		poolClient.host,
-		grpc.WithInsecure(),
-		grpc.WithUnaryInterceptor(clientInterceptor.Unary()),
-		grpc.WithStreamInterceptor(clientInterceptor.Stream()),
-	)
-	if err != nil {
-		return nil, err
-	}
-	return conn, nil
-}
+// func (poolClient *PoolClient) newFactoryClient() (*grpc.ClientConn, error) {
+// 	clientInterceptor := poolClient.interceptor
+// 	if clientInterceptor == nil {
+// 		clientInterceptor = &SimpleClientInterceptor{}
+// 		poolClient.interceptor = clientInterceptor
+// 	}
+// 	conn, err := grpc.Dial(
+// 		poolClient.host,
+// 		grpc.WithInsecure(),
+// 		grpc.WithUnaryInterceptor(clientInterceptor.Unary()),
+// 		grpc.WithStreamInterceptor(clientInterceptor.Stream()),
+// 	)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return conn, nil
+// }
 
 // new factory client with interceptor
 func (poolClient *PoolClient) newFactoryClientWithInterceptor(clientInterceptor ClientInterceptor) func() (*grpc.ClientConn, error) {
@@ -75,6 +76,27 @@ func (poolClient *PoolClient) newFactoryClientWithInterceptor(clientInterceptor 
 			grpc.WithInsecure(),
 			grpc.WithUnaryInterceptor(clientInterceptor.Unary()),
 			grpc.WithStreamInterceptor(clientInterceptor.Stream()),
+		)
+		if err != nil {
+			return nil, err
+		}
+		return conn, nil
+	}
+}
+
+// factory client with credentials
+func (poolClient *PoolClient) newFactoryClientWithCredentials(clientInterceptor ClientInterceptor) func() (*grpc.ClientConn, error) {
+	return func() (*grpc.ClientConn, error) {
+		auth := utils.Authentication{
+			Username: "tengido",
+			Password: "matkhaune",
+		}
+		conn, err := grpc.Dial(
+			poolClient.host,
+			grpc.WithInsecure(),
+			grpc.WithUnaryInterceptor(clientInterceptor.Unary()),
+			grpc.WithStreamInterceptor(clientInterceptor.Stream()),
+			grpc.WithPerRPCCredentials(&auth),
 		)
 		if err != nil {
 			return nil, err
@@ -126,7 +148,14 @@ func (managerClient *ManagerClientImpl) newPoolClient(host string) (*PoolClient,
 	// load client interceptor
 	managerClient.loadInterceptor()
 
-	p, err := grpcpool.New(poolClient.newFactoryClientWithInterceptor(managerClient.interceptor), managerClient.maxPoolSize, managerClient.maxPoolSize, time.Duration(managerClient.timeOut)*time.Second)
+	// // grpc pool with authentication interceptor
+	// p, err := grpcpool.New(poolClient.newFactoryClientWithInterceptor(managerClient.interceptor), managerClient.maxPoolSize, managerClient.maxPoolSize, time.Duration(managerClient.timeOut)*time.Second)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// grpc pool with credentials
+	p, err := grpcpool.New(poolClient.newFactoryClientWithCredentials(managerClient.interceptor), managerClient.maxPoolSize, managerClient.maxPoolSize, time.Duration(managerClient.timeOut)*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -180,8 +209,9 @@ func (managerClient *ManagerClientImpl) GetClient(host string) (Client, error) {
 		// custom interceptor
 		// load interceptor with client implemetation service
 		// set client & gen jwt token
+		const v2ServicePath = "/v2.ServiceExtra/"
 		authMethods := map[string]bool{
-			"/v2.ServiceExtra/Post": true,
+			v2ServicePath + "Post": true,
 		}
 		refreshDuration := 60 * time.Second
 		managerClient.interceptor.(*SimpleClientInterceptor).Load(client, authMethods, refreshDuration)

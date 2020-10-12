@@ -326,10 +326,13 @@ func poolConnections() {
 		log.Printf("[Test] Ping resp: %+v\n", resp)
 	}
 
-	if resp, err := client.Post(timestamp); err != nil {
-		log.Fatalf("[Test] Post error: %+v", err)
-	} else {
-		log.Printf("[Test] Post resp: %+v\n", resp)
+	for i := int64(0); i < 2; i++ {
+		if resp, err := client.Post(timestamp + i); err != nil {
+			log.Fatalf("[Test] Post error: %+v", err)
+		} else {
+			log.Printf("[Test] Post resp: %+v\n", resp)
+		}
+		time.Sleep(time.Second)
 	}
 
 	// server streaming

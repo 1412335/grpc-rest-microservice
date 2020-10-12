@@ -11,6 +11,7 @@ import (
 
 	api_v1 "grpc-rest-microservice/pkg/api/v1"
 	api_v2 "grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	"grpc-rest-microservice/pkg/interceptor"
 
 	"google.golang.org/grpc"
 )
@@ -45,7 +46,7 @@ func RunServer(ctx context.Context, v1API api_v1.ToDoServiceServer, port string)
 	return server.Serve(listen)
 }
 
-func RunServerV2(ctx context.Context, serverInterceptor ServerInterceptor, v2API api_v2.ServiceAServer, v2API_extra api_v2.ServiceExtraServer, port string) error {
+func RunServerV2(ctx context.Context, serverInterceptor interceptor.ServerInterceptor, v2API api_v2.ServiceAServer, v2API_extra api_v2.ServiceExtraServer, port string) error {
 	listen, err := net.Listen("tcp", fmt.Sprintf(":%v", port))
 	if err != nil {
 		return err
