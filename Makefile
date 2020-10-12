@@ -24,12 +24,14 @@ gen-gateway-unix:
 # run locally grpc server & client
 grpc-server:
 	@echo "====Run grpc server service===="
-	go run ./cmd/server/main.go -grpc-port=9090 -db-host=:3306 -db-user=user -db-password=pwd -db-scheme=
+	docker-compose up --build client-service
+	# go run ./cmd/server/main.go -grpc-port=9090 -db-host=:3306 -db-user=user -db-password=pwd -db-scheme=
 
 .PHONY: grpc-client
 grpc-client:
 	@echo "====Run grpc client===="
-	go run ./cmd/client-grpc/main.go -server=localhost:9090
+	docker-compose -f docker-compose.client.yml up --build client
+	# go run ./cmd/client-grpc/main.go -server=localhost:9090
 
 
 # run grpc gateway locally

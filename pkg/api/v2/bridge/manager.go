@@ -3,7 +3,6 @@ package bridge
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	api_v2 "grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
@@ -12,9 +11,7 @@ import (
 
 	cmap "github.com/orcaman/concurrent-map"
 	grpcpool "github.com/processout/grpc-go-pool"
-	uuid "github.com/satori/go.uuid"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 )
 
 const (
@@ -35,11 +32,13 @@ type ManagerClientImpl struct {
 	maxPoolSize int
 	timeOut     int
 	poolClients cmap.ConcurrentMap
+	interceptor ClientInterceptor
 }
 
 type PoolClient struct {
-	pool *grpcpool.Pool
-	host string
+	interceptor ClientInterceptor
+	pool        *grpcpool.Pool
+	host        string
 }
 
 func NewManagerClient(maxPoolSize, timeOut int) ManagerClient {
@@ -50,86 +49,38 @@ func NewManagerClient(maxPoolSize, timeOut int) ManagerClient {
 	}
 }
 
-// client interceptor for unary request
-func unaryClientInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %v", r)
-		}
-	}()
-
-	start := time.Now()
-
-	// send x-request-id header
-	xrid := uuid.NewV4().String()
-	// header := metadata.New(map[string]string{"x-request-id": xrid})
-	// APPEND HEADER RESQUEST
-	ctx = metadata.AppendToOutgoingContext(ctx, []string{"x-request-id", xrid}...)
-
-	// fetch response header
-	var header metadata.MD
-	opts = append(opts, grpc.Header(&header))
-
-	// invoke request
-	err = invoker(ctx, method, req, reply, cc, opts...)
-
-	// get x-response-id header
-	xrespid := header.Get("x-response-id")
-
-	log.Printf("[gRPC client] Invoked RPC method=%s, xrid=%s, xrespid=%v, duration=%v, resp='%+v', error='%v'", method, xrid, xrespid, time.Since(start), reply, err)
-
-	return err
-}
-
-// client streaming interceptor
-func streamClientInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (clientStream grpc.ClientStream, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %v", r)
-		}
-	}()
-	start := time.Now()
-
-	// send x-request-id header
-	xrid := uuid.NewV4().String()
-	// header := metadata.New(map[string]string{"x-request-id": xrid})
-	// APPEND HEADER RESQUEST
-	ctx = metadata.AppendToOutgoingContext(ctx, []string{"x-request-id", xrid}...)
-
-	clientStream, err = streamer(ctx, desc, cc, method, opts...)
-
-	// get x-response-id header
-	// NOT WORK: not using stream context
-	// md, ok := metadata.FromIncomingContext(clientStream.Context())
-	// if !ok {
-	// 	return nil, status.Errorf(codes.DataLoss, "failed to get metadata")
-	// }
-	// xrespid := md.Get("x-response-id")
-
-	var xrespid []string
-	var customHeader []string
-	header, ok := clientStream.Header()
-	if ok == nil {
-		xrespid = header.Get("x-response-id")
-		customHeader = header.Get("custom-resp-header")
-	}
-
-	log.Printf("[gRPC client] Stream RPC method=%s, xrid=%s, xrespid=%v, customHeader=%v, duration=%v, error='%v'", method, xrid, xrespid, customHeader, time.Since(start), err)
-
-	return clientStream, err
-}
-
 func (poolClient *PoolClient) newFactoryClient() (*grpc.ClientConn, error) {
+	clientInterceptor := poolClient.interceptor
+	if clientInterceptor == nil {
+		clientInterceptor = &SimpleClientInterceptor{}
+		poolClient.interceptor = clientInterceptor
+	}
 	conn, err := grpc.Dial(
 		poolClient.host,
 		grpc.WithInsecure(),
-		grpc.WithUnaryInterceptor(unaryClientInterceptor),
-		grpc.WithStreamInterceptor(streamClientInterceptor),
+		grpc.WithUnaryInterceptor(clientInterceptor.Unary()),
+		grpc.WithStreamInterceptor(clientInterceptor.Stream()),
 	)
 	if err != nil {
 		return nil, err
 	}
 	return conn, nil
+}
+
+// new factory client with interceptor
+func (poolClient *PoolClient) newFactoryClientWithInterceptor(clientInterceptor ClientInterceptor) func() (*grpc.ClientConn, error) {
+	return func() (*grpc.ClientConn, error) {
+		conn, err := grpc.Dial(
+			poolClient.host,
+			grpc.WithInsecure(),
+			grpc.WithUnaryInterceptor(clientInterceptor.Unary()),
+			grpc.WithStreamInterceptor(clientInterceptor.Stream()),
+		)
+		if err != nil {
+			return nil, err
+		}
+		return conn, nil
+	}
 }
 
 func (poolClient *PoolClient) newClient() (Client, error) {
@@ -148,9 +99,11 @@ func (poolClient *PoolClient) newClient() (Client, error) {
 	}
 
 	return &ClientImpl{
-		client: api_v2.NewServiceExtraClient(conn.ClientConn),
-		conn:   conn,
-		ctx:    ctx,
+		client:   api_v2.NewServiceExtraClient(conn.ClientConn),
+		conn:     conn,
+		ctx:      ctx,
+		username: "admin",
+		password: "admin",
 	}, nil
 }
 
@@ -158,12 +111,22 @@ func (poolClient *PoolClient) closePool() {
 	poolClient.pool.Close()
 }
 
+func (managerClient *ManagerClientImpl) loadInterceptor() {
+	if managerClient.interceptor == nil {
+		interceptor := &SimpleClientInterceptor{}
+		managerClient.interceptor = interceptor
+	}
+}
+
 func (managerClient *ManagerClientImpl) newPoolClient(host string) (*PoolClient, error) {
 	poolClient := &PoolClient{
 		host: host,
 	}
 
-	p, err := grpcpool.New(poolClient.newFactoryClient, managerClient.maxPoolSize, managerClient.maxPoolSize, time.Duration(managerClient.timeOut)*time.Second)
+	// load client interceptor
+	managerClient.loadInterceptor()
+
+	p, err := grpcpool.New(poolClient.newFactoryClientWithInterceptor(managerClient.interceptor), managerClient.maxPoolSize, managerClient.maxPoolSize, time.Duration(managerClient.timeOut)*time.Second)
 	if err != nil {
 		return nil, err
 	}
@@ -200,12 +163,42 @@ func (managerClient *ManagerClientImpl) removePoolClient(host string) {
 func (managerClient *ManagerClientImpl) GetClient(host string) (Client, error) {
 	pool := managerClient.getPoolClient(host)
 	if pool == nil {
-		poolImpl, err := managerClient.addPoolClient(host)
+		poolImpl, err := managerClient.newPoolClient(host)
 		if err != nil {
 			log.Printf("[Manager Client] Get client with host '%v' error %+v\n", host, err)
 			return nil, err
 		}
 		pool = poolImpl
+
+		client, err := pool.newClient()
+		if err != nil {
+			managerClient.removePoolClient(host)
+			log.Printf("[Manager Client] Remove pool client with host '%v' error %+v\n", host, err)
+			return nil, err
+		}
+
+		// custom interceptor
+		// load interceptor with client implemetation service
+		// set client & gen jwt token
+		authMethods := map[string]bool{
+			"/v2.ServiceExtra/Post": true,
+		}
+		refreshDuration := 60 * time.Second
+		managerClient.interceptor.(*SimpleClientInterceptor).Load(client, authMethods, refreshDuration)
+
+		// reload grpcpool on init
+		pool, err = managerClient.addPoolClient(host)
+		if err != nil {
+			log.Printf("[Manager Client] Get client with host '%v' error %+v\n", host, err)
+			return nil, err
+		}
+		client, err = pool.newClient()
+		if err != nil {
+			managerClient.removePoolClient(host)
+			log.Printf("[Manager Client] Remove pool client with host '%v' error %+v\n", host, err)
+			return nil, err
+		}
+		return client, nil
 	}
 
 	client, err := pool.newClient()

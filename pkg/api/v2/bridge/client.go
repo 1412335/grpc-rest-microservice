@@ -5,6 +5,7 @@ import (
 	api_v2 "grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
 	"io"
 	"log"
+	"time"
 
 	grpcpool "github.com/processout/grpc-go-pool"
 	"google.golang.org/grpc"
@@ -12,6 +13,8 @@ import (
 )
 
 type Client interface {
+	Login() (string, error)
+
 	Ping(timestamp int64) (*api_v2.MessagePong, error)
 	Post(timestamp int64) (*api_v2.MessagePong, error)
 
@@ -21,9 +24,11 @@ type Client interface {
 }
 
 type ClientImpl struct {
-	client api_v2.ServiceExtraClient
-	conn   *grpcpool.ClientConn
-	ctx    context.Context
+	client   api_v2.ServiceExtraClient
+	conn     *grpcpool.ClientConn
+	ctx      context.Context
+	username string
+	password string
 }
 
 func (c *ClientImpl) Close() error {
@@ -36,12 +41,45 @@ func (c *ClientImpl) setHeader(m map[string]string) (context.Context, error) {
 	return ctx, nil
 }
 
+// login & get token
+func (c *ClientImpl) Login() (string, error) {
+	ctx, err := c.setHeader(map[string]string{"custom-req-header": "login"})
+	if err != nil {
+		return "", err
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	msg := &api_v2.LoginRequest{
+		Username: c.username,
+		Password: c.password,
+	}
+
+	// fetch response headers
+	var header metadata.MD
+
+	reply, err := c.client.Login(ctx, msg, grpc.Header(&header))
+	if err != nil {
+		return "", err
+	}
+	token := header.Get("token")
+	if len(token) > 0 {
+		log.Printf("'token': %v\n", token[0])
+	}
+
+	return reply.GetToken(), nil
+}
+
 // unary get
 func (c *ClientImpl) Ping(timestamp int64) (*api_v2.MessagePong, error) {
 	ctx, err := c.setHeader(map[string]string{"custom-req-header": "ping"})
 	if err != nil {
 		return nil, err
 	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
 	msg := &api_v2.MessagePing{
 		Timestamp: timestamp,
@@ -57,6 +95,10 @@ func (c *ClientImpl) Ping(timestamp int64) (*api_v2.MessagePong, error) {
 	xrid := header.Get("x-response-id")
 	if len(xrid) > 0 {
 		log.Printf("'x-response-id': %v\n", xrid[0])
+	}
+	token := header.Get("token")
+	if len(token) > 0 {
+		log.Printf("'token': %v\n", token[0])
 	}
 	return reply, nil
 }

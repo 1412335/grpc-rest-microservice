@@ -10,6 +10,14 @@ import "google/api/annotations.proto";
 import "common.proto";
 
 service ServiceExtra {
+
+    rpc Login (v2.LoginRequest) returns (v2.LoginResponse) {
+        option (google.api.http) = {
+            post: "/v2/extra/login",
+            body: "*"
+        };
+    }
+
     rpc Ping (v2.MessagePing) returns (v2.MessagePong) {
         option (google.api.http) = {
             get: "/v2/extra/ping/{timestamp}"

@@ -11,6 +11,38 @@
     "application/json"
   ],
   "paths": {
+    "/v2/extra/login": {
+      "post": {
+        "operationId": "ServiceExtra_Login",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2LoginResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v2LoginRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ServiceExtra"
+        ]
+      }
+    },
     "/v2/extra/ping/stream/{timestamp}": {
       "get": {
         "summary": "-- streaming\nresponse streaming",
@@ -131,7 +163,7 @@
     },
     "/v2/extra/post/duplex-stream": {
       "post": {
-        "summary": "two-way streaming",
+        "summary": "two-way streaming\nDO NOT SUPPORT BY GRPC-WEB",
         "operationId": "ServiceExtra_DuplexStreamingPing",
         "responses": {
           "200": {
@@ -174,7 +206,7 @@
     },
     "/v2/extra/post/stream": {
       "post": {
-        "summary": "request streaming",
+        "summary": "request streaming\nDO NOT SUPPORT BY GRPC-WEB",
         "operationId": "ServiceExtra_StreamingPost",
         "responses": {
           "200": {
@@ -263,6 +295,25 @@
           "items": {
             "$ref": "#/definitions/protobufAny"
           }
+        }
+      }
+    },
+    "v2LoginRequest": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      }
+    },
+    "v2LoginResponse": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string"
         }
       }
     },

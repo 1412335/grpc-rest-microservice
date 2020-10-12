@@ -7,21 +7,62 @@ import (
 	"log"
 	"time"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	api_v2 "grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	"grpc-rest-microservice/pkg/utils"
 
 	"google.golang.org/grpc/metadata"
 )
 
-type ServiceExtraImpl struct{}
+type ServiceExtraImpl struct {
+	// userStorage UserStore
+	jwtManager *utils.JWTManager
+}
 
-func NewServiceExtraImpl() api_v2.ServiceExtraServer {
-	return &ServiceExtraImpl{}
+func NewServiceExtraImpl(jwtManager *utils.JWTManager) api_v2.ServiceExtraServer {
+	return &ServiceExtraImpl{jwtManager}
+}
+
+func (r *ServiceExtraImpl) setRespHeader(ctx context.Context, md map[string]string) error {
+	header := metadata.New(md)
+	if err := grpc.SendHeader(ctx, header); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *ServiceExtraImpl) Login(ctx context.Context, req *api_v2.LoginRequest) (*api_v2.LoginResponse, error) {
+	// generate jwt token with authentication info
+	token, err := r.jwtManager.Generate(req.GetUsername(), req.GetPassword())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "generate token error: %v", err)
+	}
+
+	header := map[string]string{
+		"custom-resp-header": "resp-login",
+		"token":              token,
+	}
+	if err := r.setRespHeader(ctx, header); err != nil {
+		return nil, status.Errorf(codes.Internal, "unable to set 'custom-resp-header': %+v", err)
+	}
+
+	return &api_v2.LoginResponse{
+		Token: token,
+	}, nil
 }
 
 func (r *ServiceExtraImpl) Ping(ctx context.Context, req *api_v2.MessagePing) (*api_v2.MessagePong, error) {
+
+	header := map[string]string{
+		"custom-resp-header": "resp-ping",
+	}
+	if err := r.setRespHeader(ctx, header); err != nil {
+		return nil, status.Errorf(codes.Internal, "unable to set 'custom-resp-header': %+v", err)
+	}
+
 	return &api_v2.MessagePong{
 		Timestamp:   req.GetTimestamp(),
 		ServiceName: "ServiceExtra: ping",
@@ -29,6 +70,12 @@ func (r *ServiceExtraImpl) Ping(ctx context.Context, req *api_v2.MessagePing) (*
 }
 
 func (r *ServiceExtraImpl) Post(ctx context.Context, req *api_v2.MessagePing) (*api_v2.MessagePong, error) {
+
+	header := map[string]string{"custom-resp-header": "resp-post"}
+	if err := r.setRespHeader(ctx, header); err != nil {
+		return nil, status.Errorf(codes.Internal, "unable to set 'custom-resp-header': %+v", err)
+	}
+
 	return &api_v2.MessagePong{
 		Timestamp:   req.GetTimestamp(),
 		ServiceName: "ServiceExtra: post",

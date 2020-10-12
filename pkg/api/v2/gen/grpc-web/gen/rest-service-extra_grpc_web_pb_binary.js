@@ -77,6 +77,86 @@ proto.v2.ServiceExtraPromiseClient =
 /**
  * @const
  * @type {!grpc.web.MethodDescriptor<
+ *   !proto.v2.LoginRequest,
+ *   !proto.v2.LoginResponse>}
+ */
+const methodDescriptor_ServiceExtra_Login = new grpc.web.MethodDescriptor(
+  '/v2.ServiceExtra/Login',
+  grpc.web.MethodType.UNARY,
+  common_pb.LoginRequest,
+  common_pb.LoginResponse,
+  /**
+   * @param {!proto.v2.LoginRequest} request
+   * @return {!Uint8Array}
+   */
+  function(request) {
+    return request.serializeBinary();
+  },
+  common_pb.LoginResponse.deserializeBinary
+);
+
+
+/**
+ * @const
+ * @type {!grpc.web.AbstractClientBase.MethodInfo<
+ *   !proto.v2.LoginRequest,
+ *   !proto.v2.LoginResponse>}
+ */
+const methodInfo_ServiceExtra_Login = new grpc.web.AbstractClientBase.MethodInfo(
+  common_pb.LoginResponse,
+  /**
+   * @param {!proto.v2.LoginRequest} request
+   * @return {!Uint8Array}
+   */
+  function(request) {
+    return request.serializeBinary();
+  },
+  common_pb.LoginResponse.deserializeBinary
+);
+
+
+/**
+ * @param {!proto.v2.LoginRequest} request The
+ *     request proto
+ * @param {?Object<string, string>} metadata User defined
+ *     call metadata
+ * @param {function(?grpc.web.Error, ?proto.v2.LoginResponse)}
+ *     callback The callback function(error, response)
+ * @return {!grpc.web.ClientReadableStream<!proto.v2.LoginResponse>|undefined}
+ *     The XHR Node Readable Stream
+ */
+proto.v2.ServiceExtraClient.prototype.login =
+    function(request, metadata, callback) {
+  return this.client_.rpcCall(this.hostname_ +
+      '/v2.ServiceExtra/Login',
+      request,
+      metadata || {},
+      methodDescriptor_ServiceExtra_Login,
+      callback);
+};
+
+
+/**
+ * @param {!proto.v2.LoginRequest} request The
+ *     request proto
+ * @param {?Object<string, string>} metadata User defined
+ *     call metadata
+ * @return {!Promise<!proto.v2.LoginResponse>}
+ *     Promise that resolves to the response
+ */
+proto.v2.ServiceExtraPromiseClient.prototype.login =
+    function(request, metadata) {
+  return this.client_.unaryCall(this.hostname_ +
+      '/v2.ServiceExtra/Login',
+      request,
+      metadata || {},
+      methodDescriptor_ServiceExtra_Login);
+};
+
+
+/**
+ * @const
+ * @type {!grpc.web.MethodDescriptor<
  *   !proto.v2.MessagePing,
  *   !proto.v2.MessagePong>}
  */

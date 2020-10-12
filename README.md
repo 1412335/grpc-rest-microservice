@@ -103,6 +103,7 @@ curl -X GET localhost:8081
 - https://mycodesmells.com/post/pooling-grpc-connections
 - https://blog.gopheracademy.com/advent-2017/go-grpc-beyond-basics
 - https://medium.com/@shijuvar/writing-grpc-interceptors-in-go-bf3e7671fe48
+- https://dev.to/techschoolguru/use-grpc-interceptor-for-authorization-with-jwt-1c5h
 
 ## Others
 - https://webpack.js.org/configuration/dev-server/
