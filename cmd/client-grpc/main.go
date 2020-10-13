@@ -13,8 +13,10 @@ import (
 	api_v1 "grpc-rest-microservice/pkg/api/v1"
 	"grpc-rest-microservice/pkg/api/v2/bridge"
 	api_v2 "grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	"grpc-rest-microservice/pkg/configs"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -305,14 +307,21 @@ func singleConnection() {
 
 // using pool connection with grpcpool
 func poolConnections() {
-	maxPoolSize := 100
-	timeOut := 10
+	// load config using viper
+	clientConfigs := &configs.ServiceConfig{}
+	if err := configs.LoadConfig(); err != nil {
+		log.Fatalf("[Main] Load config failed: %v", err)
+	}
+	if err := viper.Unmarshal(clientConfigs); err != nil {
+		log.Fatalf("[Main] Unmarshal config failed: %v", err)
+	}
 
-	managerClient := bridge.NewManagerClient(maxPoolSize, timeOut)
+	managerClient := bridge.NewManagerClientWithConfigs(clientConfigs.ManagerClient)
 	if managerClient == nil {
 		log.Fatalf("[Main] Create new manager client failed")
 	}
 
+	*address = fmt.Sprintf("%s:%d", clientConfigs.GRPC.Host, clientConfigs.GRPC.Port)
 	client, err := managerClient.GetClient(*address)
 	if err != nil {
 		log.Fatalf("[Main] Get client error: %+v", err)

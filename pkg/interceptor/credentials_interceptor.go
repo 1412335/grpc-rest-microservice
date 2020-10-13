@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	api_v2 "grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	"grpc-rest-microservice/pkg/configs"
 	"log"
 	"strings"
 
@@ -19,8 +20,11 @@ type CredentialsServerInterceptor struct {
 	password string
 }
 
-func NewCredentialsServerInterceptor(username, password string) *CredentialsServerInterceptor {
-	return &CredentialsServerInterceptor{username, password}
+func NewCredentialsServerInterceptor(config *configs.Authentication) *CredentialsServerInterceptor {
+	return &CredentialsServerInterceptor{
+		username: config.Username,
+		password: config.Password,
+	}
 }
 
 func (interceptor *CredentialsServerInterceptor) Unary() grpc.UnaryServerInterceptor {

@@ -1,0 +1,22 @@
+grpc:
+  host: "client-service"
+  port: 9090
+proxy:
+  port: 8000
+jwt:
+  secretKey: "lu"
+  duration: "60s"
+authentication:
+  username: "lu"
+  password: "yen"
+accessibleRoles:
+  - "/v2.ExtraService/Post":
+    - user
+      admin
+  - "/v2.ExtraService/StreamingPost":
+    - admin
+database:
+  host: "localhost"
+  user: "root"
+  password: ""
+  schema: "grpcrestservice"

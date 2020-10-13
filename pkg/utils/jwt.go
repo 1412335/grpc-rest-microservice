@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"grpc-rest-microservice/pkg/configs"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -12,8 +13,11 @@ type JWTManager struct {
 	tokenDuration time.Duration
 }
 
-func NewJWTManager(secretKey string, tokenDuration time.Duration) *JWTManager {
-	return &JWTManager{secretKey, tokenDuration}
+func NewJWTManager(config *configs.JWT) *JWTManager {
+	return &JWTManager{
+		secretKey:     config.SecretKey,
+		tokenDuration: config.Duration,
+	}
 }
 
 type UserClaims struct {

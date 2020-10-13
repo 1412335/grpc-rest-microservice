@@ -5,50 +5,52 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"time"
+	"log"
+	"strconv"
 
+	"grpc-rest-microservice/pkg/configs"
 	"grpc-rest-microservice/pkg/interceptor"
 	"grpc-rest-microservice/pkg/protocol/grpc"
 	v1 "grpc-rest-microservice/pkg/service/v1"
 	v2 "grpc-rest-microservice/pkg/service/v2"
 	"grpc-rest-microservice/pkg/utils"
+
+	"github.com/spf13/viper"
 )
 
-type Config struct {
-	// gRPC is TCP port to listen by gRPC server
-	GRPCPort string
-
-	JWTSecretKey string
-	JWTDuration  int
-
-	DBHost     string
-	DBUser     string
-	DBPassword string
-	DBScheme   string
-}
-
 func RunServer() error {
-	ctx := context.Background()
 
-	var config Config
-	flag.StringVar(&config.GRPCPort, "grpc-port", "", "gRPC port to bind")
-	flag.StringVar(&config.DBHost, "db-host", "", "Database host")
-	flag.StringVar(&config.DBUser, "db-user", "", "Database user")
-	flag.StringVar(&config.DBPassword, "db-password", "", "Database pwd")
-	flag.StringVar(&config.DBScheme, "db-scheme", "", "Database scheme")
+	serviceConfig := &configs.ServiceConfig{}
+	if err := configs.LoadConfig(); err != nil {
+		log.Fatalf("[Main] Load config failed: %v", err)
+	}
+	if err := viper.Unmarshal(serviceConfig); err != nil {
+		log.Fatalf("[Main] Unmarshal config failed: %v", err)
+	}
+
+	GRPCPort := flag.Int("grpc-port", 9090, "gRPC port service")
+	DBHost := flag.String("db-host", "", "Database host")
+	DBUser := flag.String("db-user", "", "Database user")
+	DBPassword := flag.String("db-password", "", "Database pwd")
+	DBScheme := flag.String("db-scheme", "", "Database scheme")
 	flag.Parse()
 
-	if len(config.GRPCPort) == 0 {
-		return fmt.Errorf("invalid TCP port for gRPC server: %s", config.GRPCPort)
-	}
+	serviceConfig.GRPC.Port = *GRPCPort
+	serviceConfig.Database.Host = *DBHost
+	serviceConfig.Database.User = *DBUser
+	serviceConfig.Database.Password = *DBPassword
+	serviceConfig.Database.Scheme = *DBScheme
+
+	ctx := context.Background()
 
 	param := "parseTime=true"
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s",
-		config.DBUser,
-		config.DBPassword,
-		config.DBHost,
-		config.DBScheme,
-		param)
+		serviceConfig.Database.User,
+		serviceConfig.Database.Password,
+		serviceConfig.Database.Host,
+		serviceConfig.Database.Scheme,
+		param,
+	)
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -58,28 +60,31 @@ func RunServer() error {
 
 	v1API := v1.NewToDoServiceServer(db)
 
-	return grpc.RunServer(ctx, v1API, config.GRPCPort)
+	return grpc.RunServer(ctx, v1API, strconv.Itoa(serviceConfig.GRPC.Port))
 }
 
 func RunServerV2() error {
+
+	serviceConfig := &configs.ServiceConfig{}
+	if err := configs.LoadConfig(); err != nil {
+		log.Fatalf("[Main] Load config failed: %v", err)
+	}
+	if err := viper.Unmarshal(serviceConfig); err != nil {
+		log.Fatalf("[Main] Unmarshal config failed: %v", err)
+	}
+
 	ctx := context.Background()
 
-	var config Config
-	flag.StringVar(&config.GRPCPort, "grpc-port", "", "gRPC port to bind")
-	flag.StringVar(&config.JWTSecretKey, "jwt-secret", "luloveyen", "jwt secret key")
-	flag.IntVar(&config.JWTDuration, "jwt-duration", 60, "jwt token duration (seconds)")
-	flag.Parse()
-
-	if len(config.GRPCPort) == 0 {
-		return fmt.Errorf("invalid TCP port for gRPC server v2: %s", config.GRPCPort)
-	}
+	// var config Config
+	// flag.StringVar(&config.GRPCPort, "grpc-port", "", "gRPC port to bind")
+	// flag.StringVar(&config.JWTSecretKey, "jwt-secret", "luloveyen", "jwt secret key")
+	// flag.IntVar(&config.JWTDuration, "jwt-duration", 60, "jwt token duration (seconds)")
+	// flag.Parse()
 
 	v2API := v2.NewServiceAImpl()
 
 	// create implementation extra service
-	secretKey := config.JWTSecretKey
-	tokenDuration := time.Duration(config.JWTDuration) * time.Second
-	jwtManager := utils.NewJWTManager(secretKey, tokenDuration)
+	jwtManager := utils.NewJWTManager(serviceConfig.JWT)
 
 	v2API_extra := v2.NewServiceExtraImpl(jwtManager)
 
@@ -87,15 +92,11 @@ func RunServerV2() error {
 	// serverInterceptor := interceptor.SimpleServerInterceptor{}
 
 	// auth server interceptor
-	// const v2ServicePath = "/v2.ServiceExtra/"
-	// accessibleRoles := map[string][]string{
-	// 	v2ServicePath + "Post": {"admin"},
-	// }
-	// serverInterceptor := interceptor.NewAuthServerInterceptor(jwtManager, accessibleRoles)
+	fmt.Printf("%+v\n", serviceConfig.AccessibleRoles)
+	serverInterceptor := interceptor.NewAuthServerInterceptor(jwtManager, serviceConfig.AccessibleRoles)
 
 	// auth with credentials interceptor
-	username, password := "lu", "yen"
-	serverInterceptor := interceptor.NewCredentialsServerInterceptor(username, password)
+	// serverInterceptor := interceptor.NewCredentialsServerInterceptor(serviceConfig.Authentication)
 
-	return grpc.RunServerV2(ctx, serverInterceptor, v2API, v2API_extra, config.GRPCPort)
+	return grpc.RunServerV2(ctx, serverInterceptor, v2API, v2API_extra, strconv.Itoa(serviceConfig.GRPC.Port))
 }

@@ -1,0 +1,14 @@
+grpc:
+  host: "client-service"
+  port: 9090
+managerClient:
+  maxPoolSize: 100
+  timeOut: 10
+  authentication:
+    username: "lu"
+    password: "yen"
+    role: "user"
+  authMethods:
+    - "/v2.ExtraService/Post": false
+    - "/v2.ExtraService/StreamingPost": true
+  refreshDuration: "60s"

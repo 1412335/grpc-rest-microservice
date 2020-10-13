@@ -6,6 +6,7 @@ import (
 	"time"
 
 	api_v2 "grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	"grpc-rest-microservice/pkg/configs"
 	"grpc-rest-microservice/pkg/utils"
 
 	"log"
@@ -34,12 +35,23 @@ type ManagerClientImpl struct {
 	timeOut     int
 	poolClients cmap.ConcurrentMap
 	interceptor ClientInterceptor
+
+	// method need to request with authentication
+	authMethods map[string]bool
+
+	// jwt token
+	refreshDuration time.Duration
+
+	// credentials auth
+	authentication *configs.Authentication
 }
 
 type PoolClient struct {
 	// interceptor ClientInterceptor
-	pool *grpcpool.Pool
-	host string
+	pool     *grpcpool.Pool
+	host     string
+	username string
+	password string
 }
 
 func NewManagerClient(maxPoolSize, timeOut int) ManagerClient {
@@ -47,6 +59,18 @@ func NewManagerClient(maxPoolSize, timeOut int) ManagerClient {
 		maxPoolSize: maxPoolSize,
 		timeOut:     timeOut,
 		poolClients: cmap.New(),
+	}
+}
+
+// new manager client with bridge configs
+func NewManagerClientWithConfigs(config *configs.ManagerClient) ManagerClient {
+	return &ManagerClientImpl{
+		maxPoolSize:     config.MaxPoolSize,
+		timeOut:         config.TimeOut,
+		poolClients:     cmap.New(),
+		authMethods:     config.AuthMethods,
+		refreshDuration: config.RefreshDuration,
+		authentication:  config.Authentication,
 	}
 }
 
@@ -88,8 +112,8 @@ func (poolClient *PoolClient) newFactoryClientWithInterceptor(clientInterceptor 
 func (poolClient *PoolClient) newFactoryClientWithCredentials(clientInterceptor ClientInterceptor) func() (*grpc.ClientConn, error) {
 	return func() (*grpc.ClientConn, error) {
 		auth := utils.Authentication{
-			Username: "tengido",
-			Password: "matkhaune",
+			Username: poolClient.username,
+			Password: poolClient.password,
 		}
 		conn, err := grpc.Dial(
 			poolClient.host,
@@ -124,8 +148,8 @@ func (poolClient *PoolClient) newClient() (Client, error) {
 		client:   api_v2.NewServiceExtraClient(conn.ClientConn),
 		conn:     conn,
 		ctx:      ctx,
-		username: "admin",
-		password: "admin",
+		username: poolClient.username,
+		password: poolClient.password,
 	}, nil
 }
 
@@ -142,7 +166,9 @@ func (managerClient *ManagerClientImpl) loadInterceptor() {
 
 func (managerClient *ManagerClientImpl) newPoolClient(host string) (*PoolClient, error) {
 	poolClient := &PoolClient{
-		host: host,
+		host:     host,
+		username: managerClient.authentication.Username,
+		password: managerClient.authentication.Password,
 	}
 
 	// load client interceptor
@@ -209,14 +235,9 @@ func (managerClient *ManagerClientImpl) GetClient(host string) (Client, error) {
 		// custom interceptor
 		// load interceptor with client implemetation service
 		// set client & gen jwt token
-		const v2ServicePath = "/v2.ServiceExtra/"
-		authMethods := map[string]bool{
-			v2ServicePath + "Post": true,
-		}
-		refreshDuration := 60 * time.Second
-		managerClient.interceptor.(*SimpleClientInterceptor).Load(client, authMethods, refreshDuration)
+		managerClient.interceptor.(*SimpleClientInterceptor).Load(client, managerClient.authMethods, managerClient.refreshDuration)
 
-		// reload grpcpool on init
+		// reload grpcpool on init for using jwt
 		pool, err = managerClient.addPoolClient(host)
 		if err != nil {
 			log.Printf("[Manager Client] Get client with host '%v' error %+v\n", host, err)

@@ -3,16 +3,19 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/spf13/viper"
 	"github.com/unrolled/secure"
 	"google.golang.org/grpc"
 
 	api_v2 "grpc-rest-microservice/pkg/api/v2"
+	"grpc-rest-microservice/pkg/configs"
 )
 
 var (
@@ -77,6 +80,15 @@ func InitRouter(handler http.Handler) *gin.Engine {
 }
 
 func main() {
+
+	serviceConfig := &configs.ServiceConfig{}
+	if err := configs.LoadConfig(); err != nil {
+		log.Fatalf("[Main] Load config failed: %v", err)
+	}
+	if err := viper.Unmarshal(serviceConfig); err != nil {
+		log.Fatalf("[Main] Unmarshal config failed: %v", err)
+	}
+
 	flag.StringVar(&gRPCHost, "grpc-host", "", "gRPC host to bind")
 	flag.StringVar(&proxyPort, "proxy-port", "", "proxy port to bind")
 	flag.Parse()
@@ -88,6 +100,7 @@ func main() {
 
 	mux := runtime.NewServeMux()
 
+	gRPCHost = fmt.Sprintf("%s:%d", serviceConfig.GRPC.Host, serviceConfig.GRPC.Port)
 	err := api_v2.RegisterServiceAHandlerFromEndpoint(
 		ctx, mux, gRPCHost,
 		[]grpc.DialOption{grpc.WithInsecure()},
@@ -102,6 +115,7 @@ func main() {
 	// 	log.Fatal(err)
 	// }
 
+	proxyPort = fmt.Sprintf("%d", serverConfig.Proxy.Port)
 	r := InitRouter(mux)
 	log.Println("Proxy gw running at:", proxyPort)
 	if err := r.Run(":" + proxyPort); err != nil {
