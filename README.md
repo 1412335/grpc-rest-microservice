@@ -104,6 +104,8 @@ curl -X GET localhost:8081
 - https://blog.gopheracademy.com/advent-2017/go-grpc-beyond-basics
 - https://medium.com/@shijuvar/writing-grpc-interceptors-in-go-bf3e7671fe48
 - https://dev.to/techschoolguru/use-grpc-interceptor-for-authorization-with-jwt-1c5h
+- https://github.com/grpc/grpc-go/blob/master/Documentation/server-reflection-tutorial.md#enable-server-reflection
+- https://dev.to/techschoolguru/grpc-reflection-and-evans-cli-3oia
 
 ## Others
 - https://webpack.js.org/configuration/dev-server/

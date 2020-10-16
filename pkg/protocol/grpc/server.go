@@ -14,6 +14,7 @@ import (
 	"grpc-rest-microservice/pkg/interceptor"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 func RunServer(ctx context.Context, v1API api_v1.ToDoServiceServer, port string) error {
@@ -60,6 +61,9 @@ func RunServerV2(ctx context.Context, serverInterceptor interceptor.ServerInterc
 
 	api_v2.RegisterServiceAServer(server, v2API)
 	api_v2.RegisterServiceExtraServer(server, v2API_extra)
+
+	// grpc reflection
+	reflection.Register(server)
 
 	// graceful shutdown
 	c := make(chan os.Signal, 1)

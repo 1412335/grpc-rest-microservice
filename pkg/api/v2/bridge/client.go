@@ -174,7 +174,7 @@ func (c *ClientImpl) StreamingPost(in []*api_v2.StreamingMessagePing) (*api_v2.S
 	// send msg into stream
 	for _, msg := range in {
 		if err := stream.Send(msg); err != nil {
-			return nil, err
+			return nil, stream.RecvMsg(nil)
 		}
 	}
 	// close send stream

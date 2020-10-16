@@ -9,6 +9,6 @@ managerClient:
     password: "yen"
     role: "user"
   authMethods:
-    - "/v2.ExtraService/Post": false
-    - "/v2.ExtraService/StreamingPost": true
+    - "/v2.ServiceExtra/Post": true
+    - "/v2.ServiceExtra/StreamingPost": true
   refreshDuration: "60s"

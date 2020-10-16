@@ -108,6 +108,11 @@ grpc-web:
 grpc-web-client:
 	docker-compose -f docker-compose.client.yml up --build client-web
 
+# Evans cli
+.PHONY: cli
+cli:
+	evans -r repl -p 9090
+
 # cleaning
 .PHONY: clean
 clean:

@@ -10,10 +10,11 @@ authentication:
   username: "lu"
   password: "yen"
 accessibleRoles:
-  - "/v2.ExtraService/Post":
+  - "/v2.ServiceExtra/Post":
+    - yen
     - user
-      admin
-  - "/v2.ExtraService/StreamingPost":
+    - admin
+  - "/v2.ServiceExtra/StreamingPost":
     - admin
 database:
   host: "localhost"

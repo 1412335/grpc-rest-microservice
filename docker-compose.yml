@@ -8,6 +8,8 @@ services:
       dockerfile: Dockerfile.service
     environment: 
       GRPC_PORT: 9090
+    ports:
+        - 9090:9090
     networks:
       - grpc-rest
 

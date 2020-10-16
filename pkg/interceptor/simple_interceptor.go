@@ -65,6 +65,14 @@ func (interceptor *SimpleServerInterceptor) unaryServerInterceptor(ctx context.C
 	// NOT WORK: because server service does NOT using context to send anything
 	// ctx = metadata.AppendToOutgoingContext(ctx, []string{"x-response-id", xrid[0]}...)
 
+	// check request timeout or cancelled by the client
+	if ctx.Err() == context.Canceled {
+		return nil, status.Error(codes.Canceled, "request is canceled")
+	}
+	if ctx.Err() == context.DeadlineExceeded {
+		return nil, status.Error(codes.DeadlineExceeded, "deadline is exceeded")
+	}
+
 	resp, err = handler(ctx, req)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "serve handler error: %+v", err)
