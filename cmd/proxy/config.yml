@@ -5,7 +5,7 @@ proxy:
   port: 8000
 jwt:
   secretKey: "lu"
-  duration: "60s"
+  duration: "120s"
 authentication:
   username: "lu"
   password: "yen"
@@ -15,6 +15,7 @@ accessibleRoles:
     - user
     - admin
   - "/v2.ServiceExtra/StreamingPost":
+    - yen
     - admin
 database:
   host: "localhost"
