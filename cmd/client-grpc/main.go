@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	api_v1 "grpc-rest-microservice/pkg/api/v1"
-	"grpc-rest-microservice/pkg/api/v2/bridge"
-	api_v2 "grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
-	"grpc-rest-microservice/pkg/configs"
+	api_v1 "github.com/1412335/grpc-rest-microservice/pkg/api/v1"
+	"github.com/1412335/grpc-rest-microservice/pkg/api/v2/bridge"
+	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/spf13/viper"

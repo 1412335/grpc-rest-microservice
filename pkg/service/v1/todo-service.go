@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	api_v1 "grpc-rest-microservice/pkg/api/v1"
+	api_v1 "github.com/1412335/grpc-rest-microservice/pkg/api/v1"
 
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc/codes"

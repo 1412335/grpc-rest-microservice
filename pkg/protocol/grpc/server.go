@@ -9,9 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	api_v1 "grpc-rest-microservice/pkg/api/v1"
-	api_v2 "grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
-	"grpc-rest-microservice/pkg/interceptor"
+	api_v1 "github.com/1412335/grpc-rest-microservice/pkg/api/v1"
+	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	"github.com/1412335/grpc-rest-microservice/pkg/interceptor"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"

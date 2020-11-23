@@ -8,12 +8,12 @@ import (
 	"log"
 	"strconv"
 
-	"grpc-rest-microservice/pkg/configs"
-	"grpc-rest-microservice/pkg/interceptor"
-	"grpc-rest-microservice/pkg/protocol/grpc"
-	v1 "grpc-rest-microservice/pkg/service/v1"
-	v2 "grpc-rest-microservice/pkg/service/v2"
-	"grpc-rest-microservice/pkg/utils"
+	"github.com/1412335/grpc-rest-microservice/pkg/configs"
+	"github.com/1412335/grpc-rest-microservice/pkg/interceptor"
+	"github.com/1412335/grpc-rest-microservice/pkg/protocol/grpc"
+	v1 "github.com/1412335/grpc-rest-microservice/pkg/service/v1"
+	v2 "github.com/1412335/grpc-rest-microservice/pkg/service/v2"
+	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 
 	"github.com/spf13/viper"
 )

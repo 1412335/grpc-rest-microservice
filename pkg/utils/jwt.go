@@ -2,8 +2,9 @@ package utils
 
 import (
 	"fmt"
-	"grpc-rest-microservice/pkg/configs"
 	"time"
+
+	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 
 	"github.com/dgrijalva/jwt-go"
 )

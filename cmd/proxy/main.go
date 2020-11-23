@@ -14,8 +14,8 @@ import (
 	"github.com/unrolled/secure"
 	"google.golang.org/grpc"
 
-	api_v2 "grpc-rest-microservice/pkg/api/v2"
-	"grpc-rest-microservice/pkg/configs"
+	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 )
 
 var (
@@ -72,9 +72,9 @@ func InitRouter(handler http.Handler) *gin.Engine {
 
 	r.Any("/*aaa", gin.WrapH(handler))
 
-	// r.GET("/", func(c *gin.Context) {
-	// 	c.String(200, "Have nice day")
-	// })
+	r.GET("/", func(c *gin.Context) {
+		c.String(200, "Have nice day")
+	})
 
 	return r
 }

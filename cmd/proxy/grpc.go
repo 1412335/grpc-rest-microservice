@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	cmd "grpc-rest-microservice/pkg/cmd/server"
+	cmd "github.com/1412335/grpc-rest-microservice/pkg/cmd/server"
 )
 
 func main() {
