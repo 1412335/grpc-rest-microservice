@@ -1,5 +1,11 @@
 # export GO111MODULE=on
 
+# gen cert
+.PHONY: cert
+cert:
+	cd ./cert; ./gen.sh; cd ../
+
+
 # gen stubs
 .PHONY: gen
 gen:
@@ -108,10 +114,15 @@ grpc-web:
 grpc-web-client:
 	docker-compose -f docker-compose.client.yml up --build client-web
 
-# Evans cli
+# Evans cli: calling grpc service
 .PHONY: cli
 cli:
 	evans -r repl -p 9090
+
+# go-lint
+.PHONY: lint
+lint:
+	golangci-lint run ./...
 
 # cleaning
 .PHONY: clean

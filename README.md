@@ -79,6 +79,12 @@ make grpc-web-client
 curl -X GET localhost:8081
 ```
 
+## Cli with evans
+```sh
+# https://github.com/ktr0731/evans
+evans -r repl --host localhost -p 8081
+```
+
 # Note
 - Copy & paste /include/google into protobuf folder (eg: ./api/proto/v2)
 
@@ -106,6 +112,7 @@ curl -X GET localhost:8081
 - https://dev.to/techschoolguru/use-grpc-interceptor-for-authorization-with-jwt-1c5h
 - https://github.com/grpc/grpc-go/blob/master/Documentation/server-reflection-tutorial.md#enable-server-reflection
 - https://dev.to/techschoolguru/grpc-reflection-and-evans-cli-3oia
+- https://github.com/golangci/golangci-lint-action
 
 ## Others
 - https://webpack.js.org/configuration/dev-server/

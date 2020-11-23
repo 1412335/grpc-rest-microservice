@@ -21,7 +21,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	gw "gateway/gen"
+	gw "grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
 
 	_ "google.golang.org/genproto/googleapis/rpc/errdetails" // Pull in errdetails
 )
