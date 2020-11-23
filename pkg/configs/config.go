@@ -14,6 +14,7 @@ const (
 
 type ServiceConfig struct {
 	GRPC           *GRPC
+	Proxy          *Proxy
 	ManagerClient  *ManagerClient
 	JWT            *JWT
 	Database       *Database

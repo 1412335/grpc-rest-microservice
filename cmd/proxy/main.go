@@ -115,7 +115,7 @@ func main() {
 	// 	log.Fatal(err)
 	// }
 
-	proxyPort = fmt.Sprintf("%d", serverConfig.Proxy.Port)
+	proxyPort = fmt.Sprintf("%d", serviceConfig.Proxy.Port)
 	r := InitRouter(mux)
 	log.Println("Proxy gw running at:", proxyPort)
 	if err := r.Run(":" + proxyPort); err != nil {
