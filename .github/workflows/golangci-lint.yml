@@ -23,7 +23,7 @@ jobs:
 
           # Optional: golangci-lint command line arguments.
           # args: --issues-exit-code=0 --skip-dirs=./pkg/v2/gen
-          args: --config ./golangci.yml
+          args: --config ./.golangci.yml
 
           # Optional: show only new issues if it's a pull request. The default value is `false`.
           # only-new-issues: true
