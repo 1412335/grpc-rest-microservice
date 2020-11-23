@@ -19,7 +19,7 @@ COPY . /myapp
 RUN ls $GOPATH/src
 
 # Build the binary.
-RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 GO111MODULE=on go build -ldflags="-w -s" -o /go/bin/myapp cmd/proxy/grpc.go 
+RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 GO111MODULE=on go build -ldflags="-w -s" -o /go/bin/myapp cmd/proxy/server/grpc.go 
 
 ############################
 # STEP 2 build a small image
