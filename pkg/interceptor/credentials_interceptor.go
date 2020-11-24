@@ -38,7 +38,6 @@ func (interceptor *CredentialsServerInterceptor) Stream() grpc.StreamServerInter
 
 // unary request to grpc server
 func (interceptor *CredentialsServerInterceptor) unaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-
 	var xrid []string
 	var customHeader []string
 	defer func() {
@@ -86,8 +85,8 @@ func (interceptor *CredentialsServerInterceptor) unaryServerInterceptor(ctx cont
 
 	// send x-response-id header
 	header := metadata.New(map[string]string{"x-response-id": xrid[0]})
-	if err := grpc.SetHeader(ctx, header); err != nil {
-		return nil, status.Errorf(codes.Internal, "unable to send 'x-response-id' header")
+	if e := grpc.SetHeader(ctx, header); e != nil {
+		return nil, status.Errorf(codes.Internal, "unable to send 'x-response-id' header: %v", e.Error())
 	}
 	// NOT WORK: because server service does NOT using context to send anything
 	// ctx = metadata.AppendToOutgoingContext(ctx, []string{"x-response-id", xrid[0]}...)

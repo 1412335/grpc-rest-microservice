@@ -27,7 +27,7 @@ func NewToDoServiceServer(db *sql.DB) api_v1.ToDoServiceServer {
 	}
 }
 
-func (s *toDoServiceServer) checkApi(api string) error {
+func (s *toDoServiceServer) checkAPI(api string) error {
 	if len(api) > 0 {
 		if apiVersion != api {
 			return status.Errorf(codes.Unimplemented, "unsupported Api version: service implements API version %s, but asked for %s", apiVersion, api)
@@ -45,7 +45,7 @@ func (s *toDoServiceServer) connect(ctx context.Context) (*sql.Conn, error) {
 }
 
 func (s *toDoServiceServer) Create(ctx context.Context, req *api_v1.CreateRequest) (*api_v1.CreateResponse, error) {
-	if err := s.checkApi(req.Api); err != nil {
+	if err := s.checkAPI(req.Api); err != nil {
 		return nil, err
 	}
 
@@ -80,7 +80,7 @@ func (s *toDoServiceServer) Create(ctx context.Context, req *api_v1.CreateReques
 
 // Read todo
 func (s *toDoServiceServer) Read(ctx context.Context, req *api_v1.ReadRequest) (*api_v1.ReadResponse, error) {
-	if err := s.checkApi(req.Api); err != nil {
+	if err := s.checkAPI(req.Api); err != nil {
 		return nil, err
 	}
 
@@ -98,8 +98,8 @@ func (s *toDoServiceServer) Read(ctx context.Context, req *api_v1.ReadRequest) (
 	defer rows.Close()
 
 	if !rows.Next() {
-		if err := rows.Err(); err != nil {
-			return nil, status.Error(codes.Unknown, "failed to retrieve data from todo:"+err.Error())
+		if err = rows.Err(); err != nil {
+			return nil, status.Errorf(codes.Unknown, "failed to retrieve data from todo: %v", err.Error())
 		}
 		return nil, status.Errorf(codes.NotFound, "todo with ID=%v is not found", req.Id)
 	}
@@ -107,12 +107,12 @@ func (s *toDoServiceServer) Read(ctx context.Context, req *api_v1.ReadRequest) (
 	// get todo
 	var td api_v1.ToDo
 	var reminder time.Time
-	if err := rows.Scan(&td.Id, &td.Title, &td.Description, &reminder); err != nil {
-		return nil, status.Error(codes.Unknown, "failed to retrieve filed values from todo:"+err.Error())
+	if err = rows.Scan(&td.Id, &td.Title, &td.Description, &reminder); err != nil {
+		return nil, status.Errorf(codes.Unknown, "failed to retrieve filed values from todo: %v", err.Error())
 	}
 	td.Reminder, err = ptypes.TimestampProto(reminder)
 	if err != nil {
-		return nil, status.Error(codes.Unknown, "reminder has invalid format:"+err.Error())
+		return nil, status.Errorf(codes.Unknown, "reminder has invalid format: %v", err.Error())
 	}
 
 	if rows.Next() {
@@ -127,7 +127,7 @@ func (s *toDoServiceServer) Read(ctx context.Context, req *api_v1.ReadRequest) (
 
 // Update todo Task
 func (s *toDoServiceServer) Update(ctx context.Context, req *api_v1.UpdateRequest) (*api_v1.UpdateResponse, error) {
-	if err := s.checkApi(req.Api); err != nil {
+	if err := s.checkAPI(req.Api); err != nil {
 		return nil, err
 	}
 
@@ -142,7 +142,7 @@ func (s *toDoServiceServer) Update(ctx context.Context, req *api_v1.UpdateReques
 
 // Delete todo Task
 func (s *toDoServiceServer) Delete(ctx context.Context, req *api_v1.DeleteRequest) (*api_v1.DeleteResponse, error) {
-	if err := s.checkApi(req.Api); err != nil {
+	if err := s.checkAPI(req.Api); err != nil {
 		return nil, err
 	}
 
@@ -157,7 +157,7 @@ func (s *toDoServiceServer) Delete(ctx context.Context, req *api_v1.DeleteReques
 
 // ReadAll todo Tasks
 func (s *toDoServiceServer) ReadAll(ctx context.Context, req *api_v1.ReadAllRequest) (*api_v1.ReadAllResponse, error) {
-	if err := s.checkApi(req.Api); err != nil {
+	if err := s.checkAPI(req.Api); err != nil {
 		return nil, err
 	}
 
@@ -175,7 +175,7 @@ func (s *toDoServiceServer) ReadAll(ctx context.Context, req *api_v1.ReadAllRequ
 	defer rows.Close()
 
 	if !rows.Next() {
-		if err := rows.Err(); err != nil {
+		if err = rows.Err(); err != nil {
 			return nil, status.Error(codes.Unknown, "failed to retrieve data from todo:"+err.Error())
 		}
 		return nil, status.Errorf(codes.NotFound, "todo is not found")
@@ -185,7 +185,7 @@ func (s *toDoServiceServer) ReadAll(ctx context.Context, req *api_v1.ReadAllRequ
 	list := []*api_v1.ToDo{}
 	for rows.Next() {
 		td := new(api_v1.ToDo)
-		if err := rows.Scan(&td.Id, &td.Title, &td.Description, &reminder); err != nil {
+		if err = rows.Scan(&td.Id, &td.Title, &td.Description, &reminder); err != nil {
 			return nil, status.Error(codes.Unknown, "failed to retrieve filed values from todo:"+err.Error())
 		}
 		td.Reminder, err = ptypes.TimestampProto(reminder)

@@ -21,7 +21,7 @@ import (
 var (
 	gRPCHost  string
 	proxyPort string
-	demo      = flag.String("demo-grpc", "lol", "demo grpc argument")
+	// demo      = flag.String("demo-grpc", "lol", "demo grpc argument")
 )
 
 func InitRouter(handler http.Handler) *gin.Engine {
@@ -73,14 +73,13 @@ func InitRouter(handler http.Handler) *gin.Engine {
 	r.Any("/*aaa", gin.WrapH(handler))
 
 	r.GET("/", func(c *gin.Context) {
-		c.String(200, "Have nice day")
+		c.String(http.StatusOK, "Have nice day")
 	})
 
 	return r
 }
 
 func main() {
-
 	serviceConfig := &configs.ServiceConfig{}
 	if err := configs.LoadConfig(); err != nil {
 		log.Fatalf("[Main] Load config failed: %v", err)
@@ -93,8 +92,6 @@ func main() {
 	flag.StringVar(&proxyPort, "proxy-port", "", "proxy port to bind")
 	flag.Parse()
 
-	// fmt.Println(gRPCHost, proxyPort, *demo)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -106,19 +103,14 @@ func main() {
 		[]grpc.DialOption{grpc.WithInsecure()},
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 	log.Println("Connect gRPC at:", gRPCHost)
-
-	// err = http.ListenAndServe(":"+proxyPort, mux)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
 
 	proxyPort = fmt.Sprintf("%d", serviceConfig.Proxy.Port)
 	r := InitRouter(mux)
 	log.Println("Proxy gw running at:", proxyPort)
 	if err := r.Run(":" + proxyPort); err != nil {
-		log.Fatalf("Running grpc gateway error: %+v", err)
+		log.Panicf("Running grpc gateway error: %+v", err)
 	}
 }

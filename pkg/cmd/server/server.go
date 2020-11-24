@@ -19,7 +19,6 @@ import (
 )
 
 func RunServer() error {
-
 	serviceConfig := &configs.ServiceConfig{}
 	if err := configs.LoadConfig(); err != nil {
 		log.Fatalf("[Main] Load config failed: %v", err)
@@ -64,7 +63,6 @@ func RunServer() error {
 }
 
 func RunServerV2() error {
-
 	serviceConfig := &configs.ServiceConfig{}
 	if err := configs.LoadConfig(); err != nil {
 		log.Fatalf("[Main] Load config failed: %v", err)
@@ -75,6 +73,7 @@ func RunServerV2() error {
 
 	ctx := context.Background()
 
+	// load config from cli
 	// var config Config
 	// flag.StringVar(&config.GRPCPort, "grpc-port", "", "gRPC port to bind")
 	// flag.StringVar(&config.JWTSecretKey, "jwt-secret", "luloveyen", "jwt secret key")
@@ -86,7 +85,7 @@ func RunServerV2() error {
 	// create implementation extra service
 	jwtManager := utils.NewJWTManager(serviceConfig.JWT)
 
-	v2API_extra := v2.NewServiceExtraImpl(jwtManager)
+	v2APIExtra := v2.NewServiceExtraImpl(jwtManager)
 
 	// simple server interceptor
 	// serverInterceptor := interceptor.SimpleServerInterceptor{}
@@ -98,5 +97,5 @@ func RunServerV2() error {
 	// auth with credentials interceptor
 	// serverInterceptor := interceptor.NewCredentialsServerInterceptor(serviceConfig.Authentication)
 
-	return grpc.RunServerV2(ctx, serverInterceptor, v2API, v2API_extra, strconv.Itoa(serviceConfig.GRPC.Port))
+	return grpc.RunServerV2(ctx, serverInterceptor, v2API, v2APIExtra, strconv.Itoa(serviceConfig.GRPC.Port))
 }

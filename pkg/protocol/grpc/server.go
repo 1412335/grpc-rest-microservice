@@ -29,17 +29,13 @@ func RunServer(ctx context.Context, v1API api_v1.ToDoServiceServer, port string)
 
 	// graceful shutdown
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGKILL)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		for {
-			select {
-			case <-c:
-				log.Println("Shutting down gRPC server...")
-				server.GracefulStop()
+		for range c {
+			log.Println("Shutting down gRPC server...")
+			server.GracefulStop()
 
-				<-ctx.Done()
-			default:
-			}
+			<-ctx.Done()
 		}
 	}()
 
@@ -47,7 +43,7 @@ func RunServer(ctx context.Context, v1API api_v1.ToDoServiceServer, port string)
 	return server.Serve(listen)
 }
 
-func RunServerV2(ctx context.Context, serverInterceptor interceptor.ServerInterceptor, v2API api_v2.ServiceAServer, v2API_extra api_v2.ServiceExtraServer, port string) error {
+func RunServerV2(ctx context.Context, serverInterceptor interceptor.ServerInterceptor, v2API api_v2.ServiceAServer, v2APIExtra api_v2.ServiceExtraServer, port string) error {
 	listen, err := net.Listen("tcp", fmt.Sprintf(":%v", port))
 	if err != nil {
 		return err
@@ -60,24 +56,20 @@ func RunServerV2(ctx context.Context, serverInterceptor interceptor.ServerInterc
 	)
 
 	api_v2.RegisterServiceAServer(server, v2API)
-	api_v2.RegisterServiceExtraServer(server, v2API_extra)
+	api_v2.RegisterServiceExtraServer(server, v2APIExtra)
 
 	// grpc reflection
 	reflection.Register(server)
 
 	// graceful shutdown
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGKILL)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		for {
-			select {
-			case <-c:
-				log.Println("Shutting down gRPC server v2...")
-				server.GracefulStop()
+		for range c {
+			log.Println("Shutting down gRPC server v2...")
+			server.GracefulStop()
 
-				<-ctx.Done()
-			default:
-			}
+			<-ctx.Done()
 		}
 	}()
 

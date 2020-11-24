@@ -74,7 +74,7 @@ linters:
     - dupl
     - errcheck
     - exhaustive
-    - funlen
+    # - funlen
     - gochecknoinits
     - goconst
     - gocritic
@@ -82,14 +82,14 @@ linters:
     - gofmt
     - goimports
     - golint
-    - gomnd
+    # - gomnd
     - goprintffuncname
     - gosec
     - gosimple
     - govet
     - ineffassign
     - interfacer
-    - lll
+    # - lll
     - misspell
     - nakedret
     - noctx

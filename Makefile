@@ -119,9 +119,14 @@ grpc-web-client:
 cli:
 	evans -r repl -p 9090
 
+# gofmt
+.PHONY: fmt
+fmt:
+	go fmt ./...
+
 # go-lint
 .PHONY: lint
-lint:
+lint: fmt
 	golangci-lint run ./...
 
 # cleaning

@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	CONFIG_NAME = "config"
-	CONFIG_PATH = "."
-	CONFIG_TYPE = "yml"
+	ConfigName = "config"
+	ConfigType = "."
+	ConfigPath = "yml"
 )
 
 type ServiceConfig struct {
@@ -68,9 +68,9 @@ type Proxy struct {
 }
 
 func LoadConfig() error {
-	viper.SetConfigName(CONFIG_NAME)
-	viper.SetConfigType(CONFIG_TYPE)
-	viper.AddConfigPath(CONFIG_PATH)
+	viper.SetConfigName(ConfigName)
+	viper.SetConfigType(ConfigType)
+	viper.AddConfigPath(ConfigPath)
 	// Find and read the config file
 	return viper.ReadInConfig()
 }

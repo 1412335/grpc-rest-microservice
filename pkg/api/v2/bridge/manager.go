@@ -17,12 +17,12 @@ import (
 )
 
 const (
-	IDLE              = "IDLE"
-	CONNECTING        = "CONNECTING"
-	READY             = "READY"
-	TRANSIENT_FAILURE = "TRANSIENT_FAILURE"
-	SHUTDOWN          = "SHUTDOWN"
-	INVALID           = "Invalid-State"
+	IDLE             = "IDLE"
+	CONNECTING       = "CONNECTING"
+	READY            = "READY"
+	TRANSIENTFAILURE = "TRANSIENT_FAILURE"
+	SHUTDOWN         = "SHUTDOWN"
+	INVALID          = "Invalid-State"
 )
 
 type ManagerClient interface {
@@ -92,21 +92,21 @@ func NewManagerClientWithConfigs(config *configs.ManagerClient) ManagerClient {
 // 	return conn, nil
 // }
 
-// new factory client with interceptor
-func (poolClient *PoolClient) newFactoryClientWithInterceptor(clientInterceptor ClientInterceptor) func() (*grpc.ClientConn, error) {
-	return func() (*grpc.ClientConn, error) {
-		conn, err := grpc.Dial(
-			poolClient.host,
-			grpc.WithInsecure(),
-			grpc.WithUnaryInterceptor(clientInterceptor.Unary()),
-			grpc.WithStreamInterceptor(clientInterceptor.Stream()),
-		)
-		if err != nil {
-			return nil, err
-		}
-		return conn, nil
-	}
-}
+// // new factory client with interceptor
+// func (poolClient *PoolClient) newFactoryClientWithInterceptor(clientInterceptor ClientInterceptor) func() (*grpc.ClientConn, error) {
+// 	return func() (*grpc.ClientConn, error) {
+// 		conn, err := grpc.Dial(
+// 			poolClient.host,
+// 			grpc.WithInsecure(),
+// 			grpc.WithUnaryInterceptor(clientInterceptor.Unary()),
+// 			grpc.WithStreamInterceptor(clientInterceptor.Stream()),
+// 		)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		return conn, nil
+// 	}
+// }
 
 // factory client with credentials
 func (poolClient *PoolClient) newFactoryClientWithCredentials(clientInterceptor ClientInterceptor) func() (*grpc.ClientConn, error) {
@@ -140,8 +140,8 @@ func (poolClient *PoolClient) newClient() (Client, error) {
 	// check status conn
 	state := conn.GetState().String()
 	log.Println("[PoolClient] State connection: " + state)
-	if state == TRANSIENT_FAILURE || state == SHUTDOWN || state == INVALID {
-		return nil, errors.New("Pool connection failed")
+	if state == TRANSIENTFAILURE || state == SHUTDOWN || state == INVALID {
+		return nil, errors.New("pool connection failed")
 	}
 
 	return &ClientImpl{
@@ -173,8 +173,7 @@ func (managerClient *ManagerClientImpl) newPoolClient(host string) (*PoolClient,
 
 	// load client interceptor
 	managerClient.loadInterceptor()
-
-	// // grpc pool with authentication interceptor
+	// grpc pool with authentication interceptor
 	// p, err := grpcpool.New(poolClient.newFactoryClientWithInterceptor(managerClient.interceptor), managerClient.maxPoolSize, managerClient.maxPoolSize, time.Duration(managerClient.timeOut)*time.Second)
 	// if err != nil {
 	// 	return nil, err
@@ -235,7 +234,10 @@ func (managerClient *ManagerClientImpl) GetClient(host string) (Client, error) {
 		// custom interceptor
 		// load interceptor with client implemetation service
 		// set client & gen jwt token
-		managerClient.interceptor.(*SimpleClientInterceptor).Load(client, managerClient.authMethods, managerClient.refreshDuration)
+		err = managerClient.interceptor.(*SimpleClientInterceptor).Load(client, managerClient.authMethods, managerClient.refreshDuration)
+		if err != nil {
+			return nil, err
+		}
 
 		// reload grpcpool on init for using jwt
 		pool, err = managerClient.addPoolClient(host)
@@ -262,7 +264,7 @@ func (managerClient *ManagerClientImpl) GetClient(host string) (Client, error) {
 }
 
 func (managerClient *ManagerClientImpl) Close() {
-	for item := range managerClient.poolClients.Iter() {
+	for item := range managerClient.poolClients.IterBuffered() {
 		poolClient := item.Val.(*PoolClient)
 		poolClient.closePool()
 	}

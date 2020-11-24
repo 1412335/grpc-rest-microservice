@@ -27,16 +27,17 @@ type SimpleClientInterceptor struct {
 	accessToken string
 }
 
-func NewSimpleClientInterceptor(authMethods map[string]bool) (*SimpleClientInterceptor, error) {
+func NewSimpleClientInterceptor(authMethods map[string]bool) *SimpleClientInterceptor {
 	interceptor := &SimpleClientInterceptor{
 		// client:      client,
 		authMethods: authMethods,
 	}
+	// auto refresh auth-token
 	// err := interceptor.scheduleRefreshToken(refreshDuration)
 	// if err != nil {
 	// 	return nil, err
 	// }
-	return interceptor, nil
+	return interceptor
 }
 
 func (interceptor *SimpleClientInterceptor) Load(client Client, authMethods map[string]bool, refreshDuration time.Duration) error {

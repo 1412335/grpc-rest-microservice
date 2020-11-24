@@ -55,7 +55,6 @@ func (r *ServiceExtraImpl) Login(ctx context.Context, req *api_v2.LoginRequest) 
 }
 
 func (r *ServiceExtraImpl) Ping(ctx context.Context, req *api_v2.MessagePing) (*api_v2.MessagePong, error) {
-
 	header := map[string]string{
 		"custom-resp-header": "resp-ping",
 	}
@@ -70,7 +69,6 @@ func (r *ServiceExtraImpl) Ping(ctx context.Context, req *api_v2.MessagePing) (*
 }
 
 func (r *ServiceExtraImpl) Post(ctx context.Context, req *api_v2.MessagePing) (*api_v2.MessagePong, error) {
-
 	header := map[string]string{"custom-resp-header": "resp-post"}
 	if err := r.setRespHeader(ctx, header); err != nil {
 		return nil, status.Errorf(codes.Internal, "unable to set 'custom-resp-header': %+v", err)
@@ -83,7 +81,6 @@ func (r *ServiceExtraImpl) Post(ctx context.Context, req *api_v2.MessagePing) (*
 }
 
 func (r *ServiceExtraImpl) StreamingPing(req *api_v2.StreamingMessagePing, stream api_v2.ServiceExtra_StreamingPingServer) error {
-
 	count := req.GetMessageCount()
 
 	// set custom header response
@@ -118,7 +115,6 @@ func (r *ServiceExtraImpl) StreamingPost(stream api_v2.ServiceExtra_StreamingPos
 	startTime := time.Now()
 
 	// ctx := stream.Context()
-
 	// receive header from request
 	// md, ok := metadata.FromIncomingContext(ctx)
 	// if !ok {
@@ -137,7 +133,7 @@ func (r *ServiceExtraImpl) StreamingPost(stream api_v2.ServiceExtra_StreamingPos
 		msg, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF {
-				elapsedTime := int64(time.Now().Sub(startTime).Seconds() * 1000)
+				elapsedTime := int64(time.Since(startTime).Seconds() * 1000)
 
 				// set custom header response
 				// if err := stream.SendHeader(metadata.New(map[string]string{
@@ -164,10 +160,8 @@ func (r *ServiceExtraImpl) StreamingPost(stream api_v2.ServiceExtra_StreamingPos
 }
 
 func (r *ServiceExtraImpl) DuplexStreamingPing(stream api_v2.ServiceExtra_DuplexStreamingPingServer) error {
-
 	// ctx := stream.Context()
-
-	// // receive header from request
+	// receive header from request
 	// md, ok := metadata.FromIncomingContext(ctx)
 	// if !ok {
 	// 	return status.Errorf(codes.DataLoss, "failed to get metadata")
@@ -180,19 +174,16 @@ func (r *ServiceExtraImpl) DuplexStreamingPing(stream api_v2.ServiceExtra_Duplex
 	// 	return status.Errorf(codes.InvalidArgument, "empty 'x-request-id' header")
 	// }
 	// log.Println("stream-duplex x-request-id", xrid[0])
-
 	// // send header response
 	// if err := stream.SendHeader(metadata.New(map[string]string{
 	// 	"x-response-id": "duplex-stream",
 	// })); err != nil {
 	// 	return status.Errorf(codes.Internal, "unable to send 'x-response-id' header: %v", err)
 	// }
-
 	for {
 		in, err := stream.Recv()
 		if err != nil {
 			if err == io.EOF {
-
 				stream.SetTrailer(metadata.New(map[string]string{
 					"foo": "foo2",
 					"bar": "bar2",

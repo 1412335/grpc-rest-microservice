@@ -36,19 +36,15 @@ func (c *ClientImpl) Close() error {
 	return c.conn.Close()
 }
 
-func (c *ClientImpl) setHeader(m map[string]string) (context.Context, error) {
+func (c *ClientImpl) setHeader(m map[string]string) context.Context {
 	md := metadata.New(m)
 	ctx := metadata.NewOutgoingContext(c.ctx, md)
-	return ctx, nil
+	return ctx
 }
 
 // login & get token
 func (c *ClientImpl) Login() (string, error) {
-	ctx, err := c.setHeader(map[string]string{"custom-req-header": "login"})
-	if err != nil {
-		return "", err
-	}
-
+	ctx := c.setHeader(map[string]string{"custom-req-header": "login"})
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -74,11 +70,7 @@ func (c *ClientImpl) Login() (string, error) {
 
 // unary get
 func (c *ClientImpl) Ping(timestamp int64) (*api_v2.MessagePong, error) {
-	ctx, err := c.setHeader(map[string]string{"custom-req-header": "ping"})
-	if err != nil {
-		return nil, err
-	}
-
+	ctx := c.setHeader(map[string]string{"custom-req-header": "ping"})
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -106,10 +98,7 @@ func (c *ClientImpl) Ping(timestamp int64) (*api_v2.MessagePong, error) {
 
 // unary post
 func (c *ClientImpl) Post(timestamp int64) (*api_v2.MessagePong, error) {
-	ctx, err := c.setHeader(map[string]string{"custom-req-header": "post"})
-	if err != nil {
-		return nil, err
-	}
+	ctx := c.setHeader(map[string]string{"custom-req-header": "post"})
 
 	msg := &api_v2.MessagePing{
 		Timestamp: timestamp,
@@ -129,11 +118,7 @@ func (c *ClientImpl) Post(timestamp int64) (*api_v2.MessagePong, error) {
 
 // server streaming
 func (c *ClientImpl) StreamingPing(timestamp int64, count, interval int32) ([]*api_v2.StreamingMessagePong, error) {
-
-	ctx, err := c.setHeader(map[string]string{"custom-req-header": "server-streaming-ping"})
-	if err != nil {
-		return nil, err
-	}
+	ctx := c.setHeader(map[string]string{"custom-req-header": "server-streaming-ping"})
 
 	msg := &api_v2.StreamingMessagePing{
 		Timestamp:       timestamp,
@@ -162,11 +147,7 @@ func (c *ClientImpl) StreamingPing(timestamp int64, count, interval int32) ([]*a
 
 // client streaming
 func (c *ClientImpl) StreamingPost(in []*api_v2.StreamingMessagePing) (*api_v2.StreamingMessagePong, error) {
-
-	ctx, err := c.setHeader(map[string]string{"custom-req-header": "client-streaming-post"})
-	if err != nil {
-		return nil, err
-	}
+	ctx := c.setHeader(map[string]string{"custom-req-header": "client-streaming-post"})
 
 	stream, err := c.client.StreamingPost(ctx)
 	if err != nil {
@@ -174,13 +155,13 @@ func (c *ClientImpl) StreamingPost(in []*api_v2.StreamingMessagePing) (*api_v2.S
 	}
 	// send msg into stream
 	for _, msg := range in {
-		if err := stream.Send(msg); err != nil {
+		if err = stream.Send(msg); err != nil {
 			return nil, stream.RecvMsg(nil)
 		}
 	}
 	// close send stream
-	if err := stream.CloseSend(); err != nil {
-		return nil, err
+	if e := stream.CloseSend(); e != nil {
+		return nil, e
 	}
 	// receive resp
 	reply, err := stream.CloseAndRecv()
@@ -192,10 +173,7 @@ func (c *ClientImpl) StreamingPost(in []*api_v2.StreamingMessagePing) (*api_v2.S
 
 // bi-directional streaming
 func (c *ClientImpl) DuplexStreaming(in []*api_v2.StreamingMessagePing) ([]*api_v2.StreamingMessagePong, error) {
-	ctx, err := c.setHeader(map[string]string{"custom-req-header": "duplex-streaming"})
-	if err != nil {
-		return nil, err
-	}
+	ctx := c.setHeader(map[string]string{"custom-req-header": "duplex-streaming"})
 
 	stream, err := c.client.DuplexStreamingPing(ctx)
 	if err != nil {
