@@ -1,0 +1,29 @@
+serviceName: "grpc-gateway"
+version: "v1"
+grpc:
+  host: "grpc-server"
+  port: 9090
+tracing:
+  flags: true
+  metrics: "prometheus"
+proxy:
+  port: 8000
+jwt:
+  secretKey: "lu"
+  duration: "120s"
+authentication:
+  username: "lu"
+  password: "lu"
+accessibleRoles:
+  - "/v2.ServiceExtra/Post":
+    - guest
+    - user
+    - admin
+  - "/v2.ServiceExtra/StreamingPost":
+    - guest
+    - admin
+database:
+  host: "localhost"
+  user: "root"
+  password: ""
+  schema: "grpcrestservice"

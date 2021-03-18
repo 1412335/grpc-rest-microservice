@@ -6,6 +6,8 @@ import (
 	"time"
 
 	api_v1 "github.com/1412335/grpc-rest-microservice/pkg/api/v1"
+	"github.com/1412335/grpc-rest-microservice/pkg/log"
+	"go.uber.org/zap"
 
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc/codes"
@@ -18,12 +20,14 @@ const (
 
 // is implementation of api_v1.ToDoServiceServer proto
 type toDoServiceServer struct {
-	db *sql.DB
+	db     *sql.DB
+	logger log.Factory
 }
 
-func NewToDoServiceServer(db *sql.DB) api_v1.ToDoServiceServer {
+func NewToDoServiceServer(db *sql.DB, logger log.Factory) api_v1.ToDoServiceServer {
 	return &toDoServiceServer{
-		db: db,
+		db:     db,
+		logger: logger,
 	}
 }
 
@@ -39,12 +43,14 @@ func (s *toDoServiceServer) checkAPI(api string) error {
 func (s *toDoServiceServer) connect(ctx context.Context) (*sql.Conn, error) {
 	c, err := s.db.Conn(ctx)
 	if err != nil {
+		s.logger.For(ctx).Error("Connect db failed", zap.Error(err))
 		return nil, status.Errorf(codes.Unknown, "failed to connect to database: "+err.Error())
 	}
 	return c, nil
 }
 
 func (s *toDoServiceServer) Create(ctx context.Context, req *api_v1.CreateRequest) (*api_v1.CreateResponse, error) {
+	s.logger.For(ctx).Info("Create.Req", zap.String("data", req.String()))
 	if err := s.checkAPI(req.Api); err != nil {
 		return nil, err
 	}
@@ -72,6 +78,7 @@ func (s *toDoServiceServer) Create(ctx context.Context, req *api_v1.CreateReques
 		return nil, status.Error(codes.Unknown, "failed to retrieve id for created Todo:"+err.Error())
 	}
 
+	s.logger.For(ctx).Info("Create.Resp", zap.Int64("id", id))
 	return &api_v1.CreateResponse{
 		Api: apiVersion,
 		Id:  id,
@@ -80,6 +87,7 @@ func (s *toDoServiceServer) Create(ctx context.Context, req *api_v1.CreateReques
 
 // Read todo
 func (s *toDoServiceServer) Read(ctx context.Context, req *api_v1.ReadRequest) (*api_v1.ReadResponse, error) {
+	s.logger.For(ctx).Info("Read.Req", zap.String("data", req.String()))
 	if err := s.checkAPI(req.Api); err != nil {
 		return nil, err
 	}

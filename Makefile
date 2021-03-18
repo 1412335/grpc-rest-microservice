@@ -1,5 +1,23 @@
 # export GO111MODULE=on
 
+# install
+.PHONY: install
+install:
+	# go get -u \
+	# 	github.com/golang/protobuf/protoc-gen-go \
+	# 	github.com/gogo/protobuf/protoc-gen-gogo \
+	# 	github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
+	# 	github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2 \
+	# 	github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger \
+	# 	github.com/mwitkow/go-proto-validators/protoc-gen-govalidators \
+	# 	github.com/rakyll/statik
+	go get \
+		github.com/gogo/protobuf/protoc-gen-gogo \
+		github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway \
+		github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger \
+		github.com/mwitkow/go-proto-validators/protoc-gen-govalidators \
+		github.com/rakyll/statik
+
 # gen cert
 .PHONY: cert
 cert:
@@ -11,6 +29,11 @@ cert:
 gen:
 	@echo "====gen stubs===="
 	sh gen-proto.sh
+
+.PHONY: genv3
+genv3:
+	@echo "====gen stubs v3===="
+	sh gen-proto-v3.sh
 
 .PHONY: gen-demo
 gen-demo:
@@ -25,6 +48,11 @@ gen-gateway-unix:
 	docker run --rm --name protoc-gen -v `pwd`:/defs namely/gen-grpc-gateway -f . -s ServiceA -o ..\..\..\pkg\api\v2\gen\grpc-gateway
 # docker run --rm --name protoc-gen -v `pwd`:/defs namely/protoc-all -d . -l go --with-gateway
 
+
+.PHONY: run
+run:
+	@echo "====Run grpc server v1===="
+	go run main.go v1
 
 .PHONY: grpc-server
 # run locally grpc server & client
@@ -44,7 +72,7 @@ grpc-client:
 .PHONY: proxy-server 
 proxy-server:
 	@echo "====Run server===="
-	go run ./cmd/proxy/grpc.go -grpc-port=9090
+	go run ./cmd/proxy/server/grpc.go -grpc-port=9090
 
 .PHONY: proxy-client
 proxy-client:
@@ -122,7 +150,7 @@ cli:
 # gofmt
 .PHONY: fmt
 fmt:
-	go fmt ./...
+	go fmt -mod=mod ./... 
 
 # go-lint
 .PHONY: lint

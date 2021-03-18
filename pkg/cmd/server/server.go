@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -14,18 +13,16 @@ import (
 	v1 "github.com/1412335/grpc-rest-microservice/pkg/service/v1"
 	v2 "github.com/1412335/grpc-rest-microservice/pkg/service/v2"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
-
-	"github.com/spf13/viper"
 )
 
 func RunServer() error {
-	serviceConfig := &configs.ServiceConfig{}
-	if err := configs.LoadConfig(); err != nil {
+	srvConfig := &configs.ServiceConfig{}
+	if err := configs.LoadConfig("", srvConfig); err != nil {
 		log.Fatalf("[Main] Load config failed: %v", err)
 	}
-	if err := viper.Unmarshal(serviceConfig); err != nil {
-		log.Fatalf("[Main] Unmarshal config failed: %v", err)
-	}
+	// if err := viper.Unmarshal(srvConfig); err != nil {
+	// 	log.Fatalf("[Main] Unmarshal config failed: %v", err)
+	// }
 
 	GRPCPort := flag.Int("grpc-port", 9090, "gRPC port service")
 	DBHost := flag.String("db-host", "", "Database host")
@@ -34,42 +31,27 @@ func RunServer() error {
 	DBScheme := flag.String("db-scheme", "", "Database scheme")
 	flag.Parse()
 
-	serviceConfig.GRPC.Port = *GRPCPort
-	serviceConfig.Database.Host = *DBHost
-	serviceConfig.Database.User = *DBUser
-	serviceConfig.Database.Password = *DBPassword
-	serviceConfig.Database.Scheme = *DBScheme
+	srvConfig.GRPC.Port = *GRPCPort
+	srvConfig.Database.Host = *DBHost
+	srvConfig.Database.User = *DBUser
+	srvConfig.Database.Password = *DBPassword
+	srvConfig.Database.Scheme = *DBScheme
 
-	ctx := context.Background()
-
-	param := "parseTime=true"
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s",
-		serviceConfig.Database.User,
-		serviceConfig.Database.Password,
-		serviceConfig.Database.Host,
-		serviceConfig.Database.Scheme,
-		param,
-	)
-
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return fmt.Errorf("failed to connect database: %v", err)
+	srv := v1.NewServer(srvConfig)
+	if srv == nil {
+		return fmt.Errorf("create server failed")
 	}
-	defer db.Close()
-
-	v1API := v1.NewToDoServiceServer(db)
-
-	return grpc.RunServer(ctx, v1API, strconv.Itoa(serviceConfig.GRPC.Port))
+	return srv.Run()
 }
 
 func RunServerV2() error {
 	serviceConfig := &configs.ServiceConfig{}
-	if err := configs.LoadConfig(); err != nil {
+	if err := configs.LoadConfig("", serviceConfig); err != nil {
 		log.Fatalf("[Main] Load config failed: %v", err)
 	}
-	if err := viper.Unmarshal(serviceConfig); err != nil {
-		log.Fatalf("[Main] Unmarshal config failed: %v", err)
-	}
+	// if err := viper.Unmarshal(serviceConfig); err != nil {
+	// 	log.Fatalf("[Main] Unmarshal config failed: %v", err)
+	// }
 
 	ctx := context.Background()
 

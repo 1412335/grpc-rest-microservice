@@ -8,11 +8,13 @@ import (
 
 const (
 	ConfigName = "config"
-	ConfigType = "."
-	ConfigPath = "yml"
+	ConfigType = "yml"
+	ConfigPath = "."
 )
 
 type ServiceConfig struct {
+	Version        string
+	ServiceName    string
 	GRPC           *GRPC
 	Proxy          *Proxy
 	ManagerClient  *ManagerClient
@@ -23,10 +25,24 @@ type ServiceConfig struct {
 	AccessibleRoles map[string][]string
 	// client using
 	AuthMethods map[string]bool
+	// opentracing
+	Tracing *Tracing
 }
 
+// opentracing with jaeger
+type Tracing struct {
+	Flag    bool
+	Metrics string
+}
+
+// grpc-server
 type GRPC struct {
 	Host string
+	Port int
+}
+
+// grpc-gateway proxy
+type Proxy struct {
 	Port int
 }
 
@@ -36,6 +52,7 @@ type JWT struct {
 	Duration  time.Duration
 }
 
+// mysql
 type Database struct {
 	Host     string
 	User     string
@@ -62,15 +79,23 @@ type Authentication struct {
 
 // type AccessibleRoles map[string][]string
 
-// grpc-gateway proxy
-type Proxy struct {
-	Port int
-}
-
-func LoadConfig() error {
-	viper.SetConfigName(ConfigName)
-	viper.SetConfigType(ConfigType)
-	viper.AddConfigPath(ConfigPath)
+func LoadConfig(cfgFile string, cfg interface{}) error {
+	if cfgFile != "" {
+		// Use config file from the flag.
+		viper.SetConfigFile(cfgFile)
+	} else {
+		// Search config in home directory with name ".cobra" (without extension).
+		viper.SetConfigName(ConfigName)
+		viper.SetConfigType(ConfigType)
+		viper.AddConfigPath(ConfigPath)
+	}
+	viper.AutomaticEnv()
 	// Find and read the config file
-	return viper.ReadInConfig()
+	if err := viper.ReadInConfig(); err != nil {
+		return err
+	}
+	if err := viper.Unmarshal(cfg); err != nil {
+		return err
+	}
+	return nil
 }

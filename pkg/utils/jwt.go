@@ -10,13 +10,13 @@ import (
 )
 
 type JWTManager struct {
-	secretKey     string
+	secretKey     []byte
 	tokenDuration time.Duration
 }
 
 func NewJWTManager(config *configs.JWT) *JWTManager {
 	return &JWTManager{
-		secretKey:     config.SecretKey,
+		secretKey:     []byte(config.SecretKey),
 		tokenDuration: config.Duration,
 	}
 }
@@ -31,13 +31,14 @@ func (manager *JWTManager) Generate(username, role string) (string, error) {
 	claims := UserClaims{
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(manager.tokenDuration).Unix(),
+			Issuer:    "lu",
 		},
 		Username: username,
 		Role:     role,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(manager.secretKey))
+	return token.SignedString(manager.secretKey)
 }
 
 func (manager *JWTManager) Verify(accessToken string) (*UserClaims, error) {
@@ -48,7 +49,7 @@ func (manager *JWTManager) Verify(accessToken string) (*UserClaims, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected token signing method")
 			}
-			return []byte(manager.secretKey), nil
+			return manager.secretKey, nil
 		},
 	)
 	if err != nil {

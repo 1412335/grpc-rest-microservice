@@ -17,6 +17,9 @@ go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
 
 # grpc-web
 https://github.com/grpc/grpc-web/releases
+
+# install deps into vendor dir
+go mod vendor
 ```
 
 # grpc-gen-protoc
@@ -117,3 +120,5 @@ evans -r repl --host localhost -p 8081
 ## Others
 - https://webpack.js.org/configuration/dev-server/
 - https://github.com/Colt/webpack-demo-app/
+
+- [grpc-gateway](https://grpc-ecosystem.github.io/)

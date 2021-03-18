@@ -9,8 +9,6 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/api/v2/bridge"
 	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
-
-	"github.com/spf13/viper"
 )
 
 var (
@@ -21,12 +19,12 @@ var (
 func poolConnections() {
 	// load config using viper
 	clientConfigs := &configs.ServiceConfig{}
-	if err := configs.LoadConfig(); err != nil {
+	if err := configs.LoadConfig("", clientConfigs); err != nil {
 		log.Fatalf("[Main] Load config failed: %v", err)
 	}
-	if err := viper.Unmarshal(clientConfigs); err != nil {
-		log.Fatalf("[Main] Unmarshal config failed: %v", err)
-	}
+	// if err := viper.Unmarshal(clientConfigs); err != nil {
+	// 	log.Fatalf("[Main] Unmarshal config failed: %v", err)
+	// }
 
 	managerClient := bridge.NewManagerClientWithConfigs(clientConfigs.ManagerClient)
 	if managerClient == nil {
