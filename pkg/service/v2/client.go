@@ -1,12 +1,12 @@
-package main
+package v2
 
 import (
 	"context"
-	"flag"
-	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -17,13 +17,17 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 )
 
-var (
-	gRPCHost  string
-	proxyPort string
-	// demo      = flag.String("demo-grpc", "lol", "demo grpc argument")
-)
+type client struct {
+	config *configs.ServiceConfig
+}
 
-func InitRouter(handler http.Handler) *gin.Engine {
+func NewClient(config *configs.ServiceConfig) *client {
+	return &client{
+		config: config,
+	}
+}
+
+func (c *client) initRouter(handler http.Handler) *gin.Engine {
 	if os.Getenv("GOENV") != "dev" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -69,34 +73,22 @@ func InitRouter(handler http.Handler) *gin.Engine {
 	r := gin.Default()
 	r.Use(secureFunc)
 
-	r.Any("/*aaa", gin.WrapH(handler))
+	// r.GET("/", func(c *gin.Context) {
+	// 	c.String(http.StatusOK, "Have nice day")
+	// })
 
-	r.GET("/", func(c *gin.Context) {
-		c.String(http.StatusOK, "Have nice day")
-	})
+	r.GET("/v2", gin.WrapH(handler))
 
 	return r
 }
 
-func main() {
-	serviceConfig := &configs.ServiceConfig{}
-	if err := configs.LoadConfig("", serviceConfig); err != nil {
-		log.Fatalf("[Main] Load config failed: %v", err)
-	}
-	// if err := viper.Unmarshal(serviceConfig); err != nil {
-	// 	log.Fatalf("[Main] Unmarshal config failed: %v", err)
-	// }
-
-	flag.StringVar(&gRPCHost, "grpc-host", "", "gRPC host to bind")
-	flag.StringVar(&proxyPort, "proxy-port", "", "proxy port to bind")
-	flag.Parse()
-
+func (c *client) Run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	mux := runtime.NewServeMux()
 
-	gRPCHost = fmt.Sprintf("%s:%d", serviceConfig.GRPC.Host, serviceConfig.GRPC.Port)
+	gRPCHost := net.JoinHostPort(c.config.GRPC.Host, strconv.Itoa(c.config.GRPC.Port))
 	err := api_v2.RegisterServiceAHandlerFromEndpoint(
 		ctx,
 		mux,
@@ -104,14 +96,11 @@ func main() {
 		[]grpc.DialOption{grpc.WithInsecure()},
 	)
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
-	log.Println("Connect gRPC at:", gRPCHost)
 
-	proxyPort = fmt.Sprintf("%d", serviceConfig.Proxy.Port)
-	r := InitRouter(mux)
-	log.Println("Proxy gw running at:", proxyPort)
-	if err := r.Run(":" + proxyPort); err != nil {
-		log.Panicf("Running grpc gateway error: %+v", err)
-	}
+	proxyPort := strconv.Itoa(c.config.Proxy.Port)
+	r := c.initRouter(mux)
+	log.Println("Proxy gateway running at:", proxyPort)
+	return r.Run(":" + proxyPort)
 }

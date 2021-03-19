@@ -54,6 +54,18 @@ run:
 	@echo "====Run grpc server v1===="
 	go run main.go v1
 
+.PHONY: grpc
+grpc:
+	@echo "====Run grpc server with docker===="
+	# docker-compose up -d mysql
+	# sleep 20s
+	docker-compose up -d
+
+# Evans cli: calling grpc service (reflection.Register(server))
+.PHONY: cli
+cli:
+	evans -r repl -p 8080
+
 .PHONY: grpc-server
 # run locally grpc server & client
 grpc-server:
@@ -141,11 +153,6 @@ grpc-web:
 .PHONY: grpc-web-client
 grpc-web-client:
 	docker-compose -f docker-compose.client.yml up --build client-web
-
-# Evans cli: calling grpc service
-.PHONY: cli
-cli:
-	evans -r repl -p 9090
 
 # gofmt
 .PHONY: fmt

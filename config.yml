@@ -23,7 +23,7 @@ accessibleRoles:
     - guest
     - admin
 database:
-  host: "localhost"
+  host: "mysql"
   user: "root"
-  password: ""
-  schema: "grpcrestservice"
+  password: "password"
+  scheme: "grpcrestservice"

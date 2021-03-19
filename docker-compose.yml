@@ -1,62 +1,160 @@
-version: '3'
+version: '2'
+
 services:
-  client-service:
-    image: grpc:service
-    container_name: grpc-service
-    build:
-      context: .
-      dockerfile: Dockerfile.service
-    environment: 
-      GRPC_PORT: 9090
-    ports:
-        - 9090:9090
-    networks:
-      - grpc-rest
-
-  grpc-gateway:
-    image: grpc-gateway:gw
-    container_name: grpc-gw
-    build:
-      context: .
-      dockerfile: Dockerfile
+  mysql:
+    image: mysql:5.7.26
+    container_name: mysql
+    restart: on-failure
+    volumes:
+      - ./docker/mysql/data:/var/lib/mysql
     environment:
-      GRPC_HOST: "client-service:9090"
-      PROXY_PORT: 8000
+      # - MYSQL_ROOT_HOST=${DB_HOST} 
+      # GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'password' WITH GRANT OPTION;
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
     ports:
-        - 8000:8000
+      - "3306:3306"
     networks:
       - grpc-rest
-    depends_on:
-      - client-service
 
-  grpc-gateway-gen:
-    image: grpc-gateway:gw
-    container_name: grpc-gw
-    build:
-      context: ./pkg/api/v2/gen/grpc-gateway
-      dockerfile: Dockerfile
+  mytop:
+    image: srcoder/mytop
+    container_name: mytop
+    command: ["-h", "${DB_HOST}", "-p", "${DB_PORT}", "-u", "${DB_USER}", "-p", "${DB_PASSWORD}"]
+    restart: on-failure
+    volumes:
+      - ./docker/mytop/.mytop:/root/.mytop
+    depends_on:
+      - mysql
+    networks:
+      - grpc-rest
+
+  grafana:
+    image: grafana/grafana:7.1.4
+    container_name: grafana
+    restart: on-failure
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./docker/tracing/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./docker/tracing/grafana/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./docker/tracing/grafana/dashboards/hotrod_metrics_logs.json:/etc/grafana/provisioning/dashboards/hotrod_metrics_logs.json
     # environment:
-    #   GRPC_HOST: "client-service:9090"
-    #   PROXY_PORT: 8000
-    ports:
-        - 8000:80
+      # - GF_SECURITY_ADMIN_PASSWORD=admin
+      # - GF_USERS_ALLOW_SIGN_UP=false
+      # - GF_SERVER_DOMAIN=myrul.com
+      # - GF_SMTP_ENABLED=true
+      # - GF_SMTP_HOST=smtp.gmail.com:587
+      # - GF_SMTP_USER=myadrress@gmail.com
+      # - GF_SMTP_PASSWORD=mypassword
+      # - GF_SMTP_FROM_ADDRESS=myaddress@gmail.com
     networks:
       - grpc-rest
-    depends_on:
-      - client-service
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
 
-  envoy:
-    image: envoy-proxy
-    container_name: envoy-proxy
-    build:
-      context: ./pkg/api/v2/gen/grpc-web/envoy
+  prometheus:
+    image: prom/prometheus:v2.19.1
+    container_name: prom
+    restart: on-failure
+    volumes:
+      - ./docker/tracing/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
-        - 7070:8080
-        - 9901:9901
+      - '9090:9090'
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    networks:
+      - grpc-rest
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
+
+  loki:
+    image: grafana/loki:master
+    container_name: loki
+    restart: on-failure
+    ports:
+      - '3100:3100'
+    command: -config.file=/etc/loki/local-config.yaml
+    # send Loki traces to Jaeger
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+      - JAEGER_SAMPLER_TYPE=const
+      - JAEGER_SAMPLER_PARAM=1
+    volumes:
+      - ./docker/tracing/loki/local-config.yaml:/etc/loki/local-config.yaml
+    networks:
+      - grpc-rest
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    restart: on-failure
+    ports:
+      - '6831:6831'
+      - '16686:16686'
+    networks:
+      - grpc-rest
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
+
+  v1:
+    image: grpc-rest/v1:latest
+    container_name: v1
+    restart: on-failure
+    build:
+      context: .
+      dockerfile: Dockerfile.tracing
+    ports:
+      - '8080:9090' # gRPC server
+      - '8000:8000' # gRPC gateway
+    command: ["-t","-m","prometheus","v1"]
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
     networks:
       - grpc-rest
     depends_on:
-      - client-service
+      - mysql
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
+  
+  v2:
+    image: grpc-rest/v2:latest
+    container_name: v2
+    restart: on-failure
+    build:
+      context: .
+      dockerfile: Dockerfile.tracing
+    ports:
+      - '8081:9090' # gRPC server
+      - '8001:8000' # gRPC gateway
+    # command: ["-t","-m","prometheus","v2"]
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+    networks:
+      - grpc-rest
+    depends_on:
+      - mysql
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
 
 networks:
-    grpc-rest:
+  grpc-rest:

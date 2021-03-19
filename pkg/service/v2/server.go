@@ -1,4 +1,4 @@
-package v1
+package v2
 
 import (
 	"context"
@@ -8,11 +8,13 @@ import (
 	"strconv"
 	"syscall"
 
-	api_v1 "github.com/1412335/grpc-rest-microservice/pkg/api/v1"
+	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/mysql"
+	"github.com/1412335/grpc-rest-microservice/pkg/interceptor"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/tracing"
+	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 	_ "github.com/go-sql-driver/mysql"
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/uber/jaeger-lib/metrics"
@@ -26,6 +28,7 @@ type Server struct {
 	server         *grpc.Server
 	logger         log.Factory
 	metricsFactory metrics.Factory
+	jwtManager     *utils.JWTManager
 }
 
 type ServerOption func(*Server) error
@@ -47,7 +50,8 @@ func WithLoggerFactory(logger log.Factory) ServerOption {
 func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 	// create server
 	srv := &Server{
-		config: srvConfig,
+		config:     srvConfig,
+		jwtManager: utils.NewJWTManager(srvConfig.JWT),
 	}
 	// set options
 	for _, o := range opt {
@@ -67,13 +71,27 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 		streamInterceptors = append(streamInterceptors, otgrpc.OpenTracingStreamServerInterceptor(tracer))
 	}
 
+	// simple server interceptor
+	simpleInterceptor := interceptor.SimpleServerInterceptor{}
+	simpleInterceptor.WithLogger(srv.logger)
+	unaryInterceptors = append(unaryInterceptors, simpleInterceptor.Unary())
+	streamInterceptors = append(streamInterceptors, simpleInterceptor.Stream())
+
+	// auth server interceptor
+	// authInterceptor := interceptor.NewAuthServerInterceptor(srv.logger, srv.jwtManager, srvConfig.AccessibleRoles)
+	// unaryInterceptors = append(unaryInterceptors, authInterceptor.Unary())
+	// streamInterceptors = append(streamInterceptors, authInterceptor.Stream())
+
+	// auth with credentials interceptor
+	// credsInterceptor := interceptor.NewCredentialsServerInterceptor(serviceConfig.Authentication)
+
 	// create grpc server
 	server := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(unaryInterceptors...),
 		grpc.ChainStreamInterceptor(streamInterceptors...),
 	)
 
-	// grpc reflection: use with evans
+	// grpc reflection
 	reflection.Register(server)
 
 	srv.server = server
@@ -99,9 +117,12 @@ func (s *Server) Run() error {
 	defer dal.Disconnect()
 
 	// implement service
-	api := NewToDoServiceServer(s.config.Version, dal.GetDatabase(), s.logger)
+	api := NewServiceAImpl(s.logger)
+	extra := NewServiceExtraImpl(s.jwtManager, s.logger)
+
 	// register impl service
-	api_v1.RegisterToDoServiceServer(s.server, api)
+	api_v2.RegisterServiceAServer(s.server, api)
+	api_v2.RegisterServiceExtraServer(s.server, extra)
 
 	// graceful shutdown
 	c := make(chan os.Signal, 1)
@@ -115,6 +136,7 @@ func (s *Server) Run() error {
 	}()
 
 	s.logger.For(ctx).Info("Starting gRPC server", zap.String("at", host))
+
 	// run grpc server
 	return s.server.Serve(listen)
 }

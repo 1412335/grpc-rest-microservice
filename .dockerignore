@@ -1,9 +1,12 @@
 .git
 .vscode
+dev
 
 /api
 /node_modules
 /dist
+/vendor
+/docker
 
 .gitignore
 README.md

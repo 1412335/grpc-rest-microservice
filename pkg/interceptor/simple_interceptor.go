@@ -3,10 +3,11 @@ package interceptor
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	"github.com/1412335/grpc-rest-microservice/pkg/log"
+	"go.uber.org/zap"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -15,7 +16,13 @@ import (
 )
 
 // Simple interceptor
-type SimpleServerInterceptor struct{}
+type SimpleServerInterceptor struct {
+	logger log.Factory
+}
+
+func (interceptor *SimpleServerInterceptor) WithLogger(logger log.Factory) {
+	interceptor.logger = logger
+}
 
 func (interceptor *SimpleServerInterceptor) Unary() grpc.UnaryServerInterceptor {
 	return interceptor.unaryServerInterceptor
@@ -35,7 +42,7 @@ func (interceptor *SimpleServerInterceptor) unaryServerInterceptor(ctx context.C
 		}
 	}()
 	defer func() {
-		log.Printf("[gRPC server][simple] Received RPC method=%s, xrid=%v, customHeader=%v, error='%v'", info.FullMethod, xrid, customHeader, err)
+		interceptor.logger.For(ctx).Info("unary request", zap.String("method", info.FullMethod), zap.Any("customHeader", customHeader), zap.Any("xrid", xrid), zap.Error(err))
 	}()
 
 	// fetch headers req
@@ -111,7 +118,13 @@ func (interceptor *SimpleServerInterceptor) streamServerInterceptor(srv interfac
 	// fetch custom-request-header
 	customHeader := md.Get("custom-req-header")
 
-	log.Printf("[gRPC server][simple] Received Stream RPC method=%s, serverStream=%v, xrid=%v, customHeader=%v, error='%v'", info.FullMethod, info.IsServerStream, xrid, customHeader, err)
+	interceptor.logger.For(ss.Context()).Info("stream request",
+		zap.String("method", info.FullMethod),
+		zap.Any("customHeader", customHeader),
+		zap.Any("xrid", xrid),
+		zap.Bool("serverStream", info.IsServerStream),
+		zap.Error(err),
+	)
 
 	// send x-response-id header
 	header := metadata.New(map[string]string{
