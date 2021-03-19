@@ -2,9 +2,9 @@ package v2
 
 import (
 	"context"
-	"log"
 	"strings"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
 	"google.golang.org/grpc/codes"
@@ -13,19 +13,20 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	"github.com/1412335/grpc-rest-microservice/pkg/log"
 )
 
-// const (
-// 	apiVersion = "v2"
-// )
-
-type ServiceAImpl struct{}
-
-func NewServiceAImpl() api_v2.ServiceAServer {
-	return &ServiceAImpl{}
+type serviceAImpl struct {
+	logger log.Factory
 }
 
-func (s *ServiceAImpl) getRequestID(ctx context.Context) (string, error) {
+func NewServiceAImpl(logger log.Factory) api_v2.ServiceAServer {
+	return &serviceAImpl{
+		logger: logger,
+	}
+}
+
+func (s *serviceAImpl) getRequestID(ctx context.Context) (string, error) {
 	// Anything linked to this variable will fetch request headers.
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -41,21 +42,21 @@ func (s *ServiceAImpl) getRequestID(ctx context.Context) (string, error) {
 	return xrid[0], nil
 }
 
-func (s *ServiceAImpl) sendHeaderResp(ctx context.Context, header metadata.MD) error {
+func (s *serviceAImpl) sendHeaderResp(ctx context.Context, header metadata.MD) error {
 	if err := grpc.SendHeader(ctx, header); err != nil {
 		return status.Errorf(codes.Internal, "unable to send 'x-response-id' header")
 	}
 	return nil
 }
 
-func (s *ServiceAImpl) unaryRequest(ctx context.Context, req *api_v2.MessagePing, method string) (*api_v2.MessagePong, error) {
-	log.Println(method, req)
+func (s *serviceAImpl) unaryRequest(ctx context.Context, req *api_v2.MessagePing, method string) (*api_v2.MessagePong, error) {
+	s.logger.For(ctx).Info("unary request", zap.String("method", method), zap.Any("req", req))
 
 	xrid, err := s.getRequestID(ctx)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("x-request-id:", xrid)
+	s.logger.For(ctx).Info("request id", zap.String("x-request-id", xrid))
 
 	// Anything linked to this variable will transmit response headers.
 	header := metadata.New(map[string]string{"x-response-id": method})
@@ -69,10 +70,10 @@ func (s *ServiceAImpl) unaryRequest(ctx context.Context, req *api_v2.MessagePing
 	}, nil
 }
 
-func (s *ServiceAImpl) Ping(ctx context.Context, req *api_v2.MessagePing) (*api_v2.MessagePong, error) {
+func (s *serviceAImpl) Ping(ctx context.Context, req *api_v2.MessagePing) (*api_v2.MessagePong, error) {
 	return s.unaryRequest(ctx, req, "ping")
 }
 
-func (s *ServiceAImpl) Post(ctx context.Context, req *api_v2.MessagePing) (*api_v2.MessagePong, error) {
+func (s *serviceAImpl) Post(ctx context.Context, req *api_v2.MessagePing) (*api_v2.MessagePong, error) {
 	return s.unaryRequest(ctx, req, "post")
 }

@@ -88,6 +88,9 @@ curl -X GET localhost:8081
 evans -r repl --host localhost -p 8081
 ```
 
+## Jaeger UI
+http://127.0.0.1:16686
+
 # Note
 - Copy & paste /include/google into protobuf folder (eg: ./api/proto/v2)
 

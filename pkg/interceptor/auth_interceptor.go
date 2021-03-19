@@ -3,11 +3,12 @@ package interceptor
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
+	"go.uber.org/zap"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -17,25 +18,26 @@ import (
 
 // Auth interceptor with JWT
 type AuthServerInterceptor struct {
+	logger          log.Factory
 	jwtManager      *utils.JWTManager
 	accessibleRoles map[string][]string
 }
 
-func NewAuthServerInterceptor(jwtManager *utils.JWTManager, accessibleRoles map[string][]string) *AuthServerInterceptor {
-	return &AuthServerInterceptor{jwtManager, accessibleRoles}
+func NewAuthServerInterceptor(logger log.Factory, jwtManager *utils.JWTManager, accessibleRoles map[string][]string) *AuthServerInterceptor {
+	return &AuthServerInterceptor{logger, jwtManager, accessibleRoles}
 }
 
-func (interceptor *AuthServerInterceptor) Unary() grpc.UnaryServerInterceptor {
-	return interceptor.unaryServerInterceptor
+func (a *AuthServerInterceptor) Unary() grpc.UnaryServerInterceptor {
+	return a.unaryServerInterceptor
 }
 
-func (interceptor *AuthServerInterceptor) Stream() grpc.StreamServerInterceptor {
-	return interceptor.streamServerInterceptor
+func (a *AuthServerInterceptor) Stream() grpc.StreamServerInterceptor {
+	return a.streamServerInterceptor
 }
 
-func (interceptor *AuthServerInterceptor) authorize(ctx context.Context, method string) error {
-	accessibleRoles, ok := interceptor.accessibleRoles[method]
-	log.Printf("check %+v '%s' %v %v\n", interceptor.accessibleRoles, method, accessibleRoles, ok)
+func (a *AuthServerInterceptor) authorize(ctx context.Context, method string) error {
+	accessibleRoles, ok := a.accessibleRoles[method]
+	a.logger.For(ctx).Info("authorize", zap.String("method", method), zap.Any("accessibleRoles", accessibleRoles), zap.Bool("ok", ok))
 	if !ok {
 		return nil
 	}
@@ -46,15 +48,15 @@ func (interceptor *AuthServerInterceptor) authorize(ctx context.Context, method 
 		return status.Errorf(codes.DataLoss, "failed to get metadata")
 	}
 	accessToken := md.Get("authorization")
-	log.Println("accessToken", accessToken)
 	if len(accessToken) == 0 {
 		return status.Errorf(codes.InvalidArgument, "missing 'authorization' header")
 	}
 	if strings.Trim(accessToken[0], " ") == "" {
 		return status.Errorf(codes.InvalidArgument, "empty 'authorization' header")
 	}
+	a.logger.For(ctx).Info("accessToken", zap.String("accessToken", accessToken[0]))
 
-	userClaims, err := interceptor.jwtManager.Verify(accessToken[0])
+	userClaims, err := a.jwtManager.Verify(accessToken[0])
 	if err != nil {
 		return status.Errorf(codes.Unauthenticated, "verify failed: %v", err)
 	}
@@ -72,15 +74,15 @@ func (interceptor *AuthServerInterceptor) authorize(ctx context.Context, method 
 }
 
 // unary request to grpc server
-func (interceptor *AuthServerInterceptor) unaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+func (a *AuthServerInterceptor) unaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
 		}
 	}()
-	log.Printf("[gRPC server][auth] Received RPC method=%s", info.FullMethod)
+	a.logger.For(ctx).Info("unary req", zap.String("method", info.FullMethod))
 
-	err = interceptor.authorize(ctx, info.FullMethod)
+	err = a.authorize(ctx, info.FullMethod)
 	if err != nil {
 		return nil, err
 	}
@@ -103,15 +105,15 @@ func (interceptor *AuthServerInterceptor) unaryServerInterceptor(ctx context.Con
 }
 
 // stream request interceptor
-func (interceptor *AuthServerInterceptor) streamServerInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+func (a *AuthServerInterceptor) streamServerInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
 		}
 	}()
-	log.Printf("[gRPC server][auth] Received Stream RPC method=%s, serverStream=%v", info.FullMethod, info.IsServerStream)
+	a.logger.For(ss.Context()).Info("stream req", zap.String("method", info.FullMethod), zap.Any("serverStream", info.IsServerStream))
 
-	err = interceptor.authorize(ss.Context(), info.FullMethod)
+	err = a.authorize(ss.Context(), info.FullMethod)
 	if err != nil {
 		return err
 	}

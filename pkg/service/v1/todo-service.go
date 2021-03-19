@@ -14,27 +14,25 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const (
-	apiVersion = "v1"
-)
-
 // is implementation of api_v1.ToDoServiceServer proto
 type toDoServiceServer struct {
-	db     *sql.DB
-	logger log.Factory
+	version string
+	db      *sql.DB
+	logger  log.Factory
 }
 
-func NewToDoServiceServer(db *sql.DB, logger log.Factory) api_v1.ToDoServiceServer {
+func NewToDoServiceServer(version string, db *sql.DB, logger log.Factory) api_v1.ToDoServiceServer {
 	return &toDoServiceServer{
-		db:     db,
-		logger: logger,
+		version: version,
+		db:      db,
+		logger:  logger,
 	}
 }
 
 func (s *toDoServiceServer) checkAPI(api string) error {
 	if len(api) > 0 {
-		if apiVersion != api {
-			return status.Errorf(codes.Unimplemented, "unsupported Api version: service implements API version %s, but asked for %s", apiVersion, api)
+		if s.version != api {
+			return status.Errorf(codes.Unimplemented, "unsupported Api version: service implements API version %s, but asked for %s", s.version, api)
 		}
 	}
 	return nil
@@ -80,7 +78,7 @@ func (s *toDoServiceServer) Create(ctx context.Context, req *api_v1.CreateReques
 
 	s.logger.For(ctx).Info("Create.Resp", zap.Int64("id", id))
 	return &api_v1.CreateResponse{
-		Api: apiVersion,
+		Api: s.version,
 		Id:  id,
 	}, nil
 }
@@ -128,7 +126,7 @@ func (s *toDoServiceServer) Read(ctx context.Context, req *api_v1.ReadRequest) (
 	}
 
 	return &api_v1.ReadResponse{
-		Api:  apiVersion,
+		Api:  s.version,
 		ToDo: &td,
 	}, nil
 }
@@ -204,7 +202,7 @@ func (s *toDoServiceServer) ReadAll(ctx context.Context, req *api_v1.ReadAllRequ
 	}
 
 	return &api_v1.ReadAllResponse{
-		Api:   apiVersion,
+		Api:   s.version,
 		ToDos: list,
 	}, nil
 }

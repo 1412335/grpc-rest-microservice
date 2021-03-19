@@ -55,9 +55,11 @@ type JWT struct {
 // mysql
 type Database struct {
 	Host     string
+	Port     string
 	User     string
 	Password string
 	Scheme   string
+	Debug    bool
 }
 
 // manager grpc-pool

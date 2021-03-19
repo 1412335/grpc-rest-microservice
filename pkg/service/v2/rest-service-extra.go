@@ -4,26 +4,31 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"time"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 
 	"google.golang.org/grpc/metadata"
 )
 
 type ServiceExtraImpl struct {
+	logger log.Factory
 	// userStorage UserStore
 	jwtManager *utils.JWTManager
 }
 
-func NewServiceExtraImpl(jwtManager *utils.JWTManager) api_v2.ServiceExtraServer {
-	return &ServiceExtraImpl{jwtManager}
+func NewServiceExtraImpl(jwtManager *utils.JWTManager, logger log.Factory) api_v2.ServiceExtraServer {
+	return &ServiceExtraImpl{
+		jwtManager: jwtManager,
+		logger:     logger,
+	}
 }
 
 func (r *ServiceExtraImpl) setRespHeader(ctx context.Context, md map[string]string) error {
@@ -153,7 +158,7 @@ func (r *ServiceExtraImpl) StreamingPost(stream api_v2.ServiceExtra_StreamingPos
 			}
 			return status.Errorf(codes.Internal, "received stream failed: %v", err)
 		}
-		log.Println("stream msg", msg)
+		r.logger.For(stream.Context()).Info("stream", zap.Any("msg", msg))
 
 		count++
 	}

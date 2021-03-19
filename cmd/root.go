@@ -47,8 +47,7 @@ func initConfig() {
 		logger.Fatal("Load config failed", zap.Error(err))
 	}
 
-	logger.Info("Load config success", zap.String("file", viper.ConfigFileUsed()))
-	logger.Info("Tracing config", zap.Bool("tracing.flag", cfgs.Tracing.Flag), zap.String("tracing.metrics", cfgs.Tracing.Metrics))
+	logger.Info("Load config success", zap.String("file", viper.ConfigFileUsed()), zap.Any("config", cfgs))
 	// set from cmd args
 	// cfgs.Tracing.Flag = tracing
 	// cfgs.Tracing.Metrics = metricsBackend
