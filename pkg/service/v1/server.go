@@ -54,7 +54,10 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 	}
 	// set options
 	for _, o := range opt {
-		o(srv)
+		if err := o(srv); err != nil {
+			srv.logger.Bg().Fatal("Set server option error", zap.Error(err))
+			return nil
+		}
 	}
 
 	// connect mysql

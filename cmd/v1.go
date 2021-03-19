@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var apiCmd = &cobra.Command{
+var v1Cmd = &cobra.Command{
 	Use:   "v1",
 	Short: "Start Service version 1",
 	Long:  `Start Service version 1`,
@@ -19,7 +19,7 @@ var apiCmd = &cobra.Command{
 
 func init() {
 	logger.Info("v1.Init")
-	rootCmd.AddCommand(apiCmd)
+	rootCmd.AddCommand(v1Cmd)
 }
 
 func V1Service() error {

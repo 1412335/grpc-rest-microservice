@@ -48,7 +48,7 @@ gen-gateway-unix:
 	docker run --rm --name protoc-gen -v `pwd`:/defs namely/gen-grpc-gateway -f . -s ServiceA -o ..\..\..\pkg\api\v2\gen\grpc-gateway
 # docker run --rm --name protoc-gen -v `pwd`:/defs namely/protoc-all -d . -l go --with-gateway
 
-
+# run cli
 .PHONY: run
 run:
 	@echo "====Run grpc server v1===="

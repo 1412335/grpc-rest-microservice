@@ -47,11 +47,12 @@ func initConfig() {
 		logger.Fatal("Load config failed", zap.Error(err))
 	}
 
-	// set from cmd args
-	cfgs.Tracing.Flag = tracing
-	cfgs.Tracing.Metrics = metricsBackend
-
 	logger.Info("Load config success", zap.String("file", viper.ConfigFileUsed()))
+	logger.Info("Tracing config", zap.Bool("tracing.flag", cfgs.Tracing.Flag), zap.String("tracing.metrics", cfgs.Tracing.Metrics))
+	// set from cmd args
+	// cfgs.Tracing.Flag = tracing
+	// cfgs.Tracing.Metrics = metricsBackend
+
 	// tracing
 	if cfgs.Tracing.Flag {
 		if cfgs.Tracing.Metrics == "expvar" {
@@ -72,9 +73,13 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&tracing, "tracing", "t", true, "using tracing with jaeger")
 	rootCmd.PersistentFlags().StringVarP(&metricsBackend, "metrics", "m", "prometheus", "metrics backend expvar|prometheus")
 
-	// bind from viper to cobra cmd
-	viper.BindPFlag("metrics", rootCmd.PersistentFlags().Lookup("metrics"))
-	viper.BindPFlag("tracing", rootCmd.PersistentFlags().Lookup("tracing"))
+	// bind from cobra cmd to viper
+	if err := viper.BindPFlag("tracing.metrics", rootCmd.PersistentFlags().Lookup("metrics")); err != nil {
+		logger.Error("Bind pflag tracing.metrics error", zap.Error(err))
+	}
+	if err := viper.BindPFlag("tracing.flag", rootCmd.PersistentFlags().Lookup("tracing")); err != nil {
+		logger.Error("Bind pflag tracing.flag error", zap.Error(err))
+	}
 
 	// set logger
 	logger, _ = zap.NewDevelopment(
