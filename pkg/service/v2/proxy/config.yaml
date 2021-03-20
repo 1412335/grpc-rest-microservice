@@ -1,4 +1,4 @@
-backend: "client-service:9090"
+backend: "v2:8081"
 cors:
   allow-origin: "*"
   allow-credentials:

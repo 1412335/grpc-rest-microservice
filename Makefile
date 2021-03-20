@@ -66,6 +66,13 @@ grpc:
 cli:
 	evans -r repl -p 8080
 
+v2cli:
+	evans --header x-request-id=1 -r repl --host localhost -p 8081
+
+v2curl:
+	curl -H "x-request-id:1" -X GET localhost:8001/v2/ping/1
+	# curl -H "Grpc-Metadata-request-id:1" -X GET localhost:8001/v2/ping/1 # with DefaultHeaderMatcher
+
 .PHONY: grpc-server
 # run locally grpc server & client
 grpc-server:
