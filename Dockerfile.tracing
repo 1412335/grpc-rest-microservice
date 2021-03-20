@@ -42,6 +42,6 @@ COPY --from=builder /myapp/config.yml .
 EXPOSE 9090
 EXPOSE 8000
 
-CMD exec /bin/sh -c "trap : TERM INT; (while true; do sleep 1000; done) & wait"
-# ENTRYPOINT ["./myapp"]
-# CMD [ "grpc-gateway" ]
+# CMD exec /bin/sh -c "trap : TERM INT; (while true; do sleep 1000; done) & wait"
+ENTRYPOINT ["./myapp"]
+CMD [ "grpc-gateway" ]

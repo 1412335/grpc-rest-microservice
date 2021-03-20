@@ -169,5 +169,6 @@ lint: fmt
 clean:
 	@echo "====cleaning env==="
 	docker-compose down -v --remove-orphans
+	rm -rf ./docker/mysql/data
 	# docker system prune -af --volumes
 	# docker rm $(docker ps -aq -f "status=exited")

@@ -77,7 +77,7 @@ func (c *client) initRouter(handler http.Handler) *gin.Engine {
 	// 	c.String(http.StatusOK, "Have nice day")
 	// })
 
-	r.GET("/v2", gin.WrapH(handler))
+	r.GET("/", gin.WrapH(handler))
 
 	return r
 }

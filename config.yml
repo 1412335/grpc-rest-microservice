@@ -24,6 +24,6 @@ accessibleRoles:
     - admin
 database:
   host: "mysql"
-  user: "root"
+  user: "user"
   password: "password"
   scheme: "grpcrestservice"

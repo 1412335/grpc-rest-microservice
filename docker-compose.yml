@@ -3,6 +3,7 @@ version: '2'
 services:
   mysql:
     image: mysql:5.7.26
+    # image: mysql
     container_name: mysql
     restart: on-failure
     volumes:
@@ -10,29 +11,29 @@ services:
     environment:
       # - MYSQL_ROOT_HOST=${DB_HOST} 
       # GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'password' WITH GRANT OPTION;
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
       - MYSQL_USER=${DB_USER}
       - MYSQL_PASSWORD=${DB_PASSWORD}
-      - MYSQL_DATABASE=${DB_NAME}
-      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
     ports:
       - "3306:3306"
     networks:
       - grpc-rest
 
-  mytop:
-    image: srcoder/mytop
-    container_name: mytop
-    command: ["-h", "${DB_HOST}", "-p", "${DB_PORT}", "-u", "${DB_USER}", "-p", "${DB_PASSWORD}"]
-    restart: on-failure
-    volumes:
-      - ./docker/mytop/.mytop:/root/.mytop
-    depends_on:
-      - mysql
-    networks:
-      - grpc-rest
+  # mytop:
+  #   image: srcoder/mytop
+  #   container_name: mytop
+  #   command: ["-h", "${DB_HOST}", "-p", "${DB_PORT}", "-u", "${DB_USER}", "-p", "${DB_PASSWORD}"]
+  #   restart: on-failure
+  #   volumes:
+  #     - ./docker/mytop/.mytop:/root/.mytop
+  #   depends_on:
+  #     - mysql
+  #   networks:
+  #     - grpc-rest
 
   grafana:
-    image: grafana/grafana:7.1.4
+    image: grafana/grafana
     container_name: grafana
     restart: on-failure
     ports:
@@ -58,7 +59,7 @@ services:
         loki-url: 'http://localhost:3100/api/prom/push'
 
   prometheus:
-    image: prom/prometheus:v2.19.1
+    image: prom/prometheus
     container_name: prom
     restart: on-failure
     volumes:
@@ -143,7 +144,7 @@ services:
     ports:
       - '8081:9090' # gRPC server
       - '8001:8000' # gRPC gateway
-    # command: ["-t","-m","prometheus","v2"]
+    command: ["-t","-m","prometheus","v2"]
     environment:
       - JAEGER_AGENT_HOST=jaeger
       - JAEGER_AGENT_PORT=6831
