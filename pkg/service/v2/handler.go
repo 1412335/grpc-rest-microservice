@@ -22,12 +22,12 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 )
 
-type client struct {
+type handler struct {
 	config *configs.ServiceConfig
 }
 
-func NewClient(config *configs.ServiceConfig) *client {
-	return &client{
+func NewHandler(config *configs.ServiceConfig) *handler {
+	return &handler{
 		config: config,
 	}
 }
@@ -36,7 +36,7 @@ func NewClient(config *configs.ServiceConfig) *client {
 // permenant request headers maintained by IANA.
 // http://www.iana.org/assignments/message-headers/message-headers.xml
 // From https://github.com/grpc-ecosystem/grpc-gateway/blob/7a2a43655ccd9a488d423ea41a3fc723af103eda/runtime/context.go#L157
-func (c *client) isPermanentHTTPHeader(hdr string) bool {
+func (h *handler) isPermanentHTTPHeader(hdr string) bool {
 	switch hdr {
 	case
 		"Accept",
@@ -69,7 +69,7 @@ func (c *client) isPermanentHTTPHeader(hdr string) bool {
 }
 
 // isReserved returns whether the key is reserved by gRPC.
-func (c *client) isReserved(key string) bool {
+func (h *handler) isReserved(key string) bool {
 	return strings.HasPrefix(key, "Grpc-")
 }
 
@@ -77,12 +77,12 @@ func (c *client) isReserved(key string) bool {
 // grpc metadata. Permanent headers (i.e. User-Agent) are prepended with
 // "grpc-gateway". Headers that start with start with "Grpc-" (reserved
 // by grpc) are prepended with "X-". Other headers are forwarded as is.
-func (c *client) incomingHeaderMatcher(key string) (string, bool) {
+func (h *handler) incomingHeaderMatcher(key string) (string, bool) {
 	key = textproto.CanonicalMIMEHeaderKey(key)
-	if c.isPermanentHTTPHeader(key) {
+	if h.isPermanentHTTPHeader(key) {
 		return runtime.MetadataPrefix + key, true
 	}
-	if c.isReserved(key) {
+	if h.isReserved(key) {
 		return "X-" + key, true
 	}
 
@@ -96,12 +96,12 @@ func (c *client) incomingHeaderMatcher(key string) (string, bool) {
 
 // outgoingHeaderMatcher transforms outgoing metadata into HTTP headers.
 // We return any response metadata as is.
-func (c *client) outgoingHeaderMatcher(metadata string) (string, bool) {
+func (h *handler) outgoingHeaderMatcher(metadata string) (string, bool) {
 	return metadata, true
 }
 
 // init gin router
-func (c *client) initRouter(handler http.Handler) *gin.Engine {
+func (h *handler) initRouter(handler http.Handler) *gin.Engine {
 	if os.Getenv("GOENV") != "dev" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -157,17 +157,17 @@ func (c *client) initRouter(handler http.Handler) *gin.Engine {
 }
 
 // run grpc-gateway
-func (c *client) Run() error {
+func (h *handler) Run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	mux := runtime.NewServeMux(
-		runtime.WithIncomingHeaderMatcher(c.incomingHeaderMatcher),
-		runtime.WithOutgoingHeaderMatcher(c.outgoingHeaderMatcher),
+		runtime.WithIncomingHeaderMatcher(h.incomingHeaderMatcher),
+		runtime.WithOutgoingHeaderMatcher(h.outgoingHeaderMatcher),
 	)
 
-	// gRPCHost := net.JoinHostPort(c.config.GRPC.Host, strconv.Itoa(c.config.GRPC.Port))
-	gRPCHost := net.JoinHostPort("localhost", strconv.Itoa(c.config.GRPC.Port))
+	// gRPCHost := net.JoinHostPort(h.config.GRPC.Host, strconv.Itoa(h.config.GRPC.Port))
+	gRPCHost := net.JoinHostPort("localhost", strconv.Itoa(h.config.GRPC.Port))
 
 	// register handler
 	err := api_v2.RegisterServiceAHandlerFromEndpoint(
@@ -190,9 +190,9 @@ func (c *client) Run() error {
 	}
 
 	// proxy address
-	addr := ":" + strconv.Itoa(c.config.Proxy.Port)
+	addr := ":" + strconv.Itoa(h.config.Proxy.Port)
 	// router
-	router := c.initRouter(mux)
+	router := h.initRouter(mux)
 	// http server
 	srv := &http.Server{
 		Addr:    addr,
@@ -206,8 +206,9 @@ func (c *client) Run() error {
 		select {
 		case sig := <-signals:
 			log.Println("Proxy gateway signal received:", sig)
-			shutdown, _ := context.WithTimeout(ctx, 10*time.Second)
+			shutdown, can := context.WithTimeout(ctx, 10*time.Second)
 			srv.Shutdown(shutdown)
+			defer can()
 		}
 	}()
 

@@ -117,7 +117,7 @@ services:
     restart: on-failure
     build:
       context: .
-      dockerfile: Dockerfile.tracing
+      dockerfile: Dockerfile
     ports:
       - '8080:9090' # gRPC server
       - '8000:8000' # gRPC gateway
@@ -140,7 +140,7 @@ services:
     restart: on-failure
     build:
       context: .
-      dockerfile: Dockerfile.tracing
+      dockerfile: Dockerfile
     ports:
       - '8081:9090' # gRPC server
       - '8001:8000' # gRPC gateway
@@ -156,6 +156,41 @@ services:
       driver: loki
       options:
         loki-url: 'http://localhost:3100/api/prom/push'
+  
+  v2-client:
+    image: grpc-rest/v2:client
+    container_name: v2-client
+    restart: on-failure
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # ports:
+    #   - '8081:9090' # gRPC server
+    #   - '8001:8000' # gRPC gateway
+    command: ["-c","./cmd/client/config.yml","-t","-m","prometheus","client"]
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+    networks:
+      - grpc-rest
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
+
+  # grpc-web proxy
+  # envoy:
+  #   image: envoy-proxy
+  #   container_name: envoy-proxy
+  #   build:
+  #     context: ./pkg/api/v2/gen/grpc-web/envoy
+  #   ports:
+  #       - 7070:8080
+  #       - 9901:9901
+  #   networks:
+  #     - grpc-rest
+  #   depends_on:
+  #     - client-service
 
 networks:
   grpc-rest:

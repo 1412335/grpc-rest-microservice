@@ -39,10 +39,9 @@ func (s spanLogger) With(fields ...zapcore.Field) Logger {
 	return spanLogger{logger: s.logger.With(fields...), span: s.span, spanFields: s.spanFields}
 }
 
-func (s spanLogger) logToSpan(level string, msg string, fields ...zapcore.Field) {
+func (s spanLogger) logToSpan(level, msg string, fields ...zapcore.Field) {
 	fa := fieldAdapter(make([]log.Field, 0, 2+len(fields)))
-	fa = append(fa, log.String("event", msg))
-	fa = append(fa, log.String("level", level))
+	fa = append(fa, log.String("event", msg), log.String("level", level))
 	for _, field := range fields {
 		field.AddTo(&fa)
 	}

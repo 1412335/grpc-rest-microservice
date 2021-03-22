@@ -29,6 +29,13 @@ type ServiceConfig struct {
 	Tracing *Tracing
 }
 
+type ClientConfig struct {
+	Version       string
+	ServiceName   string
+	GRPC          *GRPC
+	ManagerClient *ManagerClient
+}
+
 // opentracing with jaeger
 type Tracing struct {
 	Flag    bool

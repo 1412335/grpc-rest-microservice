@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"context"
@@ -19,11 +19,12 @@ import (
 
 const (
 	apiVersion = "v1"
+	address    = "localhost:9090"
 )
 
 // remaining single connection to grpc server
 func TestSingleConnection(*testing.T) {
-	conn, err := grpc.Dial(*address, grpc.WithInsecure())
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}

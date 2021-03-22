@@ -40,8 +40,8 @@ func V2Service() error {
 	}()
 
 	// run grpc-gateway
-	client := v2.NewClient(cfgs)
-	err := client.Run()
+	handler := v2.NewHandler(cfgs)
+	err := handler.Run()
 	if err != nil {
 		zapLogger.Error("Starting gRPC-gateway error", zap.Error(err))
 	}

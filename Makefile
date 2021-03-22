@@ -70,8 +70,17 @@ v2cli:
 	evans --header x-request-id=1 -r repl --host localhost -p 8081
 
 v2curl:
+	@echo "====Testing proxy====="
 	curl -H "x-request-id:1" -X GET localhost:8001/v2/ping/1
 	# curl -H "Grpc-Metadata-request-id:1" -X GET localhost:8001/v2/ping/1 # with DefaultHeaderMatcher
+	@echo "--- GET ---"
+	curl -H "x-request-id:1" localhost:8001/v2/ping/70000
+	@echo ""
+	curl -H "x-request-id:1" localhost:8001/v2/extra/ping/70000
+	@echo ""; echo "--- POST ---"
+	curl -H "x-request-id:1" -X POST localhost:8001/v2/post -d '{"timestamp": 7000}'
+	@echo ""
+	curl -H "x-request-id:1" -X POST localhost:8001/v2/extra/post -d '{"timestamp": 7000}'
 
 .PHONY: grpc-server
 # run locally grpc server & client
@@ -85,32 +94,6 @@ grpc-client:
 	@echo "====Run grpc client===="
 	docker-compose -f docker-compose.client.yml up --build client
 	# go run ./cmd/client-grpc/main.go -server=localhost:9090
-
-
-# run grpc gateway locally
-.PHONY: proxy-server 
-proxy-server:
-	@echo "====Run server===="
-	go run ./cmd/proxy/server/grpc.go -grpc-port=9090
-
-.PHONY: proxy-client
-proxy-client:
-	@echo "====Run rest client===="
-	go run ./cmd/proxy/main.go -grpc-port=9090 -proxy-port=8000
-
-# testing
-.PHONY: proxy-test
-proxy-test:
-	@echo "====Testing proxy====="
-	@echo "--- GET ---"
-	curl localhost:8000/v2/ping/70000
-	@echo ""
-	curl localhost:8000/v2/extra/ping/70000
-	@echo ""; echo "--- POST ---"
-	curl localhost:8000/v2/post -X POST -d '{"timestamp": 7000}'
-	@echo ""
-	curl localhost:8000/v2/extra/post -X POST -d '{"timestamp": 7000}'
-
 
 # run grpc using docker
 .PHONY: service-build-run
