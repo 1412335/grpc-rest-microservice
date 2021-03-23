@@ -198,7 +198,7 @@ services:
   v3:
     image: grpc-rest/v3:latest
     container_name: v3
-    restart: on-failure
+    # restart: on-failure
     build:
       context: .
       dockerfile: Dockerfile

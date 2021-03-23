@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+	"github.com/1412335/grpc-rest-microservice/pkg/server"
 	v3 "github.com/1412335/grpc-rest-microservice/pkg/service/v3"
 
 	"github.com/spf13/cobra"
@@ -29,21 +30,21 @@ func V3Service() error {
 	// server
 	server := v3.NewServer(
 		cfgs,
-		v3.WithMetricsFactory(metricsFactory),
-		v3.WithLoggerFactory(logger),
+		server.WithMetricsFactory(metricsFactory),
+		server.WithLoggerFactory(logger),
 	)
 
 	// run grpc server
-	return logError(zapLogger, server.Run())
-	// go func() {
-	// 	logError(zapLogger, server.Run())
-	// }()
+	// return logError(zapLogger, server.Run())
+	go func() {
+		logError(zapLogger, server.Run())
+	}()
 
-	// // run grpc-gateway
-	// handler := v3.NewHandler(cfgs)
-	// err := handler.Run()
-	// if err != nil {
-	// 	zapLogger.Error("Starting gRPC-gateway error", zap.Error(err))
-	// }
-	// return err
+	// run grpc-gateway
+	handler := v3.NewHandler(cfgs)
+	err := handler.Run()
+	if err != nil {
+		zapLogger.Error("Starting gRPC-gateway error", zap.Error(err))
+	}
+	return err
 }
