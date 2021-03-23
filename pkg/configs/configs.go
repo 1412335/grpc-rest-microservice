@@ -27,6 +27,8 @@ type ServiceConfig struct {
 	AuthMethods map[string]bool
 	// opentracing
 	Tracing *Tracing
+	// swaggers
+	Swagger []string
 }
 
 type ClientConfig struct {

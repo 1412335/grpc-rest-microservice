@@ -3,6 +3,7 @@ package v2
 import (
 	"context"
 	"log"
+	"mime"
 	"net"
 	"net/http"
 	"net/textproto"
@@ -15,11 +16,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/rakyll/statik/fs"
 	"github.com/unrolled/secure"
 	"google.golang.org/grpc"
 
 	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
+
+	// Static files
+	_ "github.com/1412335/grpc-rest-microservice/statik"
 )
 
 type handler struct {
@@ -121,7 +126,7 @@ func (h *handler) initRouter(handler http.Handler) *gin.Engine {
 		FrameDeny:             true,
 		ContentTypeNosniff:    true,
 		BrowserXssFilter:      true,
-		ContentSecurityPolicy: "default-src 'self'; img-src 'self' data:; media-src 'self' data:; font-src 'self' data:",
+		ContentSecurityPolicy: "default-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' data:; font-src 'self' data:",
 		PublicKey:             `pin-sha256="base64+primary=="; pin-sha256="base64+backup=="; max-age=5184000; includeSubdomains; report-uri="http://localhost:8082"`,
 	})
 
@@ -147,13 +152,34 @@ func (h *handler) initRouter(handler http.Handler) *gin.Engine {
 	r := gin.Default()
 	r.Use(secureFunc)
 
+	if err := serveOpenAPI(r); err != nil {
+		log.Println("serveOpenAPI failed:", err)
+	}
+
 	// r.GET("/", func(c *gin.Context) {
 	// 	c.String(http.StatusOK, "Have nice day")
 	// })
 
-	r.Any("/*any", gin.WrapH(handler))
+	api := r.Group("/v2")
+	api.Any("/*any", gin.WrapH(handler))
 
 	return r
+}
+
+// serveOpenAPI serves an OpenAPI UI on /openapi-ui/
+// Adapted from https://github.com/philips/grpc-gateway-example/blob/a269bcb5931ca92be0ceae6130ac27ae89582ecc/cmd/serve.go#L63
+func serveOpenAPI(r *gin.Engine) error {
+	mime.AddExtensionType(".svg", "image/svg+xml")
+	statikFS, err := fs.New()
+	if err != nil {
+		return err
+	}
+	// Expose files in static on <host>/openapi-ui
+	fileServer := http.FileServer(statikFS)
+	prefix := "/openapi-ui/"
+	r.GET(prefix, gin.WrapH(http.StripPrefix(prefix, fileServer)))
+	r.Static("/openui", "third_party/openui")
+	return nil
 }
 
 // run grpc-gateway

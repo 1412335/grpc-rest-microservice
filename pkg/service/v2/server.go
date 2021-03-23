@@ -72,15 +72,15 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 	}
 
 	// simple server interceptor
-	simpleInterceptor := interceptor.SimpleServerInterceptor{}
-	simpleInterceptor.WithLogger(srv.logger)
-	unaryInterceptors = append(unaryInterceptors, simpleInterceptor.Unary())
-	streamInterceptors = append(streamInterceptors, simpleInterceptor.Stream())
+	// simpleInterceptor := interceptor.SimpleServerInterceptor{}
+	// simpleInterceptor.WithLogger(srv.logger)
+	// unaryInterceptors = append(unaryInterceptors, simpleInterceptor.Unary())
+	// streamInterceptors = append(streamInterceptors, simpleInterceptor.Stream())
 
 	// auth server interceptor
-	// authInterceptor := interceptor.NewAuthServerInterceptor(srv.logger, srv.jwtManager, srvConfig.AccessibleRoles)
-	// unaryInterceptors = append(unaryInterceptors, authInterceptor.Unary())
-	// streamInterceptors = append(streamInterceptors, authInterceptor.Stream())
+	authInterceptor := interceptor.NewAuthServerInterceptor(srv.logger, srv.jwtManager, srvConfig.AccessibleRoles)
+	unaryInterceptors = append(unaryInterceptors, authInterceptor.Unary())
+	streamInterceptors = append(streamInterceptors, authInterceptor.Stream())
 
 	// auth with credentials interceptor
 	// credsInterceptor := interceptor.NewCredentialsServerInterceptor(serviceConfig.Authentication)

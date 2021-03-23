@@ -40,6 +40,9 @@ protoc -I $GOPATH/src \
     --go_out=plugins=grpc:$API_V2/grpc-gateway/gen \
     $PROTO_V2/*.proto
 
+# Generate static assets for OpenAPI UI
+rm -rf statik
+statik -m -f -src $API_V2/grpc-gateway/third_party/OpenAPI/ --dest $API_V2
 
 echo "==================================="
 

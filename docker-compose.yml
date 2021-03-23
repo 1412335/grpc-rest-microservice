@@ -148,6 +148,8 @@ services:
     environment:
       - JAEGER_AGENT_HOST=jaeger
       - JAEGER_AGENT_PORT=6831
+    volumes:
+      - ./third_party/openui:/third_party/openui
     networks:
       - grpc-rest
     depends_on:
@@ -177,6 +179,22 @@ services:
       driver: loki
       options:
         loki-url: 'http://localhost:3100/api/prom/push'
+  
+  # v2-gateway:
+  #   image: grpc-rest/v2-gw
+  #   container_name: v2-gw
+  #   build:
+  #     context: ./pkg/api/v2/gen/grpc-gateway
+  #     dockerfile: Dockerfile
+  #   # environment:
+  #   #   GRPC_HOST: "client-service:9090"
+  #   #   PROXY_PORT: 8000
+  #   ports:
+  #       - 8002:80
+  #   networks:
+  #     - grpc-rest
+  #   depends_on:
+  #     - v2
 
   # grpc-web proxy
   # envoy:

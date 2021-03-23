@@ -39,3 +39,7 @@ Mgoogle/api/annotations.proto=github.com/gogo/googleapis/google/api,\
 Mgoogle/protobuf/field_mask.proto=github.com/gogo/protobuf/types:\
 $API_V3 \
     $PROTO_V3/*.proto
+
+# Generate static assets for OpenAPI UI
+rm -rf statik
+statik -m -f -src $API_V3/third_party/OpenAPI/ --dest $API_V3

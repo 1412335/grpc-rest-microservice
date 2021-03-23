@@ -1,4 +1,4 @@
-backend: "v2:8081"
+backend: "v2:9090"
 cors:
   allow-origin: "*"
   allow-credentials:

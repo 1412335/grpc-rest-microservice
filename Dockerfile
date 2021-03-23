@@ -35,6 +35,7 @@ WORKDIR /root/
 COPY --from=builder /go/bin/myapp .
 COPY --from=builder /myapp/config.yml .
 COPY --from=builder /myapp/cmd/client/config.yml ./cmd/client/config.yml
+COPY --from=builder /myapp/third_party/openui ./third_party/openui
 
 # Use an unprivileged user.
 # USER appuser

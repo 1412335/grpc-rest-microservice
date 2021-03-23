@@ -1,7 +1,7 @@
 serviceName: "grpc-gateway"
 version: "v1"
 grpc:
-  host: "grpc-server"
+  host: "v2"
   port: 9090
 tracing:
   flags: true
@@ -27,3 +27,6 @@ database:
   user: "user"
   password: "password"
   scheme: "grpcrestservice"
+swagger:
+  - rest-service.swagger.json
+  - rest-service-extra.swagger.json
