@@ -5,11 +5,11 @@ package api_v3
 
 import (
 	fmt "fmt"
-	_ "github.com/gogo/googleapis/google/api"
+	math "math"
 	proto "github.com/gogo/protobuf/proto"
 	_ "github.com/gogo/protobuf/types"
+	_ "github.com/gogo/googleapis/google/api"
 	github_com_mwitkow_go_proto_validators "github.com/mwitkow/go-proto-validators"
-	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.

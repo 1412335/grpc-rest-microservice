@@ -1,16 +1,9 @@
 #!/bin/bash
 
-PROTO_DIR=./api/proto
 PROTO_V3=./api/proto/v3
-
-OUT_DIR=./pkg/api
 API_V3=./pkg/api/v3/
 
-# ls $API_V2/grpc-web/gen/*_grpc_web_pb.js
-
-echo "GEN GRPC-GATEWAY"
-
-echo "===> gen v3 grpc-gateway => grpc-gateway_out"
+echo "===> gen v3 => gogo_out + grpc-gateway_out + swagger_out + govalidators_out"
 protoc -I $GOPATH/src \
     -I ./vendor/github.com/grpc-ecosystem/grpc-gateway/ \
     -I ./vendor/github.com/gogo/googleapis/ \
@@ -40,6 +33,10 @@ Mgoogle/protobuf/field_mask.proto=github.com/gogo/protobuf/types:\
 $API_V3 \
     $PROTO_V3/*.proto
 
+# Workaround for https://github.com/grpc-ecosystem/grpc-gateway/issues/229.
+# sed -i.bak "s/empty.Empty/types.Empty/g" proto/example.pb.gw.go && rm proto/example.pb.gw.go.bak
+
 # Generate static assets for OpenAPI UI
-# rm -rf statik
+# rm -rf $API_V3
+echo "===> gen v3 => openapi ui with statik"
 statik -m -f -src $API_V3/third_party/OpenAPI/ --dest $API_V3

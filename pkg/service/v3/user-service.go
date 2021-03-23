@@ -8,12 +8,17 @@ import (
 	"google.golang.org/grpc/status"
 
 	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
+	"github.com/1412335/grpc-rest-microservice/pkg/log"
 )
 
-type userServiceImpl struct{}
+type userServiceImpl struct {
+	logger log.Factory
+}
 
-func New() api_v3.UserServiceServer {
-	return &userServiceImpl{}
+func NewUserService(logger log.Factory) api_v3.UserServiceServer {
+	return &userServiceImpl{
+		logger: logger,
+	}
 }
 
 func (u *userServiceImpl) AddUser(ctx context.Context, req *api_v3.User) (*types.Empty, error) {
