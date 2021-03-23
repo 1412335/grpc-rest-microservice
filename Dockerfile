@@ -35,13 +35,13 @@ WORKDIR /root/
 COPY --from=builder /go/bin/myapp .
 COPY --from=builder /myapp/config.yml .
 COPY --from=builder /myapp/cmd/client/config.yml ./cmd/client/config.yml
-COPY --from=builder /myapp/third_party/openui ./third_party/openui
 
 # Use an unprivileged user.
 # USER appuser
 
-# Run the hello binary. 
+# gRPC server port
 EXPOSE 9090
+# proxy gateway
 EXPOSE 8000
 
 # CMD exec /bin/sh -c "trap : TERM INT; (while true; do sleep 1000; done) & wait"

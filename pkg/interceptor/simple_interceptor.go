@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/grpc-gateway/gen"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"go.uber.org/zap"
 

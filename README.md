@@ -89,7 +89,10 @@ evans -r repl --host localhost -p 8081
 ```
 
 ## Jaeger UI
-http://127.0.0.1:16686
+[http://127.0.0.1:16686](http://127.0.0.1:16686)
+
+## OpenAPI SwaggerUI
+[http://127.0.0.1:openapi-ui](http://127.0.0.1:8001/openapi-ui)
 
 # Note
 - Copy & paste /include/google into protobuf folder (eg: ./api/proto/v2)

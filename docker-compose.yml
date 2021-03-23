@@ -148,8 +148,8 @@ services:
     environment:
       - JAEGER_AGENT_HOST=jaeger
       - JAEGER_AGENT_PORT=6831
-    volumes:
-      - ./third_party/openui:/third_party/openui
+    # volumes:
+    #   - ./third_party/openui:/third_party/openui
     networks:
       - grpc-rest
     depends_on:
@@ -162,7 +162,6 @@ services:
   v2-client:
     image: grpc-rest/v2:client
     container_name: v2-client
-    restart: on-failure
     build:
       context: .
       dockerfile: Dockerfile

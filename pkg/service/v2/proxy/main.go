@@ -22,7 +22,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	gw "github.com/1412335/grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	gw "github.com/1412335/grpc-rest-microservice/pkg/api/v2/grpc-gateway/gen"
 
 	_ "google.golang.org/genproto/googleapis/rpc/errdetails" // Pull in errdetails
 )

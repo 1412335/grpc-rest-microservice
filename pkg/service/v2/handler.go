@@ -20,11 +20,11 @@ import (
 	"github.com/unrolled/secure"
 	"google.golang.org/grpc"
 
-	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/gen/grpc-gateway/gen"
+	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/grpc-gateway/gen"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 
 	// Static files
-	_ "github.com/1412335/grpc-rest-microservice/statik"
+	_ "github.com/1412335/grpc-rest-microservice/pkg/api/v2/grpc-gateway/statik"
 )
 
 type handler struct {
@@ -175,10 +175,11 @@ func serveOpenAPI(r *gin.Engine) error {
 		return err
 	}
 	// Expose files in static on <host>/openapi-ui
-	fileServer := http.FileServer(statikFS)
+	// fileServer := http.FileServer(statikFS)
 	prefix := "/openapi-ui/"
-	r.GET(prefix, gin.WrapH(http.StripPrefix(prefix, fileServer)))
-	r.Static("/openui", "third_party/openui")
+	r.StaticFS(prefix, statikFS)
+	// r.GET(prefix, gin.WrapH(http.StripPrefix(prefix, fileServer))) => not working
+	// r.Static("/openui", "pkg/api/v2/grpc-gateway/third_party/OpenAPI")
 	return nil
 }
 
