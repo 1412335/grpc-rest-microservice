@@ -55,11 +55,11 @@ gen-openapi:
 	sh ./script/gen-openapi.sh
 
 .PHONY: grpc
-grpc:
+grpc: clean
 	@echo "====Run grpc server with docker===="
 	# docker-compose up -d mysql
 	# sleep 20s
-	docker-compose up -d
+	docker-compose up -d --build
 
 # https://github.com/ktr0731/evans
 # Evans cli: calling grpc service (reflection.Register(server))

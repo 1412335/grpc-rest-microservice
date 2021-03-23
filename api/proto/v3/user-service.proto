@@ -10,6 +10,9 @@ import "google/protobuf/field_mask.proto";
 import "google/api/annotations.proto";
 
 import "protoc-gen-swagger/options/annotations.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+import "github.com/mwitkow/go-proto-validators/validator.proto";
 
 option go_package = ".;api_v3";
 
@@ -69,9 +72,16 @@ enum Role {
 }
 
 message User {
-    uint32 id = 1;
+    uint32 id = 1 [
+        (validator.field) = {
+            int_gt: 0
+            human_error: "ID must be a positive integer"
+        }
+    ];
     Role role = 2;
-    google.protobuf.Timestamp created_at = 3;
+    google.protobuf.Timestamp created_at = 3 [
+        (gogoproto.stdtime) = true
+    ];
 }
 
 message UserRole {
@@ -80,9 +90,13 @@ message UserRole {
 
 message ListUsersRequest {
     // list users created after timestamp
-    google.protobuf.Timestamp created_since = 1;
+    google.protobuf.Timestamp created_since = 1 [
+        (gogoproto.stdtime) = true
+    ];
     // list users in duration from created_since
-    google.protobuf.Duration older_then = 2;
+    google.protobuf.Duration older_then = 2 [
+        (gogoproto.stdduration) = true
+    ];
 }
 
 message UpdateUserRequest {

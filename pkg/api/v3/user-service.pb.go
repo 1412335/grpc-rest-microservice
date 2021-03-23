@@ -7,18 +7,28 @@ import (
 	context "context"
 	fmt "fmt"
 	_ "github.com/gogo/googleapis/google/api"
+	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
+	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
 	types "github.com/gogo/protobuf/types"
+	golang_proto "github.com/golang/protobuf/proto"
+	_ "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger/options"
+	_ "github.com/mwitkow/go-proto-validators"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	io "io"
 	math "math"
+	math_bits "math/bits"
+	time "time"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = golang_proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+var _ = time.Kitchen
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
@@ -55,12 +65,12 @@ func (Role) EnumDescriptor() ([]byte, []int) {
 }
 
 type User struct {
-	Id                   uint32           `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Role                 Role             `protobuf:"varint,2,opt,name=role,proto3,enum=api_v3.Role" json:"role,omitempty"`
-	CreatedAt            *types.Timestamp `protobuf:"bytes,3,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
-	XXX_unrecognized     []byte           `json:"-"`
-	XXX_sizecache        int32            `json:"-"`
+	Id                   uint32     `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Role                 Role       `protobuf:"varint,2,opt,name=role,proto3,enum=api_v3.Role" json:"role,omitempty"`
+	CreatedAt            *time.Time `protobuf:"bytes,3,opt,name=created_at,json=createdAt,proto3,stdtime" json:"created_at,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
 }
 
 func (m *User) Reset()         { *m = User{} }
@@ -70,16 +80,25 @@ func (*User) Descriptor() ([]byte, []int) {
 	return fileDescriptor_2a3086c73a75cdba, []int{0}
 }
 func (m *User) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_User.Unmarshal(m, b)
+	return m.Unmarshal(b)
 }
 func (m *User) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_User.Marshal(b, m, deterministic)
+	if deterministic {
+		return xxx_messageInfo_User.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
 }
 func (m *User) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_User.Merge(m, src)
 }
 func (m *User) XXX_Size() int {
-	return xxx_messageInfo_User.Size(m)
+	return m.Size()
 }
 func (m *User) XXX_DiscardUnknown() {
 	xxx_messageInfo_User.DiscardUnknown(m)
@@ -101,11 +120,15 @@ func (m *User) GetRole() Role {
 	return Role_GUEST
 }
 
-func (m *User) GetCreatedAt() *types.Timestamp {
+func (m *User) GetCreatedAt() *time.Time {
 	if m != nil {
 		return m.CreatedAt
 	}
 	return nil
+}
+
+func (*User) XXX_MessageName() string {
+	return "api_v3.User"
 }
 
 type UserRole struct {
@@ -122,16 +145,25 @@ func (*UserRole) Descriptor() ([]byte, []int) {
 	return fileDescriptor_2a3086c73a75cdba, []int{1}
 }
 func (m *UserRole) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_UserRole.Unmarshal(m, b)
+	return m.Unmarshal(b)
 }
 func (m *UserRole) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_UserRole.Marshal(b, m, deterministic)
+	if deterministic {
+		return xxx_messageInfo_UserRole.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
 }
 func (m *UserRole) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_UserRole.Merge(m, src)
 }
 func (m *UserRole) XXX_Size() int {
-	return xxx_messageInfo_UserRole.Size(m)
+	return m.Size()
 }
 func (m *UserRole) XXX_DiscardUnknown() {
 	xxx_messageInfo_UserRole.DiscardUnknown(m)
@@ -146,14 +178,18 @@ func (m *UserRole) GetRole() Role {
 	return Role_GUEST
 }
 
+func (*UserRole) XXX_MessageName() string {
+	return "api_v3.UserRole"
+}
+
 type ListUsersRequest struct {
 	// list users created after timestamp
-	CreatedSince *types.Timestamp `protobuf:"bytes,1,opt,name=created_since,json=createdSince,proto3" json:"created_since,omitempty"`
+	CreatedSince *time.Time `protobuf:"bytes,1,opt,name=created_since,json=createdSince,proto3,stdtime" json:"created_since,omitempty"`
 	// list users in duration from created_since
-	OlderThen            *types.Duration `protobuf:"bytes,2,opt,name=older_then,json=olderThen,proto3" json:"older_then,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
-	XXX_unrecognized     []byte          `json:"-"`
-	XXX_sizecache        int32           `json:"-"`
+	OlderThen            *time.Duration `protobuf:"bytes,2,opt,name=older_then,json=olderThen,proto3,stdduration" json:"older_then,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
+	XXX_unrecognized     []byte         `json:"-"`
+	XXX_sizecache        int32          `json:"-"`
 }
 
 func (m *ListUsersRequest) Reset()         { *m = ListUsersRequest{} }
@@ -163,16 +199,25 @@ func (*ListUsersRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_2a3086c73a75cdba, []int{2}
 }
 func (m *ListUsersRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ListUsersRequest.Unmarshal(m, b)
+	return m.Unmarshal(b)
 }
 func (m *ListUsersRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ListUsersRequest.Marshal(b, m, deterministic)
+	if deterministic {
+		return xxx_messageInfo_ListUsersRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
 }
 func (m *ListUsersRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_ListUsersRequest.Merge(m, src)
 }
 func (m *ListUsersRequest) XXX_Size() int {
-	return xxx_messageInfo_ListUsersRequest.Size(m)
+	return m.Size()
 }
 func (m *ListUsersRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_ListUsersRequest.DiscardUnknown(m)
@@ -180,18 +225,22 @@ func (m *ListUsersRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_ListUsersRequest proto.InternalMessageInfo
 
-func (m *ListUsersRequest) GetCreatedSince() *types.Timestamp {
+func (m *ListUsersRequest) GetCreatedSince() *time.Time {
 	if m != nil {
 		return m.CreatedSince
 	}
 	return nil
 }
 
-func (m *ListUsersRequest) GetOlderThen() *types.Duration {
+func (m *ListUsersRequest) GetOlderThen() *time.Duration {
 	if m != nil {
 		return m.OlderThen
 	}
 	return nil
+}
+
+func (*ListUsersRequest) XXX_MessageName() string {
+	return "api_v3.ListUsersRequest"
 }
 
 type UpdateUserRequest struct {
@@ -211,16 +260,25 @@ func (*UpdateUserRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_2a3086c73a75cdba, []int{3}
 }
 func (m *UpdateUserRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_UpdateUserRequest.Unmarshal(m, b)
+	return m.Unmarshal(b)
 }
 func (m *UpdateUserRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_UpdateUserRequest.Marshal(b, m, deterministic)
+	if deterministic {
+		return xxx_messageInfo_UpdateUserRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
 }
 func (m *UpdateUserRequest) XXX_Merge(src proto.Message) {
 	xxx_messageInfo_UpdateUserRequest.Merge(m, src)
 }
 func (m *UpdateUserRequest) XXX_Size() int {
-	return xxx_messageInfo_UpdateUserRequest.Size(m)
+	return m.Size()
 }
 func (m *UpdateUserRequest) XXX_DiscardUnknown() {
 	xxx_messageInfo_UpdateUserRequest.DiscardUnknown(m)
@@ -242,51 +300,72 @@ func (m *UpdateUserRequest) GetUpdateMask() *types.FieldMask {
 	return nil
 }
 
+func (*UpdateUserRequest) XXX_MessageName() string {
+	return "api_v3.UpdateUserRequest"
+}
 func init() {
 	proto.RegisterEnum("api_v3.Role", Role_name, Role_value)
+	golang_proto.RegisterEnum("api_v3.Role", Role_name, Role_value)
 	proto.RegisterType((*User)(nil), "api_v3.User")
+	golang_proto.RegisterType((*User)(nil), "api_v3.User")
 	proto.RegisterType((*UserRole)(nil), "api_v3.UserRole")
+	golang_proto.RegisterType((*UserRole)(nil), "api_v3.UserRole")
 	proto.RegisterType((*ListUsersRequest)(nil), "api_v3.ListUsersRequest")
+	golang_proto.RegisterType((*ListUsersRequest)(nil), "api_v3.ListUsersRequest")
 	proto.RegisterType((*UpdateUserRequest)(nil), "api_v3.UpdateUserRequest")
+	golang_proto.RegisterType((*UpdateUserRequest)(nil), "api_v3.UpdateUserRequest")
 }
 
 func init() { proto.RegisterFile("user-service.proto", fileDescriptor_2a3086c73a75cdba) }
+func init() { golang_proto.RegisterFile("user-service.proto", fileDescriptor_2a3086c73a75cdba) }
 
 var fileDescriptor_2a3086c73a75cdba = []byte{
-	// 524 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x52, 0x4f, 0x6f, 0xd3, 0x30,
-	0x14, 0xc7, 0xa1, 0x94, 0xf5, 0x75, 0xdd, 0x8a, 0xc5, 0x9f, 0x2e, 0x4c, 0x10, 0xe5, 0x54, 0x55,
-	0x90, 0x4e, 0xed, 0x05, 0xb6, 0x03, 0x6a, 0xb5, 0x82, 0x26, 0xad, 0x20, 0xa5, 0xed, 0x01, 0x2e,
-	0x95, 0x57, 0x7b, 0x9b, 0xb5, 0x34, 0x0e, 0xb1, 0x5b, 0x69, 0x42, 0x5c, 0xb8, 0x73, 0xe2, 0x9b,
-	0xc1, 0x57, 0xe0, 0x83, 0x20, 0x3b, 0x6e, 0x50, 0x52, 0xc1, 0x29, 0x91, 0xdf, 0xef, 0xcf, 0x7b,
-	0xef, 0xf7, 0x00, 0xaf, 0x24, 0x4b, 0x5f, 0x4a, 0x96, 0xae, 0xf9, 0x82, 0x05, 0x49, 0x2a, 0x94,
-	0xc0, 0x55, 0x92, 0xf0, 0xf9, 0xba, 0xef, 0x3e, 0xbd, 0x12, 0xe2, 0x2a, 0x62, 0x5d, 0xf3, 0x7a,
-	0xb1, 0xba, 0xec, 0xb2, 0x65, 0xa2, 0x6e, 0x33, 0x90, 0xfb, 0xbc, 0x5c, 0x54, 0x7c, 0xc9, 0xa4,
-	0x22, 0xcb, 0xc4, 0x02, 0x9e, 0x95, 0x01, 0x74, 0x95, 0x12, 0xc5, 0x45, 0x6c, 0xeb, 0x5e, 0xb9,
-	0x7e, 0xc9, 0x59, 0x44, 0xe7, 0x4b, 0x22, 0x6f, 0x2c, 0xe2, 0xd0, 0x22, 0x48, 0xc2, 0xbb, 0x24,
-	0x8e, 0x85, 0x32, 0x74, 0x99, 0x55, 0x7d, 0x09, 0x95, 0x99, 0x64, 0x29, 0xde, 0x03, 0x87, 0xd3,
-	0x16, 0xf2, 0x50, 0xbb, 0x11, 0x3a, 0x9c, 0x62, 0x0f, 0x2a, 0xa9, 0x88, 0x58, 0xcb, 0xf1, 0x50,
-	0x7b, 0xaf, 0xb7, 0x1b, 0x64, 0xc3, 0x04, 0xa1, 0x88, 0x58, 0x68, 0x2a, 0xf8, 0x35, 0xc0, 0x22,
-	0x65, 0x44, 0x31, 0x3a, 0x27, 0xaa, 0x75, 0xd7, 0x43, 0xed, 0x7a, 0xcf, 0x0d, 0x32, 0xb3, 0x60,
-	0xd3, 0x4e, 0x30, 0xdd, 0xcc, 0x13, 0xd6, 0x2c, 0x7a, 0xa0, 0xfc, 0x17, 0xb0, 0xa3, 0x4d, 0xb5,
-	0x58, 0x6e, 0x84, 0xfe, 0x65, 0xe4, 0x7f, 0x47, 0xd0, 0x3c, 0xe7, 0x52, 0x69, 0x8a, 0x0c, 0xd9,
-	0xe7, 0x15, 0x93, 0x0a, 0xbf, 0x81, 0xc6, 0xc6, 0x5d, 0xf2, 0x78, 0x91, 0xf1, 0xff, 0xdf, 0xc0,
-	0xae, 0x25, 0x4c, 0x34, 0x1e, 0xbf, 0x02, 0x10, 0x11, 0x65, 0xe9, 0x5c, 0x5d, 0xb3, 0xd8, 0x8c,
-	0x59, 0xef, 0x1d, 0x6c, 0xb1, 0x4f, 0xed, 0xb6, 0xc3, 0x9a, 0x01, 0x4f, 0xaf, 0x59, 0xec, 0xa7,
-	0xf0, 0x60, 0x96, 0x50, 0xa2, 0x98, 0x99, 0xc1, 0xf6, 0xe3, 0x41, 0x45, 0xdf, 0x80, 0x6d, 0x23,
-	0x1f, 0xc3, 0x40, 0x4c, 0x05, 0x9f, 0x40, 0x7d, 0x65, 0x68, 0x26, 0x1c, 0xeb, 0xb8, 0xdd, 0xef,
-	0x5b, 0x9d, 0xdf, 0x98, 0xc8, 0x9b, 0x10, 0x32, 0xb8, 0xfe, 0xef, 0xb4, 0xa1, 0x62, 0xb6, 0x55,
-	0x83, 0x7b, 0xef, 0x66, 0xa3, 0xc9, 0xb4, 0x79, 0x07, 0x03, 0x54, 0xc7, 0xa3, 0xf1, 0x70, 0x14,
-	0x36, 0x91, 0x7e, 0x1e, 0x9c, 0x8e, 0xcf, 0xde, 0x37, 0x9d, 0xde, 0x4f, 0x07, 0xea, 0xda, 0x75,
-	0x92, 0x1d, 0x23, 0x3e, 0x83, 0xfb, 0x03, 0x4a, 0x4d, 0xc6, 0x85, 0xae, 0xdc, 0xc7, 0x5b, 0xd6,
-	0x23, 0x7d, 0x98, 0x7e, 0xeb, 0xdb, 0xaf, 0xdf, 0x3f, 0x1c, 0xec, 0x37, 0xcc, 0xc5, 0xac, 0xfb,
-	0x5d, 0xdd, 0xbd, 0x3c, 0x46, 0x1d, 0x7c, 0x0e, 0xb5, 0x3c, 0x07, 0xdc, 0xda, 0x88, 0x95, 0xa3,
-	0x71, 0x0b, 0x36, 0xfe, 0x23, 0x23, 0xb7, 0x8f, 0x8b, 0x72, 0x47, 0x08, 0x7f, 0x80, 0xfd, 0x9c,
-	0x3a, 0xbc, 0x35, 0xd3, 0x35, 0x0b, 0x6b, 0x13, 0x11, 0x2b, 0x69, 0xb9, 0x46, 0xeb, 0x21, 0xc6,
-	0x05, 0xad, 0xae, 0xbe, 0x92, 0x23, 0x84, 0x3f, 0x02, 0xfc, 0xcd, 0x05, 0x1f, 0xe4, 0xcc, 0x72,
-	0x56, 0x25, 0x51, 0xdf, 0x88, 0x1e, 0xf6, 0x9e, 0x14, 0x45, 0xbf, 0xe8, 0x4f, 0xc0, 0xe9, 0xd7,
-	0x63, 0xd4, 0x19, 0xc2, 0xa7, 0x9d, 0xe0, 0x24, 0x23, 0x5d, 0x54, 0xcd, 0xbe, 0xfa, 0x7f, 0x02,
-	0x00, 0x00, 0xff, 0xff, 0x86, 0x14, 0x6d, 0xd8, 0xf4, 0x03, 0x00, 0x00,
+	// 715 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x54, 0xcd, 0x6e, 0xd3, 0x4a,
+	0x14, 0xee, 0xf8, 0xe6, 0xf6, 0xb6, 0x93, 0xf4, 0x36, 0x1d, 0xf1, 0x93, 0x86, 0x92, 0x1a, 0x0b,
+	0xa4, 0x28, 0x6a, 0xec, 0x2a, 0x01, 0x16, 0xad, 0x04, 0x4a, 0x68, 0x40, 0x95, 0x1a, 0x40, 0x6e,
+	0xbb, 0x80, 0x4d, 0x34, 0x89, 0xa7, 0xce, 0xa8, 0xb6, 0xc7, 0x78, 0x26, 0x29, 0x15, 0x62, 0xc3,
+	0x13, 0x20, 0xd8, 0xc0, 0x8e, 0x47, 0x61, 0xd9, 0x25, 0x82, 0x07, 0x28, 0x4a, 0x79, 0x10, 0x34,
+	0x63, 0x27, 0x25, 0x2e, 0x48, 0xac, 0x3c, 0xf6, 0xf9, 0xbe, 0xef, 0x7c, 0x67, 0xce, 0x39, 0x86,
+	0x68, 0xc0, 0x49, 0x54, 0xe5, 0x24, 0x1a, 0xd2, 0x1e, 0x31, 0xc3, 0x88, 0x09, 0x86, 0x66, 0x71,
+	0x48, 0x3b, 0xc3, 0x7a, 0xf1, 0x9a, 0xcb, 0x98, 0xeb, 0x11, 0x4b, 0x7d, 0xed, 0x0e, 0x0e, 0x2c,
+	0xe2, 0x87, 0xe2, 0x38, 0x06, 0x15, 0x57, 0xd3, 0x41, 0x41, 0x7d, 0xc2, 0x05, 0xf6, 0xc3, 0x04,
+	0x50, 0x4a, 0x03, 0x9c, 0x41, 0x84, 0x05, 0x65, 0x41, 0x12, 0xd7, 0xd3, 0xf1, 0x03, 0x4a, 0x3c,
+	0xa7, 0xe3, 0x63, 0x7e, 0x98, 0x20, 0x56, 0x12, 0x04, 0x0e, 0xa9, 0x85, 0x83, 0x80, 0x09, 0x45,
+	0xe7, 0x49, 0x74, 0x4d, 0x3d, 0x7a, 0x55, 0x97, 0x04, 0x55, 0x7e, 0x84, 0x5d, 0x97, 0x44, 0x16,
+	0x0b, 0x15, 0xe2, 0x37, 0xe8, 0xaa, 0x4b, 0x45, 0x7f, 0xd0, 0x35, 0x7b, 0xcc, 0xb7, 0x5c, 0xe6,
+	0xb2, 0xf3, 0xb4, 0xf2, 0x4d, 0xbd, 0xa8, 0x53, 0x02, 0xbf, 0xfb, 0x0b, 0xdc, 0x3f, 0xa2, 0xe2,
+	0x90, 0x1d, 0x59, 0x2e, 0xab, 0xaa, 0x60, 0x75, 0x88, 0x3d, 0xea, 0x60, 0xc1, 0x22, 0x6e, 0x4d,
+	0x8e, 0x31, 0xcf, 0xf8, 0x04, 0x60, 0x66, 0x9f, 0x93, 0x08, 0xdd, 0x81, 0x1a, 0x75, 0x0a, 0x40,
+	0x07, 0xe5, 0x85, 0xe6, 0xad, 0xd1, 0xe9, 0xea, 0x8d, 0xfc, 0x4c, 0xe5, 0xfa, 0xf6, 0x96, 0xee,
+	0x0f, 0xb8, 0xd0, 0xbb, 0x44, 0xc7, 0x7a, 0xc8, 0x38, 0x15, 0x74, 0x48, 0x74, 0x1a, 0x08, 0xe2,
+	0x92, 0xc8, 0xd6, 0xa8, 0x83, 0x74, 0x98, 0x89, 0x98, 0x47, 0x0a, 0x9a, 0x0e, 0xca, 0xff, 0xd7,
+	0x72, 0x66, 0xdc, 0x09, 0xd3, 0x66, 0x1e, 0xb1, 0x55, 0x04, 0xdd, 0x87, 0xb0, 0x17, 0x11, 0x2c,
+	0x88, 0xd3, 0xc1, 0xa2, 0xf0, 0x8f, 0x0e, 0xca, 0xd9, 0x5a, 0xd1, 0x8c, 0x6f, 0xca, 0x1c, 0x17,
+	0x65, 0xee, 0x8d, 0x9b, 0xd1, 0xcc, 0xbc, 0x3d, 0x5d, 0x05, 0xf6, 0x7c, 0xc2, 0x69, 0x08, 0x63,
+	0x0d, 0xce, 0x49, 0x87, 0x52, 0x72, 0x92, 0x0e, 0xfc, 0x29, 0x9d, 0xf1, 0x11, 0xc0, 0xfc, 0x0e,
+	0xe5, 0x42, 0x52, 0xb8, 0x4d, 0x5e, 0x0c, 0x08, 0x17, 0xa8, 0x05, 0x17, 0xc6, 0x1e, 0x38, 0x0d,
+	0x7a, 0x31, 0xff, 0x6f, 0x6c, 0xe4, 0x12, 0xda, 0xae, 0x64, 0xa1, 0x7b, 0x10, 0x32, 0xcf, 0x21,
+	0x51, 0x47, 0xf4, 0x49, 0xa0, 0x4a, 0xce, 0xd6, 0x96, 0x2f, 0x68, 0x6c, 0x25, 0x63, 0xd3, 0xcc,
+	0x7c, 0x50, 0x95, 0x28, 0xca, 0x5e, 0x9f, 0x04, 0x46, 0x04, 0x97, 0xf6, 0x43, 0x07, 0x0b, 0xa2,
+	0xea, 0x49, 0xbc, 0xe9, 0x30, 0x23, 0x47, 0x3a, 0xb1, 0x34, 0x29, 0x49, 0x41, 0x54, 0x04, 0x6d,
+	0xc2, 0xec, 0x40, 0xd1, 0xd4, 0xac, 0x25, 0x79, 0x2f, 0x7a, 0x7f, 0x28, 0xc7, 0xb1, 0x8d, 0xf9,
+	0xa1, 0x0d, 0x63, 0xb8, 0x3c, 0x57, 0xca, 0x30, 0xa3, 0x6e, 0x6e, 0x1e, 0xfe, 0xfb, 0x68, 0xbf,
+	0xb5, 0xbb, 0x97, 0x9f, 0x41, 0x10, 0xce, 0xb6, 0x5b, 0xed, 0x66, 0xcb, 0xce, 0x03, 0xf9, 0xb9,
+	0xb1, 0xd5, 0xde, 0x7e, 0x9c, 0xd7, 0x6a, 0x5f, 0x35, 0x98, 0x95, 0x59, 0x77, 0xe3, 0xdd, 0x42,
+	0xdb, 0xf0, 0xbf, 0x86, 0xe3, 0xa8, 0xe1, 0x98, 0x72, 0x55, 0xbc, 0x72, 0x21, 0x75, 0x4b, 0xee,
+	0x99, 0x51, 0x78, 0xf3, 0xed, 0xc7, 0x7b, 0x0d, 0x19, 0x0b, 0x6a, 0x01, 0x86, 0x75, 0x4b, 0xba,
+	0xe7, 0x1b, 0xa0, 0x82, 0x76, 0xe0, 0xfc, 0xa4, 0x27, 0xa8, 0x30, 0x16, 0x4b, 0xb7, 0xa9, 0x38,
+	0x95, 0xc6, 0xb8, 0xac, 0xe4, 0x16, 0xd1, 0xb4, 0xdc, 0x3a, 0x40, 0x4f, 0xe0, 0xe2, 0x84, 0xda,
+	0x3c, 0x56, 0xd5, 0xe5, 0xa7, 0xae, 0x8d, 0x79, 0x24, 0xa5, 0x55, 0x54, 0x5a, 0x97, 0x10, 0x9a,
+	0xd2, 0xb2, 0xe4, 0xc4, 0xac, 0x03, 0xf4, 0x0c, 0xc2, 0xf3, 0xbe, 0xa0, 0xe5, 0x09, 0x33, 0xdd,
+	0xab, 0x94, 0xa8, 0xa1, 0x44, 0x57, 0x6a, 0x57, 0xa7, 0x45, 0x5f, 0xc9, 0x87, 0x49, 0x9d, 0xd7,
+	0x1b, 0xa0, 0xd2, 0x0c, 0xde, 0x35, 0xda, 0x68, 0x09, 0xe6, 0x24, 0x41, 0x4f, 0xfe, 0x5a, 0x35,
+	0x50, 0xaf, 0x68, 0x40, 0x8b, 0x6e, 0xc3, 0x9c, 0x6b, 0x3f, 0x7d, 0xa0, 0x93, 0x97, 0xd8, 0x0f,
+	0x3d, 0x82, 0x6e, 0xf6, 0x85, 0x08, 0xf9, 0x86, 0x65, 0xa5, 0x57, 0xdf, 0x8d, 0xc2, 0x5e, 0x35,
+	0x41, 0x9d, 0x8c, 0x4a, 0xe0, 0xcb, 0xa8, 0x04, 0xbe, 0x8f, 0x4a, 0xe0, 0xf3, 0x59, 0x09, 0x9c,
+	0x9c, 0x95, 0xc0, 0xf3, 0x39, 0x73, 0x33, 0x36, 0xd6, 0x9d, 0x55, 0x3d, 0xa9, 0xff, 0x0c, 0x00,
+	0x00, 0xff, 0xff, 0x73, 0x4e, 0x65, 0xa2, 0x27, 0x05, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -531,3 +610,800 @@ var _UserService_serviceDesc = grpc.ServiceDesc{
 	},
 	Metadata: "user-service.proto",
 }
+
+func (m *User) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *User) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *User) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if m.CreatedAt != nil {
+		n1, err1 := github_com_gogo_protobuf_types.StdTimeMarshalTo(*m.CreatedAt, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(*m.CreatedAt):])
+		if err1 != nil {
+			return 0, err1
+		}
+		i -= n1
+		i = encodeVarintUserService(dAtA, i, uint64(n1))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.Role != 0 {
+		i = encodeVarintUserService(dAtA, i, uint64(m.Role))
+		i--
+		dAtA[i] = 0x10
+	}
+	if m.Id != 0 {
+		i = encodeVarintUserService(dAtA, i, uint64(m.Id))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *UserRole) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *UserRole) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *UserRole) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if m.Role != 0 {
+		i = encodeVarintUserService(dAtA, i, uint64(m.Role))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ListUsersRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ListUsersRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ListUsersRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if m.OlderThen != nil {
+		n2, err2 := github_com_gogo_protobuf_types.StdDurationMarshalTo(*m.OlderThen, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdDuration(*m.OlderThen):])
+		if err2 != nil {
+			return 0, err2
+		}
+		i -= n2
+		i = encodeVarintUserService(dAtA, i, uint64(n2))
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.CreatedSince != nil {
+		n3, err3 := github_com_gogo_protobuf_types.StdTimeMarshalTo(*m.CreatedSince, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(*m.CreatedSince):])
+		if err3 != nil {
+			return 0, err3
+		}
+		i -= n3
+		i = encodeVarintUserService(dAtA, i, uint64(n3))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *UpdateUserRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *UpdateUserRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *UpdateUserRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if m.UpdateMask != nil {
+		{
+			size, err := m.UpdateMask.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintUserService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	if m.User != nil {
+		{
+			size, err := m.User.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintUserService(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func encodeVarintUserService(dAtA []byte, offset int, v uint64) int {
+	offset -= sovUserService(v)
+	base := offset
+	for v >= 1<<7 {
+		dAtA[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	dAtA[offset] = uint8(v)
+	return base
+}
+func (m *User) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Id != 0 {
+		n += 1 + sovUserService(uint64(m.Id))
+	}
+	if m.Role != 0 {
+		n += 1 + sovUserService(uint64(m.Role))
+	}
+	if m.CreatedAt != nil {
+		l = github_com_gogo_protobuf_types.SizeOfStdTime(*m.CreatedAt)
+		n += 1 + l + sovUserService(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *UserRole) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Role != 0 {
+		n += 1 + sovUserService(uint64(m.Role))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *ListUsersRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.CreatedSince != nil {
+		l = github_com_gogo_protobuf_types.SizeOfStdTime(*m.CreatedSince)
+		n += 1 + l + sovUserService(uint64(l))
+	}
+	if m.OlderThen != nil {
+		l = github_com_gogo_protobuf_types.SizeOfStdDuration(*m.OlderThen)
+		n += 1 + l + sovUserService(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *UpdateUserRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.User != nil {
+		l = m.User.Size()
+		n += 1 + l + sovUserService(uint64(l))
+	}
+	if m.UpdateMask != nil {
+		l = m.UpdateMask.Size()
+		n += 1 + l + sovUserService(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func sovUserService(x uint64) (n int) {
+	return (math_bits.Len64(x|1) + 6) / 7
+}
+func sozUserService(x uint64) (n int) {
+	return sovUserService(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (m *User) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowUserService
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: User: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: User: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			m.Id = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowUserService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Id |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Role", wireType)
+			}
+			m.Role = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowUserService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Role |= Role(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CreatedAt", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowUserService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthUserService
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthUserService
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.CreatedAt == nil {
+				m.CreatedAt = new(time.Time)
+			}
+			if err := github_com_gogo_protobuf_types.StdTimeUnmarshal(m.CreatedAt, dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipUserService(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthUserService
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UserRole) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowUserService
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UserRole: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UserRole: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Role", wireType)
+			}
+			m.Role = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowUserService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Role |= Role(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipUserService(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthUserService
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListUsersRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowUserService
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListUsersRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListUsersRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CreatedSince", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowUserService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthUserService
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthUserService
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.CreatedSince == nil {
+				m.CreatedSince = new(time.Time)
+			}
+			if err := github_com_gogo_protobuf_types.StdTimeUnmarshal(m.CreatedSince, dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OlderThen", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowUserService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthUserService
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthUserService
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.OlderThen == nil {
+				m.OlderThen = new(time.Duration)
+			}
+			if err := github_com_gogo_protobuf_types.StdDurationUnmarshal(m.OlderThen, dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipUserService(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthUserService
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UpdateUserRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowUserService
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UpdateUserRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UpdateUserRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field User", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowUserService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthUserService
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthUserService
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.User == nil {
+				m.User = &User{}
+			}
+			if err := m.User.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UpdateMask", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowUserService
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthUserService
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthUserService
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.UpdateMask == nil {
+				m.UpdateMask = &types.FieldMask{}
+			}
+			if err := m.UpdateMask.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipUserService(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthUserService
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func skipUserService(dAtA []byte) (n int, err error) {
+	l := len(dAtA)
+	iNdEx := 0
+	depth := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return 0, ErrIntOverflowUserService
+			}
+			if iNdEx >= l {
+				return 0, io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		wireType := int(wire & 0x7)
+		switch wireType {
+		case 0:
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowUserService
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				iNdEx++
+				if dAtA[iNdEx-1] < 0x80 {
+					break
+				}
+			}
+		case 1:
+			iNdEx += 8
+		case 2:
+			var length int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowUserService
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				length |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if length < 0 {
+				return 0, ErrInvalidLengthUserService
+			}
+			iNdEx += length
+		case 3:
+			depth++
+		case 4:
+			if depth == 0 {
+				return 0, ErrUnexpectedEndOfGroupUserService
+			}
+			depth--
+		case 5:
+			iNdEx += 4
+		default:
+			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
+		}
+		if iNdEx < 0 {
+			return 0, ErrInvalidLengthUserService
+		}
+		if depth == 0 {
+			return iNdEx, nil
+		}
+	}
+	return 0, io.ErrUnexpectedEOF
+}
+
+var (
+	ErrInvalidLengthUserService        = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowUserService          = fmt.Errorf("proto: integer overflow")
+	ErrUnexpectedEndOfGroupUserService = fmt.Errorf("proto: unexpected end of group")
+)
