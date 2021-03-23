@@ -200,14 +200,14 @@ services:
   #   image: envoy-proxy
   #   container_name: envoy-proxy
   #   build:
-  #     context: ./pkg/api/v2/gen/grpc-web/envoy
+  #     context: ./pkg/api/v2/grpc-web/envoy
   #   ports:
   #       - 7070:8080
   #       - 9901:9901
   #   networks:
   #     - grpc-rest
   #   depends_on:
-  #     - client-service
+  #     - v2
 
 networks:
   grpc-rest:

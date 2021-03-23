@@ -28,12 +28,12 @@ cert:
 .PHONY: gen
 gen:
 	@echo "====gen stubs===="
-	sh gen-proto.sh
+	sh ./script/gen-proto.sh
 
 .PHONY: genv3
 genv3:
 	@echo "====gen stubs v3===="
-	sh gen-proto-v3.sh
+	sh ./script/gen-proto-v3.sh
 
 .PHONY: gen-demo
 gen-demo:
@@ -48,11 +48,11 @@ gen-gateway-unix:
 	docker run --rm --name protoc-gen -v `pwd`:/defs namely/gen-grpc-gateway -f . -s ServiceA -o ..\..\..\pkg\api\v2\gen\grpc-gateway
 # docker run --rm --name protoc-gen -v `pwd`:/defs namely/protoc-all -d . -l go --with-gateway
 
-# run cli
-.PHONY: run
-run:
-	@echo "====Run grpc server v1===="
-	go run main.go v1
+# gen openapi
+.PHONY: gen-openapi
+gen-openapi:
+	@echo "====gen openapi===="
+	sh ./script/gen-openapi.sh
 
 .PHONY: grpc
 grpc:
@@ -61,6 +61,7 @@ grpc:
 	# sleep 20s
 	docker-compose up -d
 
+# https://github.com/ktr0731/evans
 # Evans cli: calling grpc service (reflection.Register(server))
 .PHONY: cli
 cli:
@@ -82,19 +83,6 @@ v2curl:
 	@echo ""
 	curl -H "x-request-id:1" -X POST localhost:8001/v2/extra/post -d '{"timestamp": 7000}'
 
-.PHONY: grpc-server
-# run locally grpc server & client
-grpc-server:
-	@echo "====Run grpc server service===="
-	docker-compose up --build client-service
-	# go run ./cmd/server/main.go -grpc-port=9090 -db-host=:3306 -db-user=user -db-password=pwd -db-scheme=
-
-.PHONY: grpc-client
-grpc-client:
-	@echo "====Run grpc client===="
-	docker-compose -f docker-compose.client.yml up --build client
-	# go run ./cmd/client-grpc/main.go -server=localhost:9090
-
 # run grpc using docker
 .PHONY: service-build-run
 service-build-run:
@@ -112,33 +100,12 @@ gateway-build-run:
 	@echo "===run grpc gateway container==="
 	docker run --rm --name grpc-gw -p 8080:8080 grpc-gateway:gw
 
-
-# run grpc gateway using docker-compose with server initialized manually
-.PHONY: grpc-gw-man
-grpc-gw-man:
-	@echo "===run grpc gateway with manually writted server===="
-	# docker-compose down
-	docker-compose up --build client-service grpc-gateway
-
-
-# run grpc gateway using docker-compose with server auto generated
-.PHONY: grpc-gw-gen
-grpc-gw-gen:
-	@echo "===run grpc gateway with generated server===="
-	# docker-compose down
-	docker-compose up --build client-service grpc-gateway-gen
-	# docker-compose -f docker-compose.gen.yml up --build
-
-.PHONY: grpc-gw-client
-grpc-gw-client:
-	docker-compose -f docker-compose.client.yml up --build client
-
 # grpc-web with envoy & node client
 .PHONY: grpc-web
 grpc-web:
 	@echo "===grpc-web with envoy & node client===="
 	# docker-compose down
-	docker-compose up --build client-service envoy
+	docker-compose up -d --build v2 envoy
 
 .PHONY: grpc-web-client
 grpc-web-client:

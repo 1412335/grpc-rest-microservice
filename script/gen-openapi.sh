@@ -1,3 +1,5 @@
+#!/bin/bash
+
 API_V2=./pkg/api/v2
 API_V3=./pkg/api/v3
 

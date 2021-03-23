@@ -3,6 +3,8 @@
 # Install
 
 ```sh
+make install
+
 # protoc
 https://github.com/protocolbuffers/protobuf/releases
 
@@ -22,7 +24,7 @@ https://github.com/grpc/grpc-web/releases
 go mod vendor
 ```
 
-# grpc-gen-protoc
+# Gen proto
 
 ## Using `protoc`
 ```sh
@@ -45,29 +47,31 @@ docker run --rm --name protoc-gen -v ${pwd}:/defs namely/gen-grpc-gateway \
     -o ..\..\..\pkg\api\v2\gen\grpc-gateway
 ```
 
+# Gen OpenAPI with statik
+```
+make gen-openapi
+```
+
 # Running
+
+## All
+```
+make grpc
+```
 
 ## Internal grpc
 ```sh
 # start grpc service
-docker-compose up --build client-service
+docker-compose up -d --build v2
 
 # run grpc client
-docker-compose -f docker-compose.client.yml up --build client
+docker-compose up -d --build v2-client
 ```
 
 ## grpc-gateway
 ```sh
-# with automatically generated server
-make grpc-gw-gen
-
-# or manually dev
-make grpc-gw-man
-
 # simple testing locally (only unary request)
-make proxy-test
-# or complex testing with streaming request & response
-make grpc-gw-client
+make v2curl
 ```
 
 ## grpc-web
@@ -84,15 +88,18 @@ curl -X GET localhost:8081
 
 ## Cli with evans
 ```sh
-# https://github.com/ktr0731/evans
-evans -r repl --host localhost -p 8081
+# v1
+make cli
+# v2
+make v2cli
 ```
 
 ## Jaeger UI
-[http://127.0.0.1:16686](http://127.0.0.1:16686)
+- Jaeger UI [http://127.0.0.1:16686](http://127.0.0.1:16686)
+- Grafana [http://127.0.0.1:3000](http://127.0.0.1:3000)
 
 ## OpenAPI SwaggerUI
-[http://127.0.0.1:openapi-ui](http://127.0.0.1:8001/openapi-ui)
+- v2 [http://127.0.0.1:8001/openapi-ui](http://127.0.0.1:8001/openapi-ui)
 
 # Note
 - Copy & paste /include/google into protobuf folder (eg: ./api/proto/v2)
