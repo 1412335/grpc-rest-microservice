@@ -206,7 +206,7 @@ func (h *handler) Run() error {
 	if err != nil {
 		return err
 	}
-	
+
 	// proxy address
 	addr := ":" + strconv.Itoa(h.config.Proxy.Port)
 	// router

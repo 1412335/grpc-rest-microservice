@@ -1,0 +1,32 @@
+serviceName: "grpc-gateway"
+version: "v3"
+grpc:
+  host: "v3"
+  port: 9090
+tracing:
+  flags: true
+  metrics: "prometheus"
+proxy:
+  port: 8000
+jwt:
+  secretKey: "lu"
+  duration: "120s"
+  issuer: "lu"
+accessibleRoles:
+  - "/v2.ServiceExtra/Post":
+    - guest
+    - user
+    - admin
+  - "/v2.ServiceExtra/StreamingPost":
+    - guest
+    - admin
+database:
+  host: "postgres"
+  port: 5432
+  user:  "root"
+  password: "root"
+  scheme: "users"
+  maxIdleConns: 10
+  maxOpenConns: 100
+  connectTimeout: "1h"
+  debug: true

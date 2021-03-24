@@ -2,7 +2,7 @@ syntax="proto3";
 
 package api_v3;
 
-import "google/protobuf/empty.proto";
+// import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/field_mask.proto";
@@ -12,6 +12,7 @@ import "google/api/annotations.proto";
 import "protoc-gen-swagger/options/annotations.proto";
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
+// Go 1.11, 1.12, 1.13
 import "github.com/mwitkow/go-proto-validators/validator.proto";
 
 option go_package = ".;api_v3";
@@ -41,47 +42,88 @@ option (gogoproto.goproto_registration) = true;
 option (gogoproto.messagename_all) = true;
 
 service UserService {
-    rpc AddUser(User) returns (google.protobuf.Empty) {
+    rpc Create(CreateUserRequest) returns (CreateUserResponse) {
         option (google.api.http) = {
             post: "/api/v3/users"
             body: "*"
         };
     };
-    rpc ListUsers(ListUsersRequest) returns (stream User) {
+	rpc Delete(DeleteUserRequest) returns (DeleteUserResponse) {
         option (google.api.http) = {
-            get: "/api/v3/users"
+            delete: "/api/v3/users/{id}"
         };
     };
-    rpc ListUsersByRole (UserRole) returns (stream User) {
-        option (google.api.http) = {
-            get: "/api/v3/users/role"
-        };
-    };
-    rpc UpdateUser (UpdateUserRequest) returns (User) {
+	rpc Update(UpdateUserRequest) returns (UpdateUserResponse) {
         option (google.api.http) = {
             patch: "/api/v3/users/{user.id}"
             body: "*"
         };
+    }	
+	rpc List(ListUsersRequest) returns (ListUsersResponse) {
+        option (google.api.http) = {
+            get: "/api/v3/users"
+        };
     };
+    rpc ListStream(ListUsersRequest) returns (stream User) {
+        option (google.api.http) = {
+            get: "/api/v3/users/stream"
+        };
+    };
+
+    // auth
+	rpc Login(LoginRequest) returns (LoginResponse) {
+        option (google.api.http) = {
+            get: "/api/v3/users/login"
+        };
+    }
+	rpc Logout(LogoutRequest) returns (LogoutResponse) {
+        option (google.api.http) = {
+            get: "/api/v3/users/logout"
+        };
+    }
+	rpc Validate(ValidateRequest) returns (ValidateResponse) {
+        option (google.api.http) = {
+            get: "/api/v3/users/validate"
+        };
+    }
 }
 
 enum Role {
     GUEST = 0;
     MEMBER = 1;
     ADMIN = 2;
+    ROOT = 3;
 }
 
 message User {
-    uint32 id = 1 [
-        (validator.field) = {
-            int_gt: 0
-            human_error: "ID must be a positive integer"
-        }
-    ];
-    Role role = 2;
-    google.protobuf.Timestamp created_at = 3 [
+    string id = 1;
+    Role role = 2 [(validator.field) = {is_in_enum : true}];
+    string username = 3;
+    string fullname = 4;
+    string avatar = 5;
+	bool active = 6;
+    string password = 7;
+    string email = 9;
+    google.protobuf.Timestamp created_at = 10 [
         (gogoproto.stdtime) = true
     ];
+    google.protobuf.Timestamp updated_at = 11 [
+        (gogoproto.stdtime) = true
+    ];
+    string verify_token = 12;
+}
+
+message CreateUserRequest {
+	string username = 1;
+	string fullname = 2;
+	string email = 3;
+	string password = 4;
+    string avatar = 5;
+}
+
+message CreateUserResponse {
+	User user = 1;
+	string token = 2;
 }
 
 message UserRole {
@@ -99,9 +141,54 @@ message ListUsersRequest {
     ];
 }
 
+message ListUsersResponse {
+	repeated User users = 1;
+}
+
 message UpdateUserRequest {
     User user = 1;
     // The update mask applies to the resource. For the `FieldMask` definition,
     // see https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask
     google.protobuf.FieldMask update_mask = 2;
+}
+
+message UpdateUserResponse {
+	User user = 1;
+}
+
+message DeleteUserRequest {
+	string id = 1;
+}
+
+message DeleteUserResponse {
+	string id = 1;
+}
+
+// auth
+message LoginRequest {
+	string email = 1;
+	string password = 2;
+}
+
+message LoginResponse {
+	User user = 1;
+	string token = 2;
+}
+
+message LogoutRequest {
+	string id = 1;
+}
+
+message LogoutResponse {
+}
+
+message ValidateRequest {
+	string token = 1;
+}
+
+message ValidateResponse {
+	string id = 1;
+	string username = 2;
+	string fullname = 3;
+	string email = 4;
 }

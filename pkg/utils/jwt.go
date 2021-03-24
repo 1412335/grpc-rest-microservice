@@ -10,41 +10,35 @@ import (
 )
 
 type JWTManager struct {
+	issuer        string
 	secretKey     []byte
 	tokenDuration time.Duration
 }
 
 func NewJWTManager(config *configs.JWT) *JWTManager {
 	return &JWTManager{
+		issuer:        config.Issuer,
 		secretKey:     []byte(config.SecretKey),
 		tokenDuration: config.Duration,
 	}
 }
 
-type UserClaims struct {
-	jwt.StandardClaims
-	Username string
-	Role     string
+func (manager *JWTManager) GetStandardClaims() jwt.StandardClaims {
+	return jwt.StandardClaims{
+		ExpiresAt: time.Now().Add(manager.tokenDuration).Unix(),
+		Issuer:    manager.issuer,
+	}
 }
 
-func (manager *JWTManager) Generate(username, role string) (string, error) {
-	claims := UserClaims{
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(manager.tokenDuration).Unix(),
-			Issuer:    "lu",
-		},
-		Username: username,
-		Role:     role,
-	}
-
+func (manager *JWTManager) Generate(claims jwt.Claims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(manager.secretKey)
 }
 
-func (manager *JWTManager) Verify(accessToken string) (*UserClaims, error) {
+func (manager *JWTManager) Verify(accessToken string, claims jwt.Claims) (jwt.Claims, error) {
 	token, err := jwt.ParseWithClaims(
 		accessToken,
-		&UserClaims{},
+		claims,
 		func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected token signing method")
@@ -58,10 +52,5 @@ func (manager *JWTManager) Verify(accessToken string) (*UserClaims, error) {
 	if !token.Valid {
 		return nil, fmt.Errorf("invalid token")
 	}
-	claims, ok := token.Claims.(*UserClaims)
-	if !ok {
-		return nil, fmt.Errorf("invalid token claims")
-	}
-	fmt.Printf("%v %v %v", claims.Username, claims.Role, claims.StandardClaims.ExpiresAt)
 	return claims, nil
 }

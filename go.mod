@@ -13,6 +13,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/mock v1.4.4
 	github.com/golang/protobuf v1.5.1
+	github.com/google/uuid v1.1.2
 	github.com/gorilla/handlers v1.5.1
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0 // indirect
@@ -35,8 +36,9 @@ require (
 	github.com/uber/jaeger-lib v2.4.0+incompatible
 	github.com/ugorji/go v1.1.9 // indirect
 	github.com/unrolled/secure v1.0.8
+	go.mongodb.org/mongo-driver v1.5.0
 	go.uber.org/zap v1.16.0
-	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect
+	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
 	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c // indirect
 	golang.org/x/text v0.3.5 // indirect

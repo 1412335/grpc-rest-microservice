@@ -92,7 +92,7 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 	return srv
 }
 
-func (s *Server) Run(registerService ...func(*grpc.Server) error) error {
+func (s *Server) Run(registerService func(*grpc.Server) error, stopper func()) error {
 	ctx := context.Background()
 	host := net.JoinHostPort("0.0.0.0", strconv.Itoa(s.config.GRPC.Port))
 	// open tcp connect
@@ -102,11 +102,9 @@ func (s *Server) Run(registerService ...func(*grpc.Server) error) error {
 		return err
 	}
 
-	for _, reg := range registerService {
-		if err := reg(s.Server); err != nil {
-			s.logger.For(ctx).Error("Register service failed", zap.Error(err))
-			return err
-		}
+	if err := registerService(s.Server); err != nil {
+		s.logger.For(ctx).Error("Register service failed", zap.Error(err))
+		return err
 	}
 
 	// graceful shutdown
@@ -116,6 +114,7 @@ func (s *Server) Run(registerService ...func(*grpc.Server) error) error {
 		for sig := range c {
 			s.logger.For(ctx).Error("Shutting down gRPC server", zap.Stringer("signal", sig))
 			s.Server.GracefulStop()
+			stopper()
 			<-ctx.Done()
 		}
 	}()

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 
@@ -65,13 +64,13 @@ func (dal *DataAccessLayer) Connect(ctx context.Context) (*gorm.DB, error) {
 		}
 
 		// SetMaxIdleConns sets the maximum number of connections in the idle connection pool.
-		sqlDB.SetMaxIdleConns(10)
+		sqlDB.SetMaxIdleConns(dal.dbConfig.MaxIdleConns)
 
 		// SetMaxOpenConns sets the maximum number of open connections to the database.
-		sqlDB.SetMaxOpenConns(100)
+		sqlDB.SetMaxOpenConns(dal.dbConfig.MaxOpenConns)
 
 		// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
-		sqlDB.SetConnMaxLifetime(time.Hour)
+		sqlDB.SetConnMaxLifetime(dal.dbConfig.ConnectTimeout)
 
 		dal.dbInstance = db
 	})

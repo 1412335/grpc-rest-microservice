@@ -11,6 +11,7 @@ proxy:
 jwt:
   secretKey: "lu"
   duration: "120s"
+  issuer: "lu"
 authentication:
   username: "lu"
   password: "lu"

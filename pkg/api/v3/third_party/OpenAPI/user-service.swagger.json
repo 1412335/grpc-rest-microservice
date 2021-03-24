@@ -17,7 +17,143 @@
   "paths": {
     "/api/v3/users": {
       "get": {
-        "operationId": "UserService_ListUsers",
+        "operationId": "UserService_List",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/api_v3ListUsersResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "created_since",
+            "description": "list users created after timestamp.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "older_then",
+            "description": "list users in duration from created_since.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      },
+      "post": {
+        "operationId": "UserService_Create",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/api_v3CreateUserResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/api_v3CreateUserRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v3/users/login": {
+      "get": {
+        "summary": "auth",
+        "operationId": "UserService_Login",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/api_v3LoginResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "password",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v3/users/logout": {
+      "get": {
+        "operationId": "UserService_Logout",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/api_v3LogoutResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v3/users/stream": {
+      "get": {
+        "operationId": "UserService_ListStream",
         "responses": {
           "200": {
             "description": "A successful response.(streaming responses)",
@@ -61,14 +197,16 @@
         "tags": [
           "UserService"
         ]
-      },
-      "post": {
-        "operationId": "UserService_AddUser",
+      }
+    },
+    "/api/v3/users/validate": {
+      "get": {
+        "operationId": "UserService_Validate",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "properties": {}
+              "$ref": "#/definitions/api_v3ValidateResponse"
             }
           },
           "default": {
@@ -80,12 +218,10 @@
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/api_v3User"
-            }
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -93,23 +229,14 @@
         ]
       }
     },
-    "/api/v3/users/role": {
-      "get": {
-        "operationId": "UserService_ListUsersByRole",
+    "/api/v3/users/{id}": {
+      "delete": {
+        "operationId": "UserService_Delete",
         "responses": {
           "200": {
-            "description": "A successful response.(streaming responses)",
+            "description": "A successful response.",
             "schema": {
-              "type": "object",
-              "properties": {
-                "result": {
-                  "$ref": "#/definitions/api_v3User"
-                },
-                "error": {
-                  "$ref": "#/definitions/runtimeStreamError"
-                }
-              },
-              "title": "Stream result of api_v3User"
+              "$ref": "#/definitions/api_v3DeleteUserResponse"
             }
           },
           "default": {
@@ -121,16 +248,10 @@
         },
         "parameters": [
           {
-            "name": "role",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "enum": [
-              "GUEST",
-              "MEMBER",
-              "ADMIN"
-            ],
-            "default": "GUEST"
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
           }
         ],
         "tags": [
@@ -140,12 +261,12 @@
     },
     "/api/v3/users/{user.id}": {
       "patch": {
-        "operationId": "UserService_UpdateUser",
+        "operationId": "UserService_Update",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/api_v3User"
+              "$ref": "#/definitions/api_v3UpdateUserResponse"
             }
           },
           "default": {
@@ -160,8 +281,7 @@
             "name": "user.id",
             "in": "path",
             "required": true,
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           {
             "name": "body",
@@ -179,12 +299,77 @@
     }
   },
   "definitions": {
+    "api_v3CreateUserRequest": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "fullname": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string"
+        }
+      }
+    },
+    "api_v3CreateUserResponse": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "#/definitions/api_v3User"
+        },
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "api_v3DeleteUserResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "api_v3ListUsersResponse": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/api_v3User"
+          }
+        }
+      }
+    },
+    "api_v3LoginResponse": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "#/definitions/api_v3User"
+        },
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "api_v3LogoutResponse": {
+      "type": "object"
+    },
     "api_v3Role": {
       "type": "string",
       "enum": [
         "GUEST",
         "MEMBER",
-        "ADMIN"
+        "ADMIN",
+        "ROOT"
       ],
       "default": "GUEST"
     },
@@ -200,19 +385,68 @@
         }
       }
     },
+    "api_v3UpdateUserResponse": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "#/definitions/api_v3User"
+        }
+      }
+    },
     "api_v3User": {
       "type": "object",
       "properties": {
         "id": {
-          "type": "integer",
-          "format": "int64"
+          "type": "string"
         },
         "role": {
           "$ref": "#/definitions/api_v3Role"
         },
+        "username": {
+          "type": "string"
+        },
+        "fullname": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "password": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
         "created_at": {
           "type": "string",
           "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "verify_token": {
+          "type": "string"
+        }
+      }
+    },
+    "api_v3ValidateResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "fullname": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
         }
       }
     },

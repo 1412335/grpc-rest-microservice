@@ -57,18 +57,46 @@ type Proxy struct {
 
 // json web token
 type JWT struct {
+	Issuer    string
 	SecretKey string
 	Duration  time.Duration
 }
 
+// db
+// type Database struct {
+// 	Name    string
+// 	MySQL   *MySQL
+// 	MongoDB *MongoDB
+// }
+
 // mysql
 type Database struct {
-	Host     string
-	Port     string
+	Host           string
+	Port           string
+	User           string
+	Password       string
+	Scheme         string
+	Debug          bool
+	MaxIdleConns   int
+	MaxOpenConns   int
+	ConnectTimeout time.Duration
+}
+
+// mongodb
+type MongoDB struct {
+	ConnectionURI   string
+	Database        string
+	Auth            *MongoDBAuthentication
+	PoolSize        uint64
+	MaxConnIdleTime time.Duration
+	ConnectTimeout  time.Duration
+	Debug           bool
+}
+
+type MongoDBAuthentication struct {
+	Source   string
 	User     string
 	Password string
-	Scheme   string
-	Debug    bool
 }
 
 // manager grpc-pool

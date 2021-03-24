@@ -13,7 +13,6 @@ import (
 
 	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/grpc-gateway/gen"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
-	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 
 	"google.golang.org/grpc/metadata"
 )
@@ -21,10 +20,10 @@ import (
 type ServiceExtraImpl struct {
 	logger log.Factory
 	// userStorage UserStore
-	jwtManager *utils.JWTManager
+	jwtManager *TokenService
 }
 
-func NewServiceExtraImpl(jwtManager *utils.JWTManager, logger log.Factory) api_v2.ServiceExtraServer {
+func NewServiceExtraImpl(jwtManager *TokenService, logger log.Factory) api_v2.ServiceExtraServer {
 	return &ServiceExtraImpl{
 		jwtManager: jwtManager,
 		logger:     logger,

@@ -25,6 +25,7 @@ import (
 
 	// Static files
 	_ "github.com/1412335/grpc-rest-microservice/pkg/api/v3/statik"
+	_ "google.golang.org/genproto/googleapis/rpc/errdetails"
 )
 
 type handler struct {

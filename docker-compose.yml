@@ -20,6 +20,21 @@ services:
     networks:
       - grpc-rest
 
+  postgres:
+    container_name: postgres
+    image: "postgres:alpine"
+    restart: on-failure
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      - ./docker/postgres:/docker-entrypoint-initdb.d
+    networks:
+      - grpc-rest
+
   # mytop:
   #   image: srcoder/mytop
   #   container_name: mytop
@@ -42,8 +57,8 @@ services:
       - ./docker/tracing/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
       - ./docker/tracing/grafana/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
       - ./docker/tracing/grafana/dashboards/hotrod_metrics_logs.json:/etc/grafana/provisioning/dashboards/hotrod_metrics_logs.json
-    # environment:
-      # - GF_SECURITY_ADMIN_PASSWORD=admin
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
       # - GF_USERS_ALLOW_SIGN_UP=false
       # - GF_SERVER_DOMAIN=myrul.com
       # - GF_SMTP_ENABLED=true
@@ -205,14 +220,14 @@ services:
     ports:
       - '8082:9090' # gRPC server
       - '8002:8000' # gRPC gateway
-    command: ["-t","-m","prometheus","-v","v3","v3"]
+    command: ["-c","./pkg/service/v3/config.yml","-t","-m","prometheus","-v","v3","v3"]
     environment:
       - JAEGER_AGENT_HOST=jaeger
       - JAEGER_AGENT_PORT=6831
     networks:
       - grpc-rest
     depends_on:
-      - mysql
+      - postgres
     logging:
       driver: loki
       options:
@@ -234,3 +249,6 @@ services:
 
 networks:
   grpc-rest:
+
+volumes:
+  postgres:

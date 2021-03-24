@@ -11,10 +11,8 @@ import (
 	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/grpc-gateway/gen"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/mysql"
-	"github.com/1412335/grpc-rest-microservice/pkg/interceptor"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/tracing"
-	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 	_ "github.com/go-sql-driver/mysql"
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/uber/jaeger-lib/metrics"
@@ -28,7 +26,7 @@ type Server struct {
 	server         *grpc.Server
 	logger         log.Factory
 	metricsFactory metrics.Factory
-	jwtManager     *utils.JWTManager
+	jwtManager     *TokenService
 }
 
 type ServerOption func(*Server) error
@@ -51,7 +49,7 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 	// create server
 	srv := &Server{
 		config:     srvConfig,
-		jwtManager: utils.NewJWTManager(srvConfig.JWT),
+		jwtManager: NewTokenService(srvConfig.JWT),
 	}
 	// set options
 	for _, o := range opt {
@@ -78,7 +76,7 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 	// streamInterceptors = append(streamInterceptors, simpleInterceptor.Stream())
 
 	// auth server interceptor
-	authInterceptor := interceptor.NewAuthServerInterceptor(srv.logger, srv.jwtManager, srvConfig.AccessibleRoles)
+	authInterceptor := NewAuthServerInterceptor(srv.logger, srv.jwtManager, srvConfig.AccessibleRoles)
 	unaryInterceptors = append(unaryInterceptors, authInterceptor.Unary())
 	streamInterceptors = append(streamInterceptors, authInterceptor.Stream())
 
