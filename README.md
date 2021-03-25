@@ -112,6 +112,10 @@ make v2cli
 - https://github.com/grpc/grpc-web
 - https://github.com/namely/docker-protoc
 
+## Gogo protobuf
+- [ISSUES WITH GOGO](https://jbrandhorst.com/post/gogoproto/)
+- [ISSUES Patch feature grpc-gateway w gogo](https://github.com/gogo/grpc-example/issues/31)
+
 ## Official examples
 - https://github.com/grpc/grpc-go/blob/master/examples/route_guide
 - https://github.com/grpc-ecosystem/grpc-gateway/tree/master/examples/internal/proto/examplepb

@@ -17,6 +17,7 @@
   "paths": {
     "/api/v3/users": {
       "get": {
+        "summary": "NOTE: grpc-gateway patch feature not work w gogo\r\nhttps://github.com/gogo/grpc-example/issues/31\r\nrpc Update(UpdateUserRequest) returns (UpdateUserResponse) {\r\n\toption (google.api.http) = {\r\n        put: \"/api/v3/users/{user.id}\"\r\n\t\tbody: \"user\"\r\n\t\tadditional_bindings: [\r\n\t\t\t{\r\n\t\t\t\tpatch: \"/api/v3/users/{user.id}\"\r\n\t\t\t\tbody: \"user\"\r\n\t\t\t},\r\n\t\t\t{\r\n\t\t\t\tpatch: \"/api/v3/users/{user.id}\"\r\n\t\t\t\tbody: \"*\"\r\n\t\t\t}\r\n\t\t]\r\n\t};\r\n}",
         "operationId": "UserService_List",
         "responses": {
           "200": {
@@ -33,6 +34,12 @@
           }
         },
         "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
           {
             "name": "created_since",
             "description": "list users created after timestamp.",
@@ -82,7 +89,7 @@
           },
           {
             "name": "role",
-            "description": "optional Role role = 8; // gogo not supported.",
+            "description": "NOTE: gogo not supported: optional\r\ndown proto v2 to use [(gogoproto.nullable)=false].",
             "in": "query",
             "required": false,
             "type": "string",
@@ -182,6 +189,12 @@
         },
         "parameters": [
           {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
+          {
             "name": "body",
             "in": "body",
             "required": true,
@@ -222,6 +235,12 @@
           }
         },
         "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
           {
             "name": "created_since",
             "description": "list users created after timestamp.",
@@ -271,7 +290,7 @@
           },
           {
             "name": "role",
-            "description": "optional Role role = 8; // gogo not supported.",
+            "description": "NOTE: gogo not supported: optional\r\ndown proto v2 to use [(gogoproto.nullable)=false].",
             "in": "query",
             "required": false,
             "type": "string",
@@ -282,44 +301,6 @@
               "ROOT"
             ],
             "default": "GUEST"
-          }
-        ],
-        "tags": [
-          "UserService"
-        ]
-      }
-    },
-    "/api/v3/users/u/{user.id}": {
-      "patch": {
-        "operationId": "UserService_Update3",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/api_v3UpdateUserResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/runtimeError"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "user.id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/api_v3UpdateUserRequest"
-            }
           }
         ],
         "tags": [
@@ -397,7 +378,7 @@
     },
     "/api/v3/users/{user.id}": {
       "patch": {
-        "operationId": "UserService_Update2",
+        "operationId": "UserService_Update",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -424,19 +405,8 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/api_v3User"
+              "$ref": "#/definitions/api_v3UpdateUserRequest"
             }
-          },
-          {
-            "name": "update_mask.paths",
-            "description": "The set of field mask paths.",
-            "in": "query",
-            "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
           },
           {
             "name": "Authorization",

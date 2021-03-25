@@ -67,6 +67,9 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 	srv.grpcServer = grpc.NewServer(
 		srv.buildServerInterceptors()...,
 	)
+	// NOTE: gogo/protobuf is currently not working perfectly with server reflection
+	// grpc reflection: use with evans
+	reflection.Register(srv.grpcServer)
 	return srv
 }
 
@@ -121,9 +124,6 @@ func (s *Server) Run(registerService func(*grpc.Server) error, stopper func()) e
 			<-ctx.Done()
 		}
 	}()
-
-	// grpc reflection: use with evans
-	reflection.Register(s.grpcServer)
 
 	s.logger.For(ctx).Info("Starting gRPC server", zap.String("at", host))
 
