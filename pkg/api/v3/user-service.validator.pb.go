@@ -65,6 +65,31 @@ func (this *ListUsersRequest) Validate() error {
 			return github_com_mwitkow_go_proto_validators.FieldError("OlderThen", err)
 		}
 	}
+	if this.Id != nil {
+		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.Id); err != nil {
+			return github_com_mwitkow_go_proto_validators.FieldError("Id", err)
+		}
+	}
+	if this.Username != nil {
+		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.Username); err != nil {
+			return github_com_mwitkow_go_proto_validators.FieldError("Username", err)
+		}
+	}
+	if this.Fullname != nil {
+		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.Fullname); err != nil {
+			return github_com_mwitkow_go_proto_validators.FieldError("Fullname", err)
+		}
+	}
+	if this.Email != nil {
+		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.Email); err != nil {
+			return github_com_mwitkow_go_proto_validators.FieldError("Email", err)
+		}
+	}
+	if this.Active != nil {
+		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.Active); err != nil {
+			return github_com_mwitkow_go_proto_validators.FieldError("Active", err)
+		}
+	}
 	return nil
 }
 func (this *ListUsersResponse) Validate() error {

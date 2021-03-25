@@ -10,6 +10,7 @@ protoc -I $GOPATH/src \
     -I ./vendor/ \
     -I $PROTO_V3/ \
     --gogo_out=plugins=grpc,\
+Mgoogle/protobuf/wrappers.proto=github.com/gogo/protobuf/types,\
 Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types,\
 Mgoogle/protobuf/duration.proto=github.com/gogo/protobuf/types,\
 Mgoogle/protobuf/empty.proto=github.com/gogo/protobuf/types,\
@@ -17,6 +18,7 @@ Mgoogle/api/annotations.proto=github.com/gogo/googleapis/google/api,\
 Mgoogle/protobuf/field_mask.proto=github.com/gogo/protobuf/types:\
 $API_V3 \
     --grpc-gateway_out=allow_patch_feature=false,\
+Mgoogle/protobuf/wrappers.proto=github.com/gogo/protobuf/types,\
 Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types,\
 Mgoogle/protobuf/duration.proto=github.com/gogo/protobuf/types,\
 Mgoogle/protobuf/empty.proto=github.com/gogo/protobuf/types,\
@@ -25,6 +27,7 @@ Mgoogle/protobuf/field_mask.proto=github.com/gogo/protobuf/types:\
 $API_V3 \
     --swagger_out=$API_V3/third_party/OpenAPI/ \
     --govalidators_out=gogoimport=true,\
+Mgoogle/protobuf/wrappers.proto=github.com/gogo/protobuf/types,\
 Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types,\
 Mgoogle/protobuf/duration.proto=github.com/gogo/protobuf/types,\
 Mgoogle/protobuf/empty.proto=github.com/gogo/protobuf/types,\

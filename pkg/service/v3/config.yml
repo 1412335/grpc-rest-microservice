@@ -12,7 +12,7 @@ proxy:
   port: 8000
 jwt:
   secretKey: "lu"
-  duration: "120s"
+  duration: "1200s"
   issuer: "lu"
 accessibleRoles:
   - "/api_v3.UserService/List":
@@ -22,11 +22,9 @@ accessibleRoles:
     - admin
     - root
   - "/api_v3.UserService/Delete":
-    - user
     - admin
     - root
   - "/api_v3.UserService/Update":
-    - user
     - admin
     - root
 database:

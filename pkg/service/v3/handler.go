@@ -29,12 +29,12 @@ import (
 	_ "google.golang.org/genproto/googleapis/rpc/errdetails"
 )
 
-type handler struct {
+type Handler struct {
 	config *configs.ServiceConfig
 }
 
-func NewHandler(config *configs.ServiceConfig) *handler {
-	return &handler{
+func NewHandler(config *configs.ServiceConfig) *Handler {
+	return &Handler{
 		config: config,
 	}
 }
@@ -43,7 +43,7 @@ func NewHandler(config *configs.ServiceConfig) *handler {
 // permenant request headers maintained by IANA.
 // http://www.iana.org/assignments/message-headers/message-headers.xml
 // From https://github.com/grpc-ecosystem/grpc-gateway/blob/7a2a43655ccd9a488d423ea41a3fc723af103eda/runtime/context.go#L157
-func (h *handler) isPermanentHTTPHeader(hdr string) bool {
+func (h *Handler) isPermanentHTTPHeader(hdr string) bool {
 	switch hdr {
 	case
 		"Accept",
@@ -76,7 +76,7 @@ func (h *handler) isPermanentHTTPHeader(hdr string) bool {
 }
 
 // isReserved returns whether the key is reserved by gRPC.
-func (h *handler) isReserved(key string) bool {
+func (h *Handler) isReserved(key string) bool {
 	return strings.HasPrefix(key, "Grpc-")
 }
 
@@ -84,7 +84,7 @@ func (h *handler) isReserved(key string) bool {
 // grpc metadata. Permanent headers (i.e. User-Agent) are prepended with
 // "grpc-gateway". Headers that start with start with "Grpc-" (reserved
 // by grpc) are prepended with "X-". Other headers are forwarded as is.
-func (h *handler) incomingHeaderMatcher(key string) (string, bool) {
+func (h *Handler) incomingHeaderMatcher(key string) (string, bool) {
 	key = textproto.CanonicalMIMEHeaderKey(key)
 	if h.isPermanentHTTPHeader(key) {
 		return runtime.MetadataPrefix + key, true
@@ -103,12 +103,12 @@ func (h *handler) incomingHeaderMatcher(key string) (string, bool) {
 
 // outgoingHeaderMatcher transforms outgoing metadata into HTTP headers.
 // We return any response metadata as is.
-func (h *handler) outgoingHeaderMatcher(metadata string) (string, bool) {
+func (h *Handler) outgoingHeaderMatcher(metadata string) (string, bool) {
 	return metadata, true
 }
 
 // init gin router
-func (h *handler) initRouter(handler http.Handler) *gin.Engine {
+func (h *Handler) initRouter(handler http.Handler) *gin.Engine {
 	if os.Getenv("GOENV") != "dev" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -186,7 +186,7 @@ func serveOpenAPI(r *gin.Engine) error {
 }
 
 // run grpc-gateway
-func (h *handler) Run() error {
+func (h *Handler) Run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

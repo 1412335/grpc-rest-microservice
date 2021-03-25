@@ -2,9 +2,12 @@ package v3
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
-	_ "github.com/fatih/structs"
+	"github.com/fatih/structs"
+	"github.com/gogo/googleapis/google/rpc"
+	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -26,7 +29,7 @@ var (
 	ErrInvalidEmail      = errors.BadRequest("INVALID_EMAIL", "email", "The email provided is invalid")
 	ErrInvalidPassword   = errors.BadRequest("INVALID_PASSWORD", "password", "Password must be at least 8 characters long")
 	ErrIncorrectPassword = errors.Unauthenticated("INCORRECT_PASSWORD", "password", "Email or password is incorrect")
-	ErrMissingId         = errors.BadRequest("MISSING_ID", "id", "Missing user id")
+	ErrMissingID         = errors.BadRequest("MISSING_ID", "id", "Missing user id")
 	ErrMissingToken      = errors.BadRequest("MISSING_TOKEN", "token", "Missing token")
 
 	ErrHashPassword = errors.InternalServerError("HASH_PASSWORD", "hash password failed")
@@ -122,7 +125,7 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 			Email:       strings.ToLower(req.Email),
 			Password:    pwdHashed,
 			VerifyToken: pwdHashed[:10],
-			Role:        api_v3.Role_GUEST.String(),
+			Role:        api_v3.Role_USER.String(),
 		}
 		if err := tx.Create(user).Error; err != nil && strings.Contains(err.Error(), "idx_users_email") {
 			return ErrDuplicateEmail
@@ -147,7 +150,7 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 // delete user by id
 func (u *userServiceImpl) Delete(ctx context.Context, req *api_v3.DeleteUserRequest) (*api_v3.DeleteUserResponse, error) {
 	if len(req.GetId()) == 0 {
-		return nil, ErrMissingId
+		return nil, ErrMissingID
 	}
 	err := u.dal.GetDatabase().Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where(req.GetId()).Delete(&User{}).Error; err == gorm.ErrRecordNotFound {
@@ -166,21 +169,198 @@ func (u *userServiceImpl) Delete(ctx context.Context, req *api_v3.DeleteUserRequ
 	}, nil
 }
 
+// update user by id
 func (u *userServiceImpl) Update(ctx context.Context, req *api_v3.UpdateUserRequest) (*api_v3.UpdateUserResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
+	if len(req.GetUser().GetId()) == 0 {
+		return nil, ErrMissingID
+	}
+	// response
+	rsp := &api_v3.UpdateUserResponse{}
+	err := u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var user User
+		// find user by id
+		if err := tx.Where(&User{ID: req.GetUser().GetId()}).First(&user).Error; err == gorm.ErrRecordNotFound {
+			return ErrNotFound
+		} else if err != nil {
+			u.logger.For(ctx).Error("Error find user", zap.Error(err))
+			return ErrConnectDB
+		}
+		// check active
+		if !user.Active {
+			return errors.BadRequest("not active user", "active", "user not active yet")
+		}
+		u.logger.For(ctx).Info("mask", zap.Strings("path", req.GetUpdateMask().GetPaths()))
+		// If there is no update mask do a regular update
+		if req.GetUpdateMask() == nil || len(req.GetUpdateMask().GetPaths()) == 0 {
+			user.Fullname = req.GetUser().GetFullname()
+			user.Username = req.GetUser().GetUsername()
+			// check email valid
+			email := strings.ToLower(req.GetUser().GetEmail())
+			if !isValidEmail(email) {
+				return ErrInvalidEmail
+			}
+			user.Email = email
+			// hash password
+			pwdHashed, err := u.genHash(req.GetUser().GetPassword())
+			if err != nil {
+				u.logger.For(ctx).Error("Hash password failed", zap.Error(err))
+				return ErrHashPassword
+			}
+			user.Password = pwdHashed
+		} else {
+			st := structs.New(user)
+			in := structs.New(req.GetUser())
+			for _, path := range req.GetUpdateMask().GetPaths() {
+				if path == "id" {
+					return status.Error(codes.InvalidArgument, "cannot update id field")
+				}
+				if path == "email" {
+					email := strings.ToLower(req.GetUser().GetEmail())
+					if !isValidEmail(email) {
+						return ErrInvalidEmail
+					}
+					user.Email = email
+					continue
+				}
+				if path == "password" {
+					// hash password
+					pwdHashed, err := u.genHash(req.GetUser().GetPassword())
+					if err != nil {
+						u.logger.For(ctx).Error("Hash password failed", zap.Error(err))
+						return ErrHashPassword
+					}
+					user.Password = pwdHashed
+					continue
+				}
+				// This doesn't translate properly if a CustomName setting is used,
+				// but none of the fields except ID has that set, so NO WORRIES.
+				fname := generator.CamelCase(path)
+				field, ok := st.FieldOk(fname)
+				if !ok {
+					st := status.New(codes.InvalidArgument, "invalid field specified")
+					des, err := st.WithDetails(&rpc.BadRequest{
+						FieldViolations: []*rpc.BadRequest_FieldViolation{{
+							Field:       "update_mask",
+							Description: fmt.Sprintf("The user message type does not have a field called %q", path),
+						}},
+					})
+					if err != nil {
+						return st.Err()
+					}
+					return des.Err()
+				}
+				// set update value
+				err := field.Set(in.Field(fname).Value())
+				if err != nil {
+					return err
+				}
+			}
+		}
+		// update user in db
+		if err := tx.Save(&user).Error; err != nil && strings.Contains(err.Error(), "idx_users_email") {
+			return ErrDuplicateEmail
+		} else if err != nil {
+			return ErrConnectDB
+		}
+		// response
+		rsp.User = user.sanitize()
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rsp, err
 }
 
-func (u *userServiceImpl) UpdateV2(ctx context.Context, req *api_v3.UpdateUserRequest) (*api_v3.UpdateUserResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateV2 not implemented")
+func (u *userServiceImpl) getUsers(ctx context.Context, req *api_v3.ListUsersRequest) ([]*api_v3.User, error) {
+	var users []User
+	// build sql statement
+	psql := u.dal.GetDatabase().WithContext(ctx)
+	if req.GetCreatedSince() != nil {
+		psql = psql.Where("created_at >= ?", req.GetCreatedSince())
+	}
+	if req.GetOlderThen() != nil {
+		psql = psql.Where("created_at >= CURRENT_TIMESTAMP - INTERVAL (?)", req.GetOlderThen())
+	}
+	if req.GetId() != nil {
+		psql = psql.Where("id = ?", req.GetId())
+	}
+	if req.GetUsername() != nil {
+		psql = psql.Where("username LIKE '%?%'", req.GetUsername().Value)
+	}
+	if req.GetFullname() != nil {
+		psql = psql.Where("fullname LIKE '%?%'", req.GetFullname().Value)
+	}
+	if req.GetEmail() != nil {
+		psql = psql.Where("email LIKE '%?%'", req.GetEmail().Value)
+	}
+	if req.GetActive() != nil {
+		psql = psql.Where("active = ?", req.GetActive().Value)
+	}
+	if req.GetRole() != api_v3.Role_GUEST {
+		psql = psql.Where("role = ?", req.GetRole().String())
+	}
+	// exec
+	if err := psql.Order("created_at desc").Find(&users).Error; err != nil {
+		u.logger.For(ctx).Error("Error find users", zap.Error(err))
+		return nil, ErrConnectDB
+	}
+	// check empty from db
+	if len(users) == 0 {
+		st := status.New(codes.NotFound, "not found users")
+		des, err := st.WithDetails(&rpc.PreconditionFailure{
+			Violations: []*rpc.PreconditionFailure_Violation{
+				{
+					Type:        "USER",
+					Subject:     "no users",
+					Description: "no users have been found",
+				},
+			},
+		})
+		if err != nil {
+			return nil, des.Err()
+		}
+		return nil, st.Err()
+	}
+	// filter
+	rsp := make([]*api_v3.User, len(users))
+	for i, user := range users {
+		// 	switch {
+		// 	case req.GetCreatedSince() != nil && user.CreatedAt.Before(*req.GetCreatedSince()):
+		// 		continue
+		// 	case req.GetOlderThen() != nil && time.Since(user.CreatedAt) >= *req.GetOlderThen():
+		// 		continue
+		// 	}
+		rsp[i] = user.sanitize()
+	}
+	return rsp, nil
 }
 
 func (u *userServiceImpl) List(ctx context.Context, req *api_v3.ListUsersRequest) (*api_v3.ListUsersResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
+	users, err := u.getUsers(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	// response
+	rsp := &api_v3.ListUsersResponse{
+		Users: users,
+	}
+	return rsp, nil
 }
 
 func (u *userServiceImpl) ListStream(req *api_v3.ListUsersRequest, srv api_v3.UserService_ListStreamServer) error {
-	return status.Errorf(codes.Unimplemented, "method ListStream not implemented")
+	users, err := u.getUsers(srv.Context(), req)
+	if err != nil {
+		return err
+	}
+	for _, user := range users {
+		if err := srv.Send(user); err != nil {
+			return err
+		}
+	}
+	return nil
 }
+
 func (u *userServiceImpl) Login(ctx context.Context, req *api_v3.LoginRequest) (*api_v3.LoginResponse, error) {
 	// validate request
 	if len(req.GetEmail()) == 0 {
@@ -228,6 +408,9 @@ func (u *userServiceImpl) Login(ctx context.Context, req *api_v3.LoginRequest) (
 }
 
 func (u *userServiceImpl) Logout(ctx context.Context, req *api_v3.LogoutRequest) (*api_v3.LogoutResponse, error) {
+	if len(req.GetId()) == 0 {
+		return nil, ErrMissingID
+	}
 	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
 }
 
@@ -262,72 +445,3 @@ func (u *userServiceImpl) Validate(ctx context.Context, req *api_v3.ValidateRequ
 	}
 	return rsp, err
 }
-
-// func (u *userServiceImpl) ListUsers(req *api_v3.ListUsersRequest, srv api_v3.UserService_ListUsersServer) error {
-// 	u.mu.RLock()
-// 	defer u.mu.RUnlock()
-// 	if len(u.users) == 0 {
-// 		st := status.New(codes.NotFound, "not found users")
-// 		des, err := st.WithDetails(&rpc.PreconditionFailure{
-// 			Violations: []*rpc.PreconditionFailure_Violation{
-// 				{
-// 					Type:        "USER",
-// 					Subject:     "no users",
-// 					Description: "no users have been found",
-// 				},
-// 			},
-// 		})
-// 		if err != nil {
-// 			return des.Err()
-// 		}
-// 		return st.Err()
-// 	}
-// 	for _, u := range u.users {
-// 		switch {
-// 		case req.GetCreatedSince() != nil && u.GetCreatedAt().Before(*req.GetCreatedSince()):
-// 			continue
-// 		case req.GetOlderThen() != nil && time.Since(*u.GetCreatedAt()) >= *req.GetOlderThen():
-// 			continue
-// 		}
-// 		err := srv.Send(u)
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-// 	return nil
-// }
-// func (u *userServiceImpl) ListUsersByRole(req *api_v3.UserRole, srv api_v3.UserService_ListUsersByRoleServer) error {
-// 	u.mu.RLock()
-// 	defer u.mu.RUnlock()
-// 	for _, user := range u.users {
-// 		if user.GetRole() == req.GetRole() {
-// 			if err := srv.Send(user); err != nil {
-// 				return err
-// 			}
-// 		}
-// 	}
-// 	return nil
-// }
-// func (u *userServiceImpl) UpdateUser(ctx context.Context, req *api_v3.UpdateUserRequest) (*api_v3.User, error) {
-// 	u.mu.Lock()
-// 	defer u.mu.Unlock()
-// 	var user *api_v3.User
-// 	for _, u := range u.users {
-// 		if u.GetId() == req.GetUser().GetId() {
-// 			user = u
-// 		}
-// 	}
-// 	if user == nil {
-// 		return nil, status.Errorf(codes.NotFound, "user not found")
-// 	}
-
-// 	// st := structs.New(user)
-// 	for _, path := range req.GetUpdateMask().GetPaths() {
-// 		if path == "id" {
-// 			return nil, status.Errorf(codes.InvalidArgument, "cannot update id")
-// 		}
-// 	}
-// 	u.logger.For(ctx).Info("update_mask", zap.Strings("paths", req.GetUpdateMask().GetPaths()))
-
-// 	return user, nil
-// }

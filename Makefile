@@ -114,12 +114,16 @@ grpc-web-client:
 # gofmt
 .PHONY: fmt
 fmt:
-	go fmt -mod=mod ./... 
+	go fmt -mod=mod $(go list ./... | grep -v /pkg/api/)
 
 # go-lint
 .PHONY: lint
 lint: fmt
-	golangci-lint run ./...
+	golangci-lint run $(go list ./... | grep -v /vendor/)
+
+.PHONY: test
+test:
+	go test -v $(go list ./... | grep -v /vendor/)
 
 # cleaning
 .PHONY: clean

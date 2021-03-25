@@ -41,7 +41,7 @@ func (a *AuthServerInterceptor) Stream() grpc.StreamServerInterceptor {
 	return a.streamServerInterceptor
 }
 
-func (a *AuthServerInterceptor) authorize(ctx context.Context, method string) error {
+func (a *AuthServerInterceptor) authorize(ctx context.Context, method string, req interface{}) error {
 	// check accessiable method with user role got from header authorization
 	accessibleRoles, ok := a.accessibleRoles[method]
 	a.logger.For(ctx).Info("authorize", zap.String("method", method), zap.Any("accessibleRoles", accessibleRoles), zap.Bool("ok", ok))
@@ -68,9 +68,15 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string) er
 	if err != nil {
 		return status.Errorf(codes.Unauthenticated, "verify failed: %v", err)
 	}
+
+	// check user self update
+	if msg, ok := req.(*api_v3.UpdateUserRequest); ok && msg.GetUser().GetId() == userClaims.ID {
+		return nil
+	}
+
 	// check role
 	for _, role := range accessibleRoles {
-		if role == api_v3.Role_ROOT.String() || role == userClaims.Role {
+		if role == api_v3.Role_ROOT.String() || role == strings.ToLower(userClaims.Role) {
 			return nil
 		}
 	}
@@ -84,22 +90,28 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string) er
 
 // unary request to grpc server
 func (a *AuthServerInterceptor) unaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			a.logger.For(ctx).Error("unary req", zap.Any("panic", r))
-			err = status.Error(codes.Unknown, "server error")
-		}
-	}()
+	// defer func() {
+	// 	if r := recover(); r != nil {
+	// 		a.logger.For(ctx).Error("unary req", zap.Any("panic", r))
+	// 		err = status.Error(codes.Unknown, "server error")
+	// 	}
+	// }()
 	a.logger.For(ctx).Info("unary req", zap.String("method", info.FullMethod))
 
 	// authorize request
-	err = a.authorize(ctx, info.FullMethod)
+	err = a.authorize(ctx, info.FullMethod, req)
 	if err != nil {
 		return nil, err
 	}
 
 	// NOT WORK: because server service does NOT using context to send anything
-	// ctx = metadata.AppendToOutgoingContext(ctx, []string{"x-response-id", xrid[0]}...)
+	ctx = metadata.AppendToOutgoingContext(ctx, []string{"x-response-id", "a"}...)
+
+	// add serviceName into response
+	// if msg, ok := req.(*api_v3.UpdateUserRequest); ok {
+	// 	msg. = info.FullMethod
+	// 	return msg, nil
+	// }
 
 	return handler(ctx, req)
 }
@@ -114,7 +126,7 @@ func (a *AuthServerInterceptor) streamServerInterceptor(srv interface{}, ss grpc
 	}()
 	a.logger.For(ss.Context()).Info("stream req", zap.String("method", info.FullMethod), zap.Any("serverStream", info.IsServerStream))
 
-	err = a.authorize(ss.Context(), info.FullMethod)
+	err = a.authorize(ss.Context(), info.FullMethod, nil)
 	if err != nil {
 		return err
 	}
@@ -123,7 +135,7 @@ func (a *AuthServerInterceptor) streamServerInterceptor(srv interface{}, ss grpc
 	header := metadata.New(map[string]string{
 		"x-response-id": "auth-streaming",
 	})
-	if err := ss.SendHeader(header); err != nil {
+	if err = ss.SendHeader(header); err != nil {
 		return status.Errorf(codes.Unknown, "unable to send response 'x-response-id' header: %v", err)
 	}
 

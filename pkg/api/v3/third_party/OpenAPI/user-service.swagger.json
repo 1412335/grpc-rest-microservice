@@ -47,6 +47,52 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "id",
+            "description": "id. user id",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "username",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "fullname",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "email",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "role",
+            "description": "optional Role role = 8; // gogo not supported.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "GUEST",
+              "USER",
+              "ADMIN",
+              "ROOT"
+            ],
+            "default": "GUEST"
           }
         ],
         "tags": [
@@ -190,6 +236,52 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "id",
+            "description": "id. user id",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "username",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "fullname",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "email",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "role",
+            "description": "optional Role role = 8; // gogo not supported.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "GUEST",
+              "USER",
+              "ADMIN",
+              "ROOT"
+            ],
+            "default": "GUEST"
           }
         ],
         "tags": [
@@ -199,56 +291,7 @@
     },
     "/api/v3/users/u/{user.id}": {
       "patch": {
-        "operationId": "UserService_UpdateV22",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/api_v3UpdateUserResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/runtimeError"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "user.id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/api_v3User"
-            }
-          },
-          {
-            "name": "update_mask.paths",
-            "description": "The set of field mask paths.",
-            "in": "query",
-            "required": false,
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "collectionFormat": "multi"
-          }
-        ],
-        "tags": [
-          "UserService"
-        ]
-      }
-    },
-    "/api/v3/users/u2/{user.id}": {
-      "patch": {
-        "operationId": "UserService_UpdateV23",
+        "operationId": "UserService_Update3",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -339,6 +382,12 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
           }
         ],
         "tags": [
@@ -348,7 +397,7 @@
     },
     "/api/v3/users/{user.id}": {
       "patch": {
-        "operationId": "UserService_Update",
+        "operationId": "UserService_Update2",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -375,8 +424,25 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/api_v3UpdateUserRequest"
+              "$ref": "#/definitions/api_v3User"
             }
+          },
+          {
+            "name": "update_mask.paths",
+            "description": "The set of field mask paths.",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
           }
         ],
         "tags": [
@@ -474,7 +540,7 @@
       "type": "string",
       "enum": [
         "GUEST",
-        "MEMBER",
+        "USER",
         "ADMIN",
         "ROOT"
       ],

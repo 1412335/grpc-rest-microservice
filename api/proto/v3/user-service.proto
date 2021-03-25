@@ -3,6 +3,7 @@ syntax="proto3";
 package api_v3;
 
 // import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/field_mask.proto";
@@ -54,22 +55,16 @@ service UserService {
         };
     };
 	rpc Update(UpdateUserRequest) returns (UpdateUserResponse) {
-        option (google.api.http) = {
-            patch: "/api/v3/users/{user.id}"
-            body: "*"
-        };
-    }	
-	rpc UpdateV2(UpdateUserRequest) returns (UpdateUserResponse) {
 		option (google.api.http) = {
-            patch: "/api/v3/users/u/{user.id}"
+            patch: "/api/v3/users/{user.id}"
 			body: "user"
 			additional_bindings: [
 				{
-					patch: "/api/v3/users/u/{user.id}"
+					patch: "/api/v3/users/{user.id}"
 					body: "user"
 				},
 				{
-					patch: "/api/v3/users/u2/{user.id}"
+					patch: "/api/v3/users/u/{user.id}"
 					body: "*"
 				}
 			]
@@ -109,7 +104,7 @@ service UserService {
 
 enum Role {
     GUEST = 0;
-    MEMBER = 1;
+    USER = 1;
     ADMIN = 2;
     ROOT = 3;
 }
@@ -158,6 +153,21 @@ message ListUsersRequest {
     google.protobuf.Duration older_then = 2 [
         (gogoproto.stdduration) = true
     ];
+    google.protobuf.StringValue id = 3 [
+        (grpc.gateway.protoc_gen_swagger.options.openapiv2_field) = {
+            pattern: "^[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$",
+            title: "id",
+            description: "user id",
+            format: "uuid",
+            example: "\"2438ac3c-37eb-4902-adef-ed16b4431030\""
+        }
+    ];
+    google.protobuf.StringValue username = 4;
+	google.protobuf.StringValue fullname = 5;
+	google.protobuf.StringValue email = 6;
+	google.protobuf.BoolValue active = 7;
+    // optional Role role = 8; // gogo not supported
+    Role role = 8;
 }
 
 message ListUsersResponse {
