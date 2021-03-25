@@ -85,7 +85,7 @@
       }
     },
     "/api/v3/users/login": {
-      "get": {
+      "post": {
         "summary": "auth",
         "operationId": "UserService_Login",
         "responses": {
@@ -104,16 +104,12 @@
         },
         "parameters": [
           {
-            "name": "email",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "password",
-            "in": "query",
-            "required": false,
-            "type": "string"
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/api_v3LoginRequest"
+            }
           }
         ],
         "tags": [
@@ -122,7 +118,7 @@
       }
     },
     "/api/v3/users/logout": {
-      "get": {
+      "post": {
         "operationId": "UserService_Logout",
         "responses": {
           "200": {
@@ -140,10 +136,12 @@
         },
         "parameters": [
           {
-            "name": "id",
-            "in": "query",
-            "required": false,
-            "type": "string"
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/api_v3LogoutRequest"
+            }
           }
         ],
         "tags": [
@@ -199,8 +197,95 @@
         ]
       }
     },
+    "/api/v3/users/u/{user.id}": {
+      "patch": {
+        "operationId": "UserService_UpdateV22",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/api_v3UpdateUserResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "user.id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/api_v3User"
+            }
+          },
+          {
+            "name": "update_mask.paths",
+            "description": "The set of field mask paths.",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v3/users/u2/{user.id}": {
+      "patch": {
+        "operationId": "UserService_UpdateV23",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/api_v3UpdateUserResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "user.id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/api_v3UpdateUserRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
     "/api/v3/users/validate": {
-      "get": {
+      "post": {
         "operationId": "UserService_Validate",
         "responses": {
           "200": {
@@ -218,10 +303,12 @@
         },
         "parameters": [
           {
-            "name": "token",
-            "in": "query",
-            "required": false,
-            "type": "string"
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/api_v3ValidateRequest"
+            }
           }
         ],
         "tags": [
@@ -349,6 +436,18 @@
         }
       }
     },
+    "api_v3LoginRequest": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      },
+      "title": "auth"
+    },
     "api_v3LoginResponse": {
       "type": "object",
       "properties": {
@@ -356,6 +455,14 @@
           "$ref": "#/definitions/api_v3User"
         },
         "token": {
+          "type": "string"
+        }
+      }
+    },
+    "api_v3LogoutRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
           "type": "string"
         }
       }
@@ -429,6 +536,14 @@
           "format": "date-time"
         },
         "verify_token": {
+          "type": "string"
+        }
+      }
+    },
+    "api_v3ValidateRequest": {
+      "type": "object",
+      "properties": {
+        "token": {
           "type": "string"
         }
       }

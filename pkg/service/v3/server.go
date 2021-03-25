@@ -6,7 +6,9 @@ import (
 	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/postgres"
+	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/server"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
@@ -16,15 +18,21 @@ type Server struct {
 	dal      *postgres.DataAccessLayer
 }
 
-func NewServer(srvConfig *configs.ServiceConfig, opt ...server.ServerOption) *Server {
+func NewServer(srvConfig *configs.ServiceConfig, logger log.Factory, opt ...server.ServerOption) *Server {
 	// simple server interceptor
 	// simpleInterceptor := &interceptor.SimpleServerInterceptor{}
 	// opt = append(opt, server.WithInterceptors(simpleInterceptor))
 	// simpleInterceptor.WithLogger(srv.logger)
 
-	// dal
+	// init postgres
 	dal, err := postgres.NewDataAccessLayer(context.Background(), srvConfig.Database)
-	if err != nil {
+	if err != nil || dal.GetDatabase() == nil {
+		logger.Bg().Error("init db failed", zap.Error(err))
+		return nil
+	}
+	// migrate model
+	if err := dal.GetDatabase().AutoMigrate(&User{}); err != nil {
+		logger.Bg().Error("migrate db failed", zap.Error(err))
 		return nil
 	}
 
@@ -34,13 +42,19 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.ServerOption) *Se
 		dal:      dal,
 	}
 
-	// // auth server interceptor
-	// authInterceptor := NewAuthServerInterceptor(s.server.logger, srv.tokenSrv, srvConfig.AccessibleRoles)
-	// opt = append(opt, server.WithInterceptors(authInterceptor))
+	// auth server interceptor
+	authInterceptor := NewAuthServerInterceptor(logger, srv.tokenSrv, srvConfig.AccessibleRoles)
 
+	// append server options with logger + auth token interceptor
+	opt = append(opt,
+		server.WithInterceptors(authInterceptor),
+		server.WithLoggerFactory(logger),
+	)
+
+	// grpc server
 	s := server.NewServer(srvConfig, opt...)
-	srv.server = s
 
+	srv.server = s
 	return srv
 }
 
@@ -53,6 +67,7 @@ func (s *Server) Run() error {
 		api_v3.RegisterUserServiceServer(srv, api)
 		return nil
 	}, func() {
+		// close db connection
 		defer s.dal.Disconnect()
 	})
 }

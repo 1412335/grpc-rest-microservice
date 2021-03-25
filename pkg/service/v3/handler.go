@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/gogo/gateway"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/rakyll/statik/fs"
 	"github.com/unrolled/secure"
@@ -192,17 +193,39 @@ func (h *handler) Run() error {
 	mux := runtime.NewServeMux(
 		runtime.WithIncomingHeaderMatcher(h.incomingHeaderMatcher),
 		runtime.WithOutgoingHeaderMatcher(h.outgoingHeaderMatcher),
+		// runtime.WithMarshalerOption(runtime.MIMEWildcard, &gateway.JSONPb{
+		// 	OrigName:     true,
+		// 	EmitDefaults: false,
+		// 	Indent:       "  ",
+		// }),
+		// // This is necessary to get error details properly
+		// // marshalled in unary requests.
+		// runtime.WithProtoErrorHandler(runtime.DefaultHTTPProtoErrorHandler),
 	)
 
 	// gRPCHost := net.JoinHostPort(h.config.GRPC.Host, strconv.Itoa(h.config.GRPC.Port))
 	gRPCHost := net.JoinHostPort("localhost", strconv.Itoa(h.config.GRPC.Port))
+
+	// gRPC client options
+	opts := []grpc.DialOption{grpc.WithInsecure()}
+
+	callOptions := []grpc.CallOption{}
+	if h.config.GRPC.MaxCallRecvMsgSize > 0 {
+		callOptions = append(callOptions, grpc.MaxCallRecvMsgSize(h.config.GRPC.MaxCallRecvMsgSize))
+	}
+	if h.config.GRPC.MaxCallSendMsgSize > 0 {
+		callOptions = append(callOptions, grpc.MaxCallSendMsgSize(h.config.GRPC.MaxCallSendMsgSize))
+	}
+	if len(callOptions) > 0 {
+		opts = append(opts, grpc.WithDefaultCallOptions(callOptions...))
+	}
 
 	// register handler
 	err := api_v3.RegisterUserServiceHandlerFromEndpoint(
 		ctx,
 		mux,
 		gRPCHost,
-		[]grpc.DialOption{grpc.WithInsecure()},
+		opts,
 	)
 	if err != nil {
 		return err

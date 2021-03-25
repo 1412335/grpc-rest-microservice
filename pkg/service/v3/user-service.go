@@ -19,21 +19,23 @@ import (
 )
 
 var (
-	ErrMissingUsername = errors.BadRequest("MISSING_USERNAME", "username", "Missing username")
-	ErrMissingFullname = errors.BadRequest("MISSING_FULLNAME", "fullname", "Missing fullname")
-	ErrMissingEmail    = errors.BadRequest("MISSING_EMAIL", "email", "Missing email")
-	ErrDuplicateEmail  = errors.BadRequest("DUPLICATE_EMAIL", "email", "A user with this email address already exists")
-	ErrInvalidEmail    = errors.BadRequest("INVALID_EMAIL", "email", "The email provided is invalid")
-	ErrInvalidPassword = errors.BadRequest("INVALID_PASSWORD", "password", "Password must be at least 8 characters long")
-	// ErrIncorrectPassword = errors.Unauthorized("INCORRECT_PASSWORD", "Password wrong")
-	// ErrMissingId         = errors.BadRequest("MISSING_ID", "Missing id")
-	// ErrMissingToken      = errors.BadRequest("MISSING_TOKEN", "Missing token")
+	ErrMissingUsername   = errors.BadRequest("MISSING_USERNAME", "username", "Missing username")
+	ErrMissingFullname   = errors.BadRequest("MISSING_FULLNAME", "fullname", "Missing fullname")
+	ErrMissingEmail      = errors.BadRequest("MISSING_EMAIL", "email", "Missing email")
+	ErrDuplicateEmail    = errors.BadRequest("DUPLICATE_EMAIL", "email", "A user with this email address already exists")
+	ErrInvalidEmail      = errors.BadRequest("INVALID_EMAIL", "email", "The email provided is invalid")
+	ErrInvalidPassword   = errors.BadRequest("INVALID_PASSWORD", "password", "Password must be at least 8 characters long")
+	ErrIncorrectPassword = errors.Unauthenticated("INCORRECT_PASSWORD", "password", "Email or password is incorrect")
+	ErrMissingId         = errors.BadRequest("MISSING_ID", "id", "Missing user id")
+	ErrMissingToken      = errors.BadRequest("MISSING_TOKEN", "token", "Missing token")
 
-	// ErrConnectDB = errors.InternalServerError("CONNECT_DB", "Connecting to database failed")
-	// ErrNotFound  = errors.NotFound("NOT_FOUND", "User not found")
+	ErrHashPassword = errors.InternalServerError("HASH_PASSWORD", "hash password failed")
 
-	// ErrTokenGenerated = errors.InternalServerError("TOKEN_GEN_FAILED", "Generate token failed")
-	// ErrTokenInvalid   = errors.Unauthorized("TOKEN_INVALID", "Token invalid")
+	ErrConnectDB = errors.InternalServerError("CONNECT_DB", "Connecting to database failed")
+	ErrNotFound  = errors.NotFound("NOT_FOUND", "user", "User not found")
+
+	ErrTokenGenerated = errors.InternalServerError("TOKEN_GEN_FAILED", "Generate token failed")
+	ErrTokenInvalid   = errors.Unauthenticated("TOKEN_INVALID", "token", "Token invalid")
 	// ErrTokenNotFound  = errors.BadRequest("TOKEN_NOT_FOUND", "Token not found")
 	// ErrTokenExpired   = errors.Unauthorized("TOKEN_EXPIRE", "Token expired")
 
@@ -65,11 +67,6 @@ type userServiceImpl struct {
 var _ api_v3.UserServiceServer = (*userServiceImpl)(nil)
 
 func NewUserService(dal *postgres.DataAccessLayer, logger log.Factory, tokenSrv *TokenService) api_v3.UserServiceServer {
-	// migrate model
-	if err := dal.GetDatabase().AutoMigrate(&User{}); err != nil {
-		logger.Bg().Error("migrate db failed", zap.Error(err))
-		return nil
-	}
 	return &userServiceImpl{
 		dal:      dal,
 		logger:   logger,
@@ -89,6 +86,7 @@ func (u *userServiceImpl) compareHash(hash, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 }
 
+// create user
 func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequest) (*api_v3.CreateUserResponse, error) {
 	// validate request
 	if len(req.GetUsername()) == 0 {
@@ -108,13 +106,14 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 	pwdHashed, err := u.genHash(req.Password)
 	if err != nil {
 		u.logger.For(ctx).Error("Hash password failed", zap.Error(err))
-		return nil, errors.InternalServerError("hash password failed")
+		return nil, ErrHashPassword
 	}
 
+	// init response
 	rsp := &api_v3.CreateUserResponse{}
 
 	// create
-	err = u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return rsp, u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		user := &User{
 			ID:          uuid.New().String(),
 			Username:    req.Username,
@@ -129,33 +128,50 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 			return ErrDuplicateEmail
 		} else if err != nil {
 			u.logger.For(ctx).Error("Error connecting from db", zap.Error(err))
-			return status.Errorf(codes.Internal, "connecting db failed")
+			return ErrConnectDB
 		}
 
 		// create token
 		token, err := u.tokenSrv.Generate(user)
 		if err != nil {
 			u.logger.For(ctx).Error("Error generate token", zap.Error(err))
-			return status.Errorf(codes.Internal, "generate token failed")
+			return ErrTokenGenerated
 		}
 
 		rsp.User = user.sanitize()
 		rsp.Token = token
 		return nil
 	})
-	if err != nil {
-		u.logger.For(ctx).Error("Error create user", zap.Error(err))
-		return nil, err
-	}
-	return rsp, nil
 }
 
+// delete user by id
 func (u *userServiceImpl) Delete(ctx context.Context, req *api_v3.DeleteUserRequest) (*api_v3.DeleteUserResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
+	if len(req.GetId()) == 0 {
+		return nil, ErrMissingId
+	}
+	err := u.dal.GetDatabase().Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where(req.GetId()).Delete(&User{}).Error; err == gorm.ErrRecordNotFound {
+			return ErrNotFound
+		} else if err != nil {
+			u.logger.For(ctx).Error("Error connecting from db", zap.Error(err))
+			return ErrConnectDB
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &api_v3.DeleteUserResponse{
+		Id: req.GetId(),
+	}, nil
 }
 
 func (u *userServiceImpl) Update(ctx context.Context, req *api_v3.UpdateUserRequest) (*api_v3.UpdateUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
+}
+
+func (u *userServiceImpl) UpdateV2(ctx context.Context, req *api_v3.UpdateUserRequest) (*api_v3.UpdateUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateV2 not implemented")
 }
 
 func (u *userServiceImpl) List(ctx context.Context, req *api_v3.ListUsersRequest) (*api_v3.ListUsersResponse, error) {
@@ -166,7 +182,49 @@ func (u *userServiceImpl) ListStream(req *api_v3.ListUsersRequest, srv api_v3.Us
 	return status.Errorf(codes.Unimplemented, "method ListStream not implemented")
 }
 func (u *userServiceImpl) Login(ctx context.Context, req *api_v3.LoginRequest) (*api_v3.LoginResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+	// validate request
+	if len(req.GetEmail()) == 0 {
+		return nil, ErrMissingEmail
+	}
+	if !isValidEmail(req.GetEmail()) {
+		return nil, ErrInvalidEmail
+	}
+	if len(req.GetPassword()) == 0 {
+		return nil, ErrInvalidPassword
+	}
+	// response
+	rsp := &api_v3.LoginResponse{}
+	err := u.dal.GetDatabase().Transaction(func(tx *gorm.DB) error {
+		var user User
+		// find user by email
+		if err := tx.Where(&User{Email: strings.ToLower(req.GetEmail())}).First(&user).Error; err == gorm.ErrRecordNotFound {
+			return ErrNotFound
+		} else if err != nil {
+			u.logger.For(ctx).Error("Error find user", zap.Error(err))
+			return ErrConnectDB
+		}
+		// verify password
+		if err := u.compareHash(user.Password, req.GetPassword()); err != nil {
+			return ErrIncorrectPassword
+		}
+		if !user.Active {
+			return errors.BadRequest("not active user", "active", "user not active yet")
+		}
+		// gen new token
+		token, err := u.tokenSrv.Generate(&user)
+		if err != nil {
+			u.logger.For(ctx).Error("Error gen token", zap.Error(err))
+			return ErrTokenGenerated
+		}
+		//
+		rsp.User = user.sanitize()
+		rsp.Token = token
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rsp, err
 }
 
 func (u *userServiceImpl) Logout(ctx context.Context, req *api_v3.LogoutRequest) (*api_v3.LogoutResponse, error) {
@@ -174,44 +232,37 @@ func (u *userServiceImpl) Logout(ctx context.Context, req *api_v3.LogoutRequest)
 }
 
 func (u *userServiceImpl) Validate(ctx context.Context, req *api_v3.ValidateRequest) (*api_v3.ValidateResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Validate not implemented")
+	if len(req.GetToken()) == 0 {
+		return nil, ErrMissingToken
+	}
+	rsp := &api_v3.ValidateResponse{}
+	err := u.dal.GetDatabase().Transaction(func(tx *gorm.DB) error {
+		// verrify token
+		claims, err := u.tokenSrv.Verify(req.Token)
+		if err != nil {
+			u.logger.For(ctx).Error("verify token failed", zap.Error(err))
+			return ErrTokenInvalid
+		}
+		// update active
+		if err := tx.Model(&User{ID: claims.ID}).Update("active", true).Error; err == gorm.ErrRecordNotFound {
+			return ErrNotFound
+		} else if err != nil {
+			u.logger.For(ctx).Error("Error update user", zap.Error(err))
+			return ErrConnectDB
+		}
+		rsp.Id = claims.ID
+		rsp.Username = claims.Username
+		rsp.Fullname = claims.Fullname
+		rsp.Email = claims.Email
+		// rsp.Role = claims.Role
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rsp, err
 }
 
-// func (u *userServiceImpl) AddUser(ctx context.Context, req *api_v3.User) (*types.Empty, error) {
-// 	u.mu.Lock()
-// 	defer u.mu.Unlock()
-
-// 	if len(u.users) == 0 && req.GetRole() != api_v3.Role_ADMIN {
-// 		st := status.New(codes.InvalidArgument, "first user must be admin")
-// 		des, err := st.WithDetails(&rpc.BadRequest{
-// 			FieldViolations: []*rpc.BadRequest_FieldViolation{
-// 				{
-// 					Field:       "role",
-// 					Description: "The first user must have role of admin",
-// 				},
-// 			},
-// 		})
-// 		if err != nil {
-// 			return nil, st.Err()
-// 		}
-// 		return nil, des.Err()
-// 	}
-
-// 	for _, u := range u.users {
-// 		if u.GetId() == req.GetId() {
-// 			return nil, status.Errorf(codes.FailedPrecondition, "user exists")
-// 		}
-// 	}
-
-// 	if req.GetCreatedAt() == nil {
-// 		now := time.Now()
-// 		req.CreatedAt = &now
-// 	}
-
-// 	u.users = append(u.users, req)
-
-// 	return new(types.Empty), nil
-// }
 // func (u *userServiceImpl) ListUsers(req *api_v3.ListUsersRequest, srv api_v3.UserService_ListUsersServer) error {
 // 	u.mu.RLock()
 // 	defer u.mu.RUnlock()

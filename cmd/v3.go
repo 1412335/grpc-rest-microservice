@@ -30,8 +30,8 @@ func V3Service() error {
 	// server
 	server := v3.NewServer(
 		cfgs,
+		logger,
 		server.WithMetricsFactory(metricsFactory),
-		server.WithLoggerFactory(logger),
 	)
 
 	// run grpc server

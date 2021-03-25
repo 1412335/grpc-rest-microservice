@@ -59,6 +59,22 @@ service UserService {
             body: "*"
         };
     }	
+	rpc UpdateV2(UpdateUserRequest) returns (UpdateUserResponse) {
+		option (google.api.http) = {
+            patch: "/api/v3/users/u/{user.id}"
+			body: "user"
+			additional_bindings: [
+				{
+					patch: "/api/v3/users/u/{user.id}"
+					body: "user"
+				},
+				{
+					patch: "/api/v3/users/u2/{user.id}"
+					body: "*"
+				}
+			]
+		};
+	}
 	rpc List(ListUsersRequest) returns (ListUsersResponse) {
         option (google.api.http) = {
             get: "/api/v3/users"
@@ -73,17 +89,20 @@ service UserService {
     // auth
 	rpc Login(LoginRequest) returns (LoginResponse) {
         option (google.api.http) = {
-            get: "/api/v3/users/login"
+            post: "/api/v3/users/login"
+            body: "*"
         };
     }
 	rpc Logout(LogoutRequest) returns (LogoutResponse) {
         option (google.api.http) = {
-            get: "/api/v3/users/logout"
+            post: "/api/v3/users/logout"
+            body: "*"
         };
     }
 	rpc Validate(ValidateRequest) returns (ValidateResponse) {
         option (google.api.http) = {
-            get: "/api/v3/users/validate"
+            post: "/api/v3/users/validate"
+            body: "*"
         };
     }
 }

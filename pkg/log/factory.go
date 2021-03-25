@@ -13,6 +13,10 @@ type Factory struct {
 	logger *zap.Logger
 }
 
+var (
+	DefaultLogger Factory
+)
+
 func NewFactory(logger *zap.Logger) Factory {
 	return Factory{logger: logger}
 }

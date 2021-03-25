@@ -46,8 +46,10 @@ type Tracing struct {
 
 // grpc-server
 type GRPC struct {
-	Host string
-	Port int
+	Host               string
+	Port               int
+	MaxCallRecvMsgSize int
+	MaxCallSendMsgSize int
 }
 
 // grpc-gateway proxy

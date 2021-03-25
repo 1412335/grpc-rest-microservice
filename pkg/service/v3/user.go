@@ -23,11 +23,13 @@ type User struct {
 
 func (u *User) sanitize() *api_v3.User {
 	return &api_v3.User{
-		Id:       u.ID,
-		Username: u.Username,
-		Fullname: u.Fullname,
-		Active:   u.Active,
-		Email:    u.Email,
+		Id:          u.ID,
+		Username:    u.Username,
+		Fullname:    u.Fullname,
+		Active:      u.Active,
+		Email:       u.Email,
+		Role:        api_v3.Role(api_v3.Role_value[u.Role]),
+		VerifyToken: u.VerifyToken,
 	}
 }
 

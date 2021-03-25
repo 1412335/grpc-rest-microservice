@@ -2,10 +2,10 @@ package v3
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
-	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/grpc-gateway/gen"
+	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
+	"github.com/1412335/grpc-rest-microservice/pkg/interceptor"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"go.uber.org/zap"
 
@@ -17,13 +17,20 @@ import (
 
 // Auth interceptor with JWT
 type AuthServerInterceptor struct {
+	interceptor.ServerInterceptor
 	logger          log.Factory
 	jwtManager      *TokenService
 	accessibleRoles map[string][]string
 }
 
+var _ interceptor.ServerInterceptor = (*AuthServerInterceptor)(nil)
+
 func NewAuthServerInterceptor(logger log.Factory, jwtManager *TokenService, accessibleRoles map[string][]string) *AuthServerInterceptor {
-	return &AuthServerInterceptor{logger, jwtManager, accessibleRoles}
+	return &AuthServerInterceptor{
+		logger:          logger,
+		jwtManager:      jwtManager,
+		accessibleRoles: accessibleRoles,
+	}
 }
 
 func (a *AuthServerInterceptor) Unary() grpc.UnaryServerInterceptor {
@@ -35,6 +42,7 @@ func (a *AuthServerInterceptor) Stream() grpc.StreamServerInterceptor {
 }
 
 func (a *AuthServerInterceptor) authorize(ctx context.Context, method string) error {
+	// check accessiable method with user role got from header authorization
 	accessibleRoles, ok := a.accessibleRoles[method]
 	a.logger.For(ctx).Info("authorize", zap.String("method", method), zap.Any("accessibleRoles", accessibleRoles), zap.Bool("ok", ok))
 	if !ok {
@@ -55,12 +63,14 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string) er
 	}
 	a.logger.For(ctx).Info("accessToken", zap.String("accessToken", accessToken[0]))
 
+	// verify token
 	userClaims, err := a.jwtManager.Verify(accessToken[0])
 	if err != nil {
 		return status.Errorf(codes.Unauthenticated, "verify failed: %v", err)
 	}
+	// check role
 	for _, role := range accessibleRoles {
-		if role == userClaims.Role {
+		if role == api_v3.Role_ROOT.String() || role == userClaims.Role {
 			return nil
 		}
 	}
@@ -76,11 +86,13 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string) er
 func (a *AuthServerInterceptor) unaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %v", r)
+			a.logger.For(ctx).Error("unary req", zap.Any("panic", r))
+			err = status.Error(codes.Unknown, "server error")
 		}
 	}()
 	a.logger.For(ctx).Info("unary req", zap.String("method", info.FullMethod))
 
+	// authorize request
 	err = a.authorize(ctx, info.FullMethod)
 	if err != nil {
 		return nil, err
@@ -89,25 +101,15 @@ func (a *AuthServerInterceptor) unaryServerInterceptor(ctx context.Context, req 
 	// NOT WORK: because server service does NOT using context to send anything
 	// ctx = metadata.AppendToOutgoingContext(ctx, []string{"x-response-id", xrid[0]}...)
 
-	resp, err = handler(ctx, req)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "serve handler error: %+v", err)
-	}
-
-	// add serviceName into response
-	if msg, ok := resp.(*api_v2.MessagePong); ok {
-		msg.ServiceName = info.FullMethod
-		return msg, nil
-	}
-
-	return resp, nil
+	return handler(ctx, req)
 }
 
 // stream request interceptor
 func (a *AuthServerInterceptor) streamServerInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("panic: %v", r)
+			a.logger.For(ss.Context()).Error("stream req", zap.Any("panic", r))
+			err = status.Error(codes.Unknown, "server error")
 		}
 	}()
 	a.logger.For(ss.Context()).Info("stream req", zap.String("method", info.FullMethod), zap.Any("serverStream", info.IsServerStream))
@@ -119,11 +121,26 @@ func (a *AuthServerInterceptor) streamServerInterceptor(srv interface{}, ss grpc
 
 	// send x-response-id header
 	header := metadata.New(map[string]string{
-		"x-response-id": "interceptor-streaming",
+		"x-response-id": "auth-streaming",
 	})
 	if err := ss.SendHeader(header); err != nil {
-		return status.Errorf(codes.Internal, "unable to send response 'x-response-id' header: %v", err)
+		return status.Errorf(codes.Unknown, "unable to send response 'x-response-id' header: %v", err)
 	}
 
-	return handler(srv, ss)
+	err = handler(srv, ss)
+	if err != nil {
+		return err
+	}
+
+	// return error when metadata includes error header
+	if header, ok := metadata.FromIncomingContext(ss.Context()); ok {
+		if v, ok := header["error"]; ok {
+			ss.SetTrailer(metadata.New(map[string]string{
+				"foo": "foo2",
+				"bar": "bar2",
+			}))
+			return status.Errorf(codes.InvalidArgument, "error metadata: %v", v)
+		}
+	}
+	return nil
 }

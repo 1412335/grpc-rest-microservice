@@ -44,7 +44,7 @@ func WithInterceptors(interceptor ...interceptor.ServerInterceptor) ServerOption
 
 type Server struct {
 	config         *configs.ServiceConfig
-	Server         *grpc.Server
+	grpcServer     *grpc.Server
 	logger         log.Factory
 	metricsFactory metrics.Factory
 	interceptors   []interceptor.ServerInterceptor
@@ -54,6 +54,7 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 	// create server
 	srv := &Server{
 		config: srvConfig,
+		logger: log.DefaultLogger,
 	}
 	// set options
 	for _, o := range opt {
@@ -62,12 +63,19 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 			return nil
 		}
 	}
+	// create grpc server
+	srv.grpcServer = grpc.NewServer(
+		srv.buildServerInterceptors()...,
+	)
+	return srv
+}
 
+func (srv *Server) buildServerInterceptors() []grpc.ServerOption {
 	var unaryInterceptors []grpc.UnaryServerInterceptor
 	var streamInterceptors []grpc.StreamServerInterceptor
-	if srvConfig.Tracing.Flag {
+	if srv.config.Tracing.Flag {
 		// create tracer
-		tracer := tracing.Init(srvConfig.ServiceName, srv.metricsFactory, srv.logger)
+		tracer := tracing.Init(srv.config.ServiceName, srv.metricsFactory, srv.logger)
 		// tracing interceptor
 		unaryInterceptors = append(unaryInterceptors, otgrpc.OpenTracingServerInterceptor(tracer))
 		streamInterceptors = append(streamInterceptors, otgrpc.OpenTracingStreamServerInterceptor(tracer))
@@ -80,16 +88,10 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 	}
 
 	// create grpc server
-	server := grpc.NewServer(
+	return []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(unaryInterceptors...),
 		grpc.ChainStreamInterceptor(streamInterceptors...),
-	)
-
-	// grpc reflection: use with evans
-	reflection.Register(server)
-
-	srv.Server = server
-	return srv
+	}
 }
 
 func (s *Server) Run(registerService func(*grpc.Server) error, stopper func()) error {
@@ -102,7 +104,8 @@ func (s *Server) Run(registerService func(*grpc.Server) error, stopper func()) e
 		return err
 	}
 
-	if err := registerService(s.Server); err != nil {
+	// register implementation services server
+	if err := registerService(s.grpcServer); err != nil {
 		s.logger.For(ctx).Error("Register service failed", zap.Error(err))
 		return err
 	}
@@ -113,16 +116,19 @@ func (s *Server) Run(registerService func(*grpc.Server) error, stopper func()) e
 	go func() {
 		for sig := range c {
 			s.logger.For(ctx).Error("Shutting down gRPC server", zap.Stringer("signal", sig))
-			s.Server.GracefulStop()
+			s.grpcServer.GracefulStop()
 			stopper()
 			<-ctx.Done()
 		}
 	}()
 
+	// grpc reflection: use with evans
+	reflection.Register(s.grpcServer)
+
 	s.logger.For(ctx).Info("Starting gRPC server", zap.String("at", host))
 
 	// run grpc server
-	return s.Server.Serve(listen)
+	return s.grpcServer.Serve(listen)
 }
 
 func (s *Server) Logger() log.Factory {

@@ -3,6 +3,8 @@ version: "v3"
 grpc:
   host: "v3"
   port: 9090
+  max-call-recv-msg-size: 0
+  max-call-send-msg-size: 0
 tracing:
   flags: true
   metrics: "prometheus"
@@ -13,13 +15,20 @@ jwt:
   duration: "120s"
   issuer: "lu"
 accessibleRoles:
-  - "/v2.ServiceExtra/Post":
-    - guest
+  - "/api_v3.UserService/List":
+    - admin
+    - root
+  - "/api_v3.UserService/ListStream":
+    - admin
+    - root
+  - "/api_v3.UserService/Delete":
     - user
     - admin
-  - "/v2.ServiceExtra/StreamingPost":
-    - guest
+    - root
+  - "/api_v3.UserService/Update":
+    - user
     - admin
+    - root
 database:
   host: "postgres"
   port: 5432

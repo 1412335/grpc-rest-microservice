@@ -47,7 +47,7 @@ func (manager *JWTManager) Verify(accessToken string, claims jwt.Claims) (jwt.Cl
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("invalid token: %+v", err)
+		return nil, err
 	}
 	if !token.Valid {
 		return nil, fmt.Errorf("invalid token")
