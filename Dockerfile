@@ -37,6 +37,7 @@ COPY --from=builder /myapp/config.yml .
 COPY --from=builder /myapp/cmd/client/config.yml ./cmd/client/config.yml
 COPY --from=builder /myapp/pkg/service/v3/config.yml ./pkg/service/v3/config.yml
 COPY --from=builder /myapp/pkg/service/v3/client/config.yml ./pkg/service/v3/client/config.yml
+COPY --from=builder /myapp/cert/ ./cert/
 
 # Use an unprivileged user.
 # USER appuser

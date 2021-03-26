@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	grpcClient "github.com/1412335/grpc-rest-microservice/pkg/client"
+	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/server"
 	v3 "github.com/1412335/grpc-rest-microservice/pkg/service/v3"
+	"github.com/1412335/grpc-rest-microservice/pkg/service/v3/client"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -40,6 +43,13 @@ func V3Service() error {
 		logError(zapLogger, server.Run())
 	}()
 
+	// go func() {
+	// 	err := testGrpcClient(cfgs.ClientConfig, logger)
+	// 	if err != nil {
+	// 		logError(zapLogger, err)
+	// 	}
+	// }()
+
 	// run grpc-gateway
 	handler := v3.NewHandler(cfgs)
 	err := handler.Run()
@@ -47,4 +57,32 @@ func V3Service() error {
 		zapLogger.Error("Starting gRPC-gateway error", zap.Error(err))
 	}
 	return err
+}
+
+func testGrpcClient(cfgs *configs.ClientConfig, logger log.Factory) error {
+	// inherit tracing flag
+	if cfgs.Tracing == nil {
+		cfgs.Tracing = &configs.Tracing{
+			Flag: cfgs.Tracing.Flag,
+		}
+	}
+	// client grpc
+	c, err := client.New(
+		cfgs,
+		logger,
+		grpcClient.WithMetricsFactory(metricsFactory),
+	)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+
+	// login
+	username, password := "string@gmail.com", "stringstring"
+	if token, err := c.Login(username, password); err != nil {
+		return err
+	} else {
+		logger.Bg().Info("login resp", zap.String("token", token))
+	}
+	return nil
 }

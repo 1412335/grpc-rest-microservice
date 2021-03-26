@@ -5,7 +5,11 @@ tracing:
   metrics: "prometheus"
 clientConfig:
   version: "v3"
-  serviceName: "grpc-gateway"
+  serviceName: "v3"
   grpc: 
     host: "v3"
     port: 9090
+  secure:
+    flag: true
+    TLSCert:
+      CACert : "./cert/ca-cert.pem"

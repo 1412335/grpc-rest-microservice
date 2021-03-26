@@ -46,7 +46,6 @@ func V3ClientService() error {
 		logger,
 		grpcClient.WithMetricsFactory(metricsFactory),
 	)
-	zapLogger.Info("create client", zap.Any("client", c), zap.Error(err))
 	if err != nil {
 		return logError(zapLogger, err)
 	}
