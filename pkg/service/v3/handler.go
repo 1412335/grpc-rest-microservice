@@ -2,6 +2,10 @@ package v3
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"mime"
 	"net"
@@ -24,7 +28,6 @@ import (
 
 	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
-	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 
 	// Static files
 	_ "github.com/1412335/grpc-rest-microservice/pkg/api/v3/statik"
@@ -187,6 +190,41 @@ func serveOpenAPI(r *gin.Engine) error {
 	return nil
 }
 
+func (h *Handler) loadClientTLSCredentials() (credentials.TransportCredentials, error) {
+	// Load certificate of the CA who signed server's certificate
+	pemServerCA, err := ioutil.ReadFile(h.config.TLSCert.CACert)
+	if err != nil {
+		return nil, err
+	}
+
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(pemServerCA) {
+		return nil, fmt.Errorf("failed to add server CA's certificate")
+	}
+
+	// Create the credentials and return it
+	config := &tls.Config{
+		RootCAs: certPool,
+		// ServerName:         c.addr,
+		// InsecureSkipVerify: true,
+	}
+	return credentials.NewTLS(config), nil
+}
+
+func (h *Handler) loadServerTLSCredentials() (*tls.Config, error) {
+	// Load server's certificate and private key
+	serverCert, err := tls.LoadX509KeyPair(h.config.TLSCert.CertPem, h.config.TLSCert.KeyPem)
+	if err != nil {
+		return nil, err
+	}
+	// Create the credentials and return it
+	config := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+		ClientAuth:   tls.NoClientCert,
+	}
+	return config, nil
+}
+
 // run grpc-gateway
 func (h *Handler) Run() error {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -205,14 +243,24 @@ func (h *Handler) Run() error {
 		// runtime.WithProtoErrorHandler(runtime.DefaultHTTPProtoErrorHandler),
 	)
 
-	// gRPCHost := net.JoinHostPort(h.config.GRPC.Host, strconv.Itoa(h.config.GRPC.Port))
-	gRPCHost := net.JoinHostPort("localhost", strconv.Itoa(h.config.GRPC.Port))
+	gRPCHost := net.JoinHostPort("0.0.0.0", strconv.Itoa(h.config.GRPC.Port))
 
 	// gRPC client options
 	opts := []grpc.DialOption{
-		// grpc.WithInsecure(),
-		grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(utils.CertPool, "")),
-		grpc.WithBlock(),
+		grpc.WithInsecure(),
+	}
+
+	// insecure
+	if h.config.EnableTLS && h.config.TLSCert != nil {
+		creds, err := h.loadClientTLSCredentials()
+		if err != nil {
+			log.Fatal("Load client TLS credentials failed:", err)
+		} else {
+			opts = []grpc.DialOption{
+				grpc.WithTransportCredentials(creds),
+				// grpc.WithBlock(),
+			}
+		}
 	}
 
 	callOptions := []grpc.CallOption{}
@@ -242,9 +290,14 @@ func (h *Handler) Run() error {
 	// router
 	router := h.initRouter(mux)
 	// http server
+	tlsConfig, err := h.loadServerTLSCredentials()
+	if err != nil {
+		log.Fatal("Load http server TLS credentials failed:", err)
+	}
 	srv := &http.Server{
-		Addr:    addr,
-		Handler: router,
+		Addr:      addr,
+		TLSConfig: tlsConfig,
+		Handler:   router,
 	}
 
 	// graceful shutdown
@@ -260,6 +313,7 @@ func (h *Handler) Run() error {
 		}
 	}()
 
-	log.Println("Proxy gateway running at:", addr)
-	return srv.ListenAndServe()
+	log.Println("Serving gRPC-Gateway on https://", addr)
+	log.Println("Serving OpenAPI Documentation on https://", addr, "/openapi-ui/")
+	return srv.ListenAndServeTLS("", "")
 }

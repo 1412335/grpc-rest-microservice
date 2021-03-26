@@ -5,7 +5,6 @@ import (
 	"go.uber.org/zap"
 
 	grpcClient "github.com/1412335/grpc-rest-microservice/pkg/client"
-	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/service/v3/client"
 )
@@ -34,18 +33,16 @@ func V3ClientService() error {
 	)
 	logger := log.NewFactory(zapLogger)
 
-	// inherit tracing flag
-	if cfgs.ClientConfig.Tracing == nil {
-		cfgs.ClientConfig.Tracing = &configs.Tracing{
-			Flag: cfgs.Tracing.Flag,
-		}
+	var opts []grpcClient.ClientOption
+	if cfgs.ClientConfig.EnableTracing {
+		opts = append(opts, grpcClient.WithMetricsFactory(metricsFactory))
 	}
-
 	c, err := client.New(
 		cfgs.ClientConfig,
 		logger,
-		grpcClient.WithMetricsFactory(metricsFactory),
+		opts...,
 	)
+
 	if err != nil {
 		return logError(zapLogger, err)
 	}

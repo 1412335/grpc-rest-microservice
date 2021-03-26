@@ -60,17 +60,14 @@ func V3Service() error {
 }
 
 func testGrpcClient(cfgs *configs.ClientConfig, logger log.Factory) error {
-	// inherit tracing flag
-	if cfgs.Tracing == nil {
-		cfgs.Tracing = &configs.Tracing{
-			Flag: cfgs.Tracing.Flag,
-		}
+	var opts []grpcClient.ClientOption
+	if cfgs.EnableTracing {
+		opts = append(opts, grpcClient.WithMetricsFactory(metricsFactory))
 	}
-	// client grpc
 	c, err := client.New(
 		cfgs,
 		logger,
-		grpcClient.WithMetricsFactory(metricsFactory),
+		opts...,
 	)
 	if err != nil {
 		return err

@@ -69,7 +69,7 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 	opts := []grpc.ServerOption{}
 
 	// insecure
-	if srvConfig.Secure != nil && srvConfig.Secure.Flag {
+	if srvConfig.EnableTLS && srvConfig.TLSCert != nil {
 		opts = append(opts, srv.insecureServer())
 	}
 
@@ -84,7 +84,7 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 
 func (s *Server) loadServerTLSCredentials() (credentials.TransportCredentials, error) {
 	// Load server's certificate and private key
-	serverCert, err := tls.LoadX509KeyPair(s.config.Secure.TLSCert.CertPem, s.config.Secure.TLSCert.KeyPem)
+	serverCert, err := tls.LoadX509KeyPair(s.config.TLSCert.CertPem, s.config.TLSCert.KeyPem)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (s *Server) insecureServer() grpc.ServerOption {
 func (s *Server) buildServerInterceptors() []grpc.ServerOption {
 	var unaryInterceptors []grpc.UnaryServerInterceptor
 	var streamInterceptors []grpc.StreamServerInterceptor
-	if s.config.Tracing.Flag {
+	if s.config.EnableTracing {
 		// create tracer
 		tracer := tracing.Init(s.config.ServiceName, s.metricsFactory, s.logger)
 		// tracing interceptor

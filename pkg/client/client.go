@@ -69,11 +69,11 @@ func New(cfgs *configs.ClientConfig, opt ...ClientOption) (*Client, error) {
 
 	// gRPC client options
 	opts := []grpc.DialOption{
-		// grpc.WithInsecure(),
+		grpc.WithInsecure(),
 	}
 
 	// insecure
-	if cfgs.Secure != nil && cfgs.Secure.Flag {
+	if cfgs.EnableTLS && cfgs.TLSCert != nil {
 		creds, err := client.loadClientTLSCredentials()
 		if err != nil {
 			client.logger.Bg().Error("Load client TLS credentials failed", zap.Error(err))
@@ -115,7 +115,7 @@ func New(cfgs *configs.ClientConfig, opt ...ClientOption) (*Client, error) {
 
 func (c *Client) loadClientTLSCredentials() (credentials.TransportCredentials, error) {
 	// Load certificate of the CA who signed server's certificate
-	pemServerCA, err := ioutil.ReadFile(c.config.Secure.TLSCert.CACert)
+	pemServerCA, err := ioutil.ReadFile(c.config.TLSCert.CACert)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (c *Client) loadClientTLSCredentials() (credentials.TransportCredentials, e
 	config := &tls.Config{
 		RootCAs: certPool,
 		// ServerName:         c.addr,
-		InsecureSkipVerify: true,
+		// InsecureSkipVerify: true,
 	}
 
 	return credentials.NewTLS(config), nil
@@ -138,7 +138,7 @@ func (c *Client) loadClientTLSCredentials() (credentials.TransportCredentials, e
 func (c *Client) buildInterceptors() []grpc.DialOption {
 	var unaryInterceptors []grpc.UnaryClientInterceptor
 	var streamInterceptors []grpc.StreamClientInterceptor
-	if c.config.Tracing.Flag {
+	if c.config.EnableTracing {
 		// create tracer
 		tracer := tracing.Init(c.config.ServiceName, c.metricsFactory, c.logger)
 		// tracing interceptor

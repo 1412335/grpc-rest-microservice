@@ -3,8 +3,8 @@ version: "v1"
 grpc:
   host: "v2"
   port: 9090
+enableTracing: true
 tracing:
-  flags: true
   metrics: "prometheus"
 proxy:
   port: 8000

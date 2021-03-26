@@ -54,8 +54,8 @@ func initConfig() {
 	// cfgs.Tracing.Metrics = metricsBackend
 
 	// tracing
-	if cfgs.Tracing.Flag {
-		if cfgs.Tracing.Metrics == "expvar" {
+	if cfgs.EnableTracing {
+		if cfgs.Tracing != nil && cfgs.Tracing.Metrics == "expvar" {
 			metricsFactory = expvar.NewFactory(10) // 10 buckets for histograms
 			logger.Info("[Tracing] Using expvar as metrics backend")
 		} else {

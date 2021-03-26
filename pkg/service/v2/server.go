@@ -60,7 +60,7 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 
 	var unaryInterceptors []grpc.UnaryServerInterceptor
 	var streamInterceptors []grpc.StreamServerInterceptor
-	if srvConfig.Tracing.Flag {
+	if srvConfig.EnableTracing {
 		// create tracer
 		tracer := tracing.Init(srvConfig.ServiceName, srv.metricsFactory, srv.logger)
 		// tracing interceptor

@@ -27,9 +27,11 @@ type ServiceConfig struct {
 	// client using
 	AuthMethods map[string]bool
 	// opentracing
-	Tracing *Tracing
+	EnableTracing bool
+	Tracing       *Tracing
 	// insecure
-	Secure *Secure
+	EnableTLS bool
+	TLSCert   *TLSCert
 	// swaggers
 	Swagger []string
 }
@@ -40,24 +42,22 @@ type ClientConfig struct {
 	GRPC          *GRPC
 	ManagerClient *ManagerClient
 	// opentracing
-	Tracing *Tracing
+	EnableTracing bool
+	Tracing       *Tracing
 	// insecure
-	Secure *Secure
+	EnableTLS bool
+	TLSCert   *TLSCert
 }
 
 // opentracing with jaeger
 type Tracing struct {
-	Flag    bool
 	Metrics string
 }
 
-type Secure struct {
-	Flag    bool
-	TLSCert struct {
-		CACert  string
-		CertPem string
-		KeyPem  string
-	}
+type TLSCert struct {
+	CACert  string
+	CertPem string
+	KeyPem  string
 }
 
 // grpc-server
