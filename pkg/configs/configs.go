@@ -17,6 +17,7 @@ type ServiceConfig struct {
 	ServiceName    string
 	GRPC           *GRPC
 	Proxy          *Proxy
+	ClientConfig   *ClientConfig
 	ManagerClient  *ManagerClient
 	JWT            *JWT
 	Database       *Database
@@ -27,6 +28,8 @@ type ServiceConfig struct {
 	AuthMethods map[string]bool
 	// opentracing
 	Tracing *Tracing
+	// insecure
+	Secure *Secure
 	// swaggers
 	Swagger []string
 }
@@ -36,12 +39,25 @@ type ClientConfig struct {
 	ServiceName   string
 	GRPC          *GRPC
 	ManagerClient *ManagerClient
+	// opentracing
+	Tracing *Tracing
+	// insecure
+	Secure *Secure
 }
 
 // opentracing with jaeger
 type Tracing struct {
 	Flag    bool
 	Metrics string
+}
+
+type Secure struct {
+	Flag    bool
+	TLSCert struct {
+		CACert  string
+		CertPem string
+		KeyPem  string
+	}
 }
 
 // grpc-server

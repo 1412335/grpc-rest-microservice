@@ -20,9 +20,11 @@ import (
 	"github.com/rakyll/statik/fs"
 	"github.com/unrolled/secure"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
+	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 
 	// Static files
 	_ "github.com/1412335/grpc-rest-microservice/pkg/api/v3/statik"
@@ -207,7 +209,11 @@ func (h *Handler) Run() error {
 	gRPCHost := net.JoinHostPort("localhost", strconv.Itoa(h.config.GRPC.Port))
 
 	// gRPC client options
-	opts := []grpc.DialOption{grpc.WithInsecure()}
+	opts := []grpc.DialOption{
+		// grpc.WithInsecure(),
+		grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(utils.CertPool, "")),
+		grpc.WithBlock(),
+	}
 
 	callOptions := []grpc.CallOption{}
 	if h.config.GRPC.MaxCallRecvMsgSize > 0 {

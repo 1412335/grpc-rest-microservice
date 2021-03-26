@@ -1,3 +1,5 @@
+#!/bin/bash
+
 rm *.perm
 
 # 1. Generate CA's private key and self-signed certificate

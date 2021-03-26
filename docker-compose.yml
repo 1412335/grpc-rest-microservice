@@ -220,7 +220,7 @@ services:
     ports:
       - '8082:9090' # gRPC server
       - '8002:8000' # gRPC gateway
-    command: ["-c","./pkg/service/v3/config.yml","-t","-m","prometheus","-v","v3","v3"]
+    command: ["-c","./pkg/service/v3/config.yml","-v","v3","v3"]
     environment:
       - JAEGER_AGENT_HOST=jaeger
       - JAEGER_AGENT_PORT=6831
@@ -228,6 +228,26 @@ services:
       - grpc-rest
     depends_on:
       - postgres
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
+
+  v3-client:
+    image: grpc-rest/v3:client
+    container_name: v3-client
+    # restart: on-failure
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["-c","./pkg/service/v3/client/config.yml","v3-client"]
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+    networks:
+      - grpc-rest
+    # depends_on:
+    #   - v3
     logging:
       driver: loki
       options:

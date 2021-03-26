@@ -1,0 +1,11 @@
+serviceName: "grpc-client"
+version: "v3"
+tracing:
+  flags: true
+  metrics: "prometheus"
+clientConfig:
+  version: "v3"
+  serviceName: "grpc-gateway"
+  grpc: 
+    host: "v3"
+    port: 9090

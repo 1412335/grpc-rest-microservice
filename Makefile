@@ -19,10 +19,13 @@ install:
 		github.com/rakyll/statik
 
 # gen cert
-.PHONY: cert
-cert:
-	cd ./cert; ./gen.sh; cd ../
+.PHONY: gen-cert
+gen-cert:
+	sh ./cert/gen.sh
 
+.PHONY: gen-rsa
+gen-rsa:
+	sh ./cert/gen-rsa.sh
 
 # gen stubs
 .PHONY: gen
@@ -122,7 +125,7 @@ lint: fmt
 	golangci-lint run $(go list ./... | grep -v /vendor/)
 
 .PHONY: test
-test:
+test: lint
 	go test -v $(go list ./... | grep -v /vendor/)
 
 # cleaning

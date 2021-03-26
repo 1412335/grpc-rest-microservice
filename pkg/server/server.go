@@ -9,13 +9,15 @@ import (
 	"syscall"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
-	"github.com/1412335/grpc-rest-microservice/pkg/interceptor"
+	interceptor "github.com/1412335/grpc-rest-microservice/pkg/interceptor/server"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/tracing"
+	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/uber/jaeger-lib/metrics"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -63,29 +65,40 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 			return nil
 		}
 	}
+	// server options
+	opts := []grpc.ServerOption{}
+
+	// insecure
+	if srvConfig.Secure != nil && srvConfig.Secure.Flag {
+		opts = append(opts, srv.insecureServer())
+	}
+
+	opts = append(opts, srv.buildServerInterceptors()...)
 	// create grpc server
-	srv.grpcServer = grpc.NewServer(
-		srv.buildServerInterceptors()...,
-	)
+	srv.grpcServer = grpc.NewServer(opts...)
 	// NOTE: gogo/protobuf is currently not working perfectly with server reflection
 	// grpc reflection: use with evans
 	reflection.Register(srv.grpcServer)
 	return srv
 }
 
-func (srv *Server) buildServerInterceptors() []grpc.ServerOption {
+func (s *Server) insecureServer() grpc.ServerOption {
+	return grpc.Creds(credentials.NewServerTLSFromCert(&utils.Cert))
+}
+
+func (s *Server) buildServerInterceptors() []grpc.ServerOption {
 	var unaryInterceptors []grpc.UnaryServerInterceptor
 	var streamInterceptors []grpc.StreamServerInterceptor
-	if srv.config.Tracing.Flag {
+	if s.config.Tracing.Flag {
 		// create tracer
-		tracer := tracing.Init(srv.config.ServiceName, srv.metricsFactory, srv.logger)
+		tracer := tracing.Init(s.config.ServiceName, s.metricsFactory, s.logger)
 		// tracing interceptor
 		unaryInterceptors = append(unaryInterceptors, otgrpc.OpenTracingServerInterceptor(tracer))
 		streamInterceptors = append(streamInterceptors, otgrpc.OpenTracingStreamServerInterceptor(tracer))
 	}
 
 	// server interceptor
-	for _, interceptor := range srv.interceptors {
+	for _, interceptor := range s.interceptors {
 		unaryInterceptors = append(unaryInterceptors, interceptor.Unary())
 		streamInterceptors = append(streamInterceptors, interceptor.Stream())
 	}

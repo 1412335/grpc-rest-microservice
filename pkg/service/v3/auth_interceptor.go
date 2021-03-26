@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
-	"github.com/1412335/grpc-rest-microservice/pkg/interceptor"
+	interceptor "github.com/1412335/grpc-rest-microservice/pkg/interceptor/server"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"go.uber.org/zap"
 
@@ -90,12 +90,12 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string, re
 
 // unary request to grpc server
 func (a *AuthServerInterceptor) unaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		a.logger.For(ctx).Error("unary req", zap.Any("panic", r))
-	// 		err = status.Error(codes.Unknown, "server error")
-	// 	}
-	// }()
+	defer func() {
+		if r := recover(); r != nil {
+			a.logger.For(ctx).Error("unary req", zap.Any("panic", r))
+			err = status.Error(codes.Unknown, "server error")
+		}
+	}()
 	a.logger.For(ctx).Info("unary req", zap.String("method", info.FullMethod))
 
 	// authorize request
