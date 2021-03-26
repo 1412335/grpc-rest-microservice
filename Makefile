@@ -21,11 +21,11 @@ install:
 # gen cert
 .PHONY: gen-cert
 gen-cert:
-	sh ./cert/gen.sh
+	cd ./cert; sh gen.sh; cd ../
 
 .PHONY: gen-rsa
 gen-rsa:
-	sh ./cert/gen-rsa.sh
+	cd ./cert; sh gen-rsa.sh; cd ../
 
 # gen stubs
 .PHONY: gen

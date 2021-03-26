@@ -1,6 +1,10 @@
 package client
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"io/ioutil"
 	"net"
 	"strconv"
 
@@ -12,6 +16,7 @@ import (
 	"github.com/uber/jaeger-lib/metrics"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 type ClientOption func(*Client) error
@@ -64,9 +69,21 @@ func New(cfgs *configs.ClientConfig, opt ...ClientOption) (*Client, error) {
 
 	// gRPC client options
 	opts := []grpc.DialOption{
-		grpc.WithInsecure(),
-		// grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(utils.CertPool, "")),
-		// grpc.WithBlock(),
+		// grpc.WithInsecure(),
+	}
+
+	// insecure
+	if cfgs.Secure != nil && cfgs.Secure.Flag {
+		creds, err := client.loadClientTLSCredentials()
+		if err != nil {
+			client.logger.Bg().Error("Load client TLS credentials failed", zap.Error(err))
+		} else {
+			client.logger.Bg().Info("Load client TLS credentials")
+			opts = []grpc.DialOption{
+				grpc.WithTransportCredentials(creds),
+				// grpc.WithBlock(),
+			}
+		}
 	}
 
 	// add client interceptors
@@ -94,6 +111,28 @@ func New(cfgs *configs.ClientConfig, opt ...ClientOption) (*Client, error) {
 	}
 	client.ClientConn = conn
 	return client, nil
+}
+
+func (c *Client) loadClientTLSCredentials() (credentials.TransportCredentials, error) {
+	// Load certificate of the CA who signed server's certificate
+	pemServerCA, err := ioutil.ReadFile(c.config.Secure.TLSCert.CACert)
+	if err != nil {
+		return nil, err
+	}
+
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(pemServerCA) {
+		return nil, fmt.Errorf("failed to add server CA's certificate")
+	}
+
+	// Create the credentials and return it
+	config := &tls.Config{
+		RootCAs: certPool,
+		// ServerName:         c.addr,
+		InsecureSkipVerify: true,
+	}
+
+	return credentials.NewTLS(config), nil
 }
 
 func (c *Client) buildInterceptors() []grpc.DialOption {

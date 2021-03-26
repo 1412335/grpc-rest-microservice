@@ -37,3 +37,18 @@ database:
   maxOpenConns: 100
   connectTimeout: "1h"
   debug: true
+secure:
+  flag: true
+  TLSCert:
+    CertPem: "./cert/server-cert.pem"
+    KeyPem : "./cert/server-key.pem"
+clientConfig:
+  version: "v3"
+  serviceName: "localhost:9090"
+  grpc: 
+    host: "localhost"
+    port: 9090
+  secure:
+    flag: true
+    TLSCert:
+      CACert : "./cert/ca-cert.pem"
