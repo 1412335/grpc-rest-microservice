@@ -31,6 +31,8 @@ import (
 
 	// Static files
 	_ "github.com/1412335/grpc-rest-microservice/pkg/api/v3/statik"
+	// requirement for using error details and want to marshal them correctly to JSON.
+	// https://jbrandhorst.com/post/grpc-errors/
 	_ "google.golang.org/genproto/googleapis/rpc/errdetails"
 )
 
@@ -282,6 +284,7 @@ func (h *Handler) Run() error {
 		opts,
 	)
 	if err != nil {
+		log.Fatalln("Failed to register gateway:", err)
 		return err
 	}
 
@@ -313,7 +316,7 @@ func (h *Handler) Run() error {
 		}
 	}()
 
-	log.Println("Serving gRPC-Gateway on https://", addr)
-	log.Println("Serving OpenAPI Documentation on https://", addr, "/openapi-ui/")
+	log.Println("Serving gRPC-Gateway on https://" + addr)
+	log.Println("Serving OpenAPI Documentation on https://" + addr + "/openapi-ui/")
 	return srv.ListenAndServeTLS("", "")
 }
