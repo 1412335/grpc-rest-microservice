@@ -22,6 +22,8 @@ type ServiceConfig struct {
 	JWT            *JWT
 	Database       *Database
 	Authentication *Authentication
+	// redis
+	Redis *Redis
 	// server using
 	AccessibleRoles map[string][]string
 	// client using
@@ -78,6 +80,15 @@ type JWT struct {
 	Issuer    string
 	SecretKey string
 	Duration  time.Duration
+}
+
+type Redis struct {
+	Nodes  []string
+	Prefix string
+}
+
+type Cache struct {
+	Size int
 }
 
 // db

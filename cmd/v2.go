@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
-	v2 "github.com/1412335/grpc-rest-microservice/pkg/service/v2"
+	v2 "github.com/1412335/grpc-rest-microservice/service/v2"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"

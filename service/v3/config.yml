@@ -51,3 +51,8 @@ clientConfig:
   enableTLS: true
   TLSCert:
     CACert : "./cert/ca-cert.pem"
+redis:
+  nodes:
+    - "host.docker.internal:6379"
+    # - "redis:6379"
+  prefix: ""

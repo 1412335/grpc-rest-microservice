@@ -6,7 +6,7 @@ import (
 
 	grpcClient "github.com/1412335/grpc-rest-microservice/pkg/client"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
-	"github.com/1412335/grpc-rest-microservice/pkg/service/v3/client"
+	"github.com/1412335/grpc-rest-microservice/service/v3/client"
 )
 
 var v3clientCmd = &cobra.Command{

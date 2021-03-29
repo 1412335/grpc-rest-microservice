@@ -1,12 +1,16 @@
 package cmd
 
 import (
+	"time"
+
+	"github.com/1412335/grpc-rest-microservice/pkg/cache"
 	grpcClient "github.com/1412335/grpc-rest-microservice/pkg/client"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
+	"github.com/1412335/grpc-rest-microservice/pkg/dal/redis"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/server"
-	v3 "github.com/1412335/grpc-rest-microservice/pkg/service/v3"
-	"github.com/1412335/grpc-rest-microservice/pkg/service/v3/client"
+	v3 "github.com/1412335/grpc-rest-microservice/service/v3"
+	"github.com/1412335/grpc-rest-microservice/service/v3/client"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -30,6 +34,16 @@ func V3Service() error {
 	// create log factory
 	zapLogger := logger.With(zap.String("service", cfgs.ServiceName), zap.String("version", cfgs.Version))
 	logger := log.NewFactory(zapLogger)
+
+	// cache
+	if redisStore, err := redis.New(redis.WithNodes(cfgs.Redis.Nodes), redis.WithPrefix(cfgs.ServiceName)); err != nil {
+		zapLogger.Error("Connect redis store failed", zap.Error(err))
+	} else if cache, err := cache.NewRedisCache(redisStore, cache.WithExpiryDuration(120*time.Second)); err != nil {
+		zapLogger.Error("Create cache w redis store failed", zap.Error(err))
+	} else {
+		v3.DefaultCache = cache
+	}
+
 	// server
 	server := v3.NewServer(
 		cfgs,

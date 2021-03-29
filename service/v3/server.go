@@ -4,12 +4,17 @@ import (
 	"context"
 
 	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
+	"github.com/1412335/grpc-rest-microservice/pkg/cache"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/postgres"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/server"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+)
+
+var (
+	DefaultCache cache.Cache
 )
 
 type Server struct {

@@ -54,7 +54,7 @@ type UsersHandlerOption func(h *userServiceImpl) error
 // 	}
 // }
 
-// func WithCacheStore(cache *cache.Cache) UsersHandlerOption {
+// func WithCacheStore(cache cache.Cache) UsersHandlerOption {
 // 	return func(h *userServiceImpl) error {
 // 		h.cache = cache
 // 		return nil
@@ -87,6 +87,36 @@ func (u *userServiceImpl) genHash(password string) (string, error) {
 
 func (u *userServiceImpl) compareHash(hash, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+}
+
+func (u *userServiceImpl) getUserByID(ctx context.Context, id string) (*User, error) {
+	user := &User{}
+	err := u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// cache
+		if DefaultCache != nil {
+			if err := DefaultCache.Get(id, user); err != nil {
+				u.logger.For(ctx).Error("Get user cache", zap.Error(err))
+			} else {
+				return nil
+			}
+		}
+		// find user by id
+		if err := tx.Where(&User{ID: id}).First(user).Error; err == gorm.ErrRecordNotFound {
+			return ErrNotFound
+		} else if err != nil {
+			u.logger.For(ctx).Error("Find user", zap.Error(err))
+			return ErrConnectDB
+		}
+		// cache
+		if err := user.cache(); err != nil {
+			u.logger.For(ctx).Error("Cache user", zap.Error(err))
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return user, err
 }
 
 // create user
@@ -377,24 +407,28 @@ func (u *userServiceImpl) Login(ctx context.Context, req *api_v3.LoginRequest) (
 	err := u.dal.GetDatabase().Transaction(func(tx *gorm.DB) error {
 		var user User
 		// find user by email
-		if err := tx.Where(&User{Email: strings.ToLower(req.GetEmail())}).First(&user).Error; err == gorm.ErrRecordNotFound {
+		if e := tx.Where(&User{Email: strings.ToLower(req.GetEmail())}).First(&user).Error; e == gorm.ErrRecordNotFound {
 			return ErrNotFound
-		} else if err != nil {
-			u.logger.For(ctx).Error("Error find user", zap.Error(err))
+		} else if e != nil {
+			u.logger.For(ctx).Error("Error find user", zap.Error(e))
 			return ErrConnectDB
 		}
 		// verify password
-		if err := u.compareHash(user.Password, req.GetPassword()); err != nil {
+		if e := u.compareHash(user.Password, req.GetPassword()); e != nil {
 			return ErrIncorrectPassword
 		}
 		if !user.Active {
 			return errors.BadRequest("not active user", "active", "user not active yet")
 		}
 		// gen new token
-		token, err := u.tokenSrv.Generate(&user)
-		if err != nil {
-			u.logger.For(ctx).Error("Error gen token", zap.Error(err))
+		token, e := u.tokenSrv.Generate(&user)
+		if e != nil {
+			u.logger.For(ctx).Error("Error gen token", zap.Error(e))
 			return ErrTokenGenerated
+		}
+		// cache user
+		if e := user.cache(); e != nil {
+			u.logger.For(ctx).Error("Cache user", zap.Error(e))
 		}
 		//
 		rsp.User = user.sanitize()
@@ -421,23 +455,28 @@ func (u *userServiceImpl) Validate(ctx context.Context, req *api_v3.ValidateRequ
 	rsp := &api_v3.ValidateResponse{}
 	err := u.dal.GetDatabase().Transaction(func(tx *gorm.DB) error {
 		// verrify token
-		claims, err := u.tokenSrv.Verify(req.Token)
-		if err != nil {
-			u.logger.For(ctx).Error("verify token failed", zap.Error(err))
+		claims, e := u.tokenSrv.Verify(req.Token)
+		if e != nil {
+			u.logger.For(ctx).Error("verify token failed", zap.Error(e))
 			return ErrTokenInvalid
 		}
 		// update active
-		if err := tx.Model(&User{ID: claims.ID}).Update("active", true).Error; err == gorm.ErrRecordNotFound {
+		if e := tx.Model(&User{ID: claims.ID}).Update("active", true).Error; e == gorm.ErrRecordNotFound {
 			return ErrNotFound
-		} else if err != nil {
-			u.logger.For(ctx).Error("Error update user", zap.Error(err))
+		} else if e != nil {
+			u.logger.For(ctx).Error("Error update user", zap.Error(e))
 			return ErrConnectDB
 		}
+		// get cache user
+		user, e := u.getUserByID(ctx, claims.ID)
+		if e != nil {
+			return e
+		}
+		// rsp.User = user.sanitize()
 		rsp.Id = claims.ID
-		rsp.Username = claims.Username
-		rsp.Fullname = claims.Fullname
-		rsp.Email = claims.Email
-		// rsp.Role = claims.Role
+		rsp.Username = user.Username
+		rsp.Fullname = user.Fullname
+		rsp.Email = user.Email
 		return nil
 	})
 	if err != nil {

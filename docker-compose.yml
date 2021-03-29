@@ -35,6 +35,21 @@ services:
     networks:
       - grpc-rest
 
+  redis:
+    image: redis:alpine
+    container_name: redis
+    env_file: ./docker/redis/docker-compose.env
+    volumes:
+    - ./docker/redis/data:/data
+    - ./docker/redis/config:/usr/local/etc/redis/
+#    command: ["redis-server","/usr/local/etc/redis/redis.conf", "--appendonly", "yes"]
+#    command: ["sh", "-c", "redis-server", "--appendonly", "yes", "--requirepass", "$${REDIS_PASS}"]
+    entrypoint: ["sh", "-c", "redis-server --appendonly yes --requirepass $${REDIS_PASS}"]
+    ports:
+      - "6378:6379"
+    networks:
+      - grpc-rest
+
   # mytop:
   #   image: srcoder/mytop
   #   container_name: mytop
@@ -220,7 +235,7 @@ services:
     ports:
       - '8082:9090' # gRPC server
       - '8002:8000' # gRPC gateway
-    command: ["-c","./pkg/service/v3/config.yml","-v","v3","v3"]
+    command: ["-c","./service/v3/config.yml","-v","v3","v3"]
     environment:
       - JAEGER_AGENT_HOST=jaeger
       - JAEGER_AGENT_PORT=6831
@@ -240,7 +255,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["-c","./pkg/service/v3/client/config.yml","v3-client"]
+    command: ["-c","./service/v3/client/config.yml","v3-client"]
     environment:
       - JAEGER_AGENT_HOST=jaeger
       - JAEGER_AGENT_PORT=6831
