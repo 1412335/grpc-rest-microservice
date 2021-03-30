@@ -9,15 +9,15 @@ import (
 )
 
 type redisCache struct {
-	opts  Option
+	opts  Options
 	cache *rdCache.Cache
 }
 
 var _ Cache = (*redisCache)(nil)
 
-func NewRedisCache(store *redis.Redis, opts ...Options) (Cache, error) {
+func NewRedisCache(store *redis.Redis, opts ...Option) (Cache, error) {
 	c := redisCache{
-		opts: Option{
+		opts: Options{
 			ctx:            context.Background(),
 			database:       "",
 			prefix:         "",
@@ -38,6 +38,10 @@ func NewRedisCache(store *redis.Redis, opts ...Options) (Cache, error) {
 	return &c, nil
 }
 
+func (c *redisCache) getKey(key string) string {
+	return c.opts.prefix + key
+}
+
 func (c *redisCache) Close() error {
 	return nil
 }
@@ -45,7 +49,7 @@ func (c *redisCache) Close() error {
 func (c *redisCache) Set(key, value string) error {
 	err := c.cache.Set(&rdCache.Item{
 		Ctx:   c.opts.ctx,
-		Key:   key,
+		Key:   c.getKey(key),
 		Value: []byte(value),
 		TTL:   c.opts.expiryDuration,
 	})
@@ -53,15 +57,19 @@ func (c *redisCache) Set(key, value string) error {
 }
 
 func (c *redisCache) Get(key string, obj interface{}) error {
-	err := c.cache.Get(c.opts.ctx, key, obj)
+	err := c.cache.Get(c.opts.ctx, c.getKey(key), obj)
 	return err
 }
 
 func (c *redisCache) Delete(key string) error {
-	err := c.cache.Delete(c.opts.ctx, key)
+	err := c.cache.Delete(c.opts.ctx, c.getKey(key))
 	return err
 }
 
 func (c *redisCache) Exists(key string) bool {
-	return c.cache.Exists(c.opts.ctx, key)
+	return c.cache.Exists(c.opts.ctx, c.getKey(key))
+}
+
+func (c *redisCache) Ratio() float64 {
+	return float64(c.cache.Stats().Misses / c.cache.Stats().Hits)
 }

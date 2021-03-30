@@ -11,24 +11,24 @@ const cacheDefaultExpiration = 1 * time.Hour
 // cacheMaxListLimit defines maximum number of items to pull from the cache when doing a list of keys
 const cacheLRUMaxSize = 200
 
-type Options func(*Option) error
+type Option func(*Options) error
 
-func WithDatabase(database string) Options {
-	return func(c *Option) error {
+func WithDatabase(database string) Option {
+	return func(c *Options) error {
 		c.database = database
 		return nil
 	}
 }
 
-func WithPrefix(prefix string) Options {
-	return func(c *Option) error {
+func WithPrefix(prefix string) Option {
+	return func(c *Options) error {
 		c.prefix = prefix
 		return nil
 	}
 }
 
-func WithExpiryDuration(expiryDuration time.Duration) Options {
-	return func(c *Option) error {
+func WithExpiryDuration(expiryDuration time.Duration) Option {
+	return func(c *Options) error {
 		if expiryDuration == 0 {
 			expiryDuration = cacheDefaultExpiration
 		}
@@ -37,8 +37,8 @@ func WithExpiryDuration(expiryDuration time.Duration) Options {
 	}
 }
 
-func WithLRUMaxSize(size int) Options {
-	return func(c *Option) error {
+func WithLRUMaxSize(size int) Option {
+	return func(c *Options) error {
 		if size == 0 {
 			size = cacheLRUMaxSize
 		}
@@ -47,7 +47,7 @@ func WithLRUMaxSize(size int) Options {
 	}
 }
 
-type Option struct {
+type Options struct {
 	ctx            context.Context
 	database       string
 	prefix         string
@@ -60,4 +60,5 @@ type Cache interface {
 	Set(key, value string) error
 	Get(key string, val interface{}) error
 	Delete(key string) error
+	Ratio() float64
 }
