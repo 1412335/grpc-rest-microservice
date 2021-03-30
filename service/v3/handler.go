@@ -3,9 +3,6 @@ package v3
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"mime"
 	"net"
@@ -28,6 +25,7 @@ import (
 
 	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
+	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 
 	// Static files
 	_ "github.com/1412335/grpc-rest-microservice/pkg/api/v3/statik"
@@ -178,7 +176,9 @@ func (h *Handler) initRouter(handler http.Handler) *gin.Engine {
 // serveOpenAPI serves an OpenAPI UI on /openapi-ui/
 // Adapted from https://github.com/philips/grpc-gateway-example/blob/a269bcb5931ca92be0ceae6130ac27ae89582ecc/cmd/serve.go#L63
 func serveOpenAPI(r *gin.Engine) error {
-	mime.AddExtensionType(".svg", "image/svg+xml")
+	if err := mime.AddExtensionType(".svg", "image/svg+xml"); err != nil {
+		return err
+	}
 	statikFS, err := fs.New()
 	if err != nil {
 		return err
@@ -193,36 +193,20 @@ func serveOpenAPI(r *gin.Engine) error {
 }
 
 func (h *Handler) loadClientTLSCredentials() (credentials.TransportCredentials, error) {
-	// Load certificate of the CA who signed server's certificate
-	pemServerCA, err := ioutil.ReadFile(h.config.TLSCert.CACert)
+	config, err := utils.LoadClientTLSConfig(h.config.TLSCert.CACert)
 	if err != nil {
 		return nil, err
 	}
-
-	certPool := x509.NewCertPool()
-	if !certPool.AppendCertsFromPEM(pemServerCA) {
-		return nil, fmt.Errorf("failed to add server CA's certificate")
-	}
-
+	// config.ServerName = h.addr
+	// config.InsecureSkipVerify = true
 	// Create the credentials and return it
-	config := &tls.Config{
-		RootCAs: certPool,
-		// ServerName:         c.addr,
-		// InsecureSkipVerify: true,
-	}
 	return credentials.NewTLS(config), nil
 }
 
 func (h *Handler) loadServerTLSCredentials() (*tls.Config, error) {
-	// Load server's certificate and private key
-	serverCert, err := tls.LoadX509KeyPair(h.config.TLSCert.CertPem, h.config.TLSCert.KeyPem)
+	config, err := utils.LoadServerTLSConfig(h.config.TLSCert.CertPem, h.config.TLSCert.KeyPem)
 	if err != nil {
 		return nil, err
-	}
-	// Create the credentials and return it
-	config := &tls.Config{
-		Certificates: []tls.Certificate{serverCert},
-		ClientAuth:   tls.NoClientCert,
 	}
 	return config, nil
 }

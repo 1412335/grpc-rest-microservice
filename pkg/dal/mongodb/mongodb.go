@@ -24,7 +24,7 @@ var mongoOnce sync.Once
 
 // errors
 var (
-	DBClientError = errors.New("client error")
+	ErrConnectDB = errors.New("Connecting db failed")
 )
 
 type DataAccessLayer struct {
@@ -98,7 +98,7 @@ func (dal *DataAccessLayer) Disconnect(ctx context.Context) error {
 func (dal *DataAccessLayer) GetDatabase() error {
 	// Get MongoDB connection using connectionhelper.
 	if dal.clientInstance == nil {
-		return DBClientError
+		return ErrConnectDB
 	}
 	dal.dbInstance = dal.clientInstance.Database(dal.dbConfig.Database)
 	return nil

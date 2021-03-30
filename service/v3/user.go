@@ -2,9 +2,11 @@ package v3
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
+	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 
 	"gorm.io/gorm"
 )
@@ -46,7 +48,35 @@ func (u *User) cache() error {
 	return nil
 }
 
+func (u *User) rmCache() error {
+	if DefaultCache == nil {
+		return nil
+	}
+	if err := DefaultCache.Delete(u.ID); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *User) hashPassword() error {
+	if u.Password != "" {
+		return nil
+	}
+	// hash password
+	hashedPassword, err := utils.GenHash(u.Password)
+	if err != nil {
+		// 	u.logger.For(ctx).Error("Hash password failed", zap.Error(err))
+		return ErrHashPassword
+	}
+	u.Password = hashedPassword
+	return nil
+}
+
 func (u *User) BeforeCreate(tx *gorm.DB) error {
+	if err := u.hashPassword(); err != nil {
+		return err
+	}
+	u.Email = strings.ToLower(u.Email)
 	return nil
 }
 
@@ -59,6 +89,10 @@ func (u *User) AfterCreate(tx *gorm.DB) error {
 }
 
 func (u *User) BeforeUpdate(tx *gorm.DB) error {
+	if err := u.hashPassword(); err != nil {
+		return err
+	}
+	u.Email = strings.ToLower(u.Email)
 	return nil
 }
 
@@ -66,6 +100,18 @@ func (u *User) BeforeUpdate(tx *gorm.DB) error {
 func (u *User) AfterUpdate(tx *gorm.DB) error {
 	// cache user
 	if err := u.cache(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *User) BeforeDelete(tx *gorm.DB) error {
+	return nil
+}
+
+func (u *User) AfterDelete(tx *gorm.DB) error {
+	// rm cache user
+	if err := u.rmCache(); err != nil {
 		return err
 	}
 	return nil

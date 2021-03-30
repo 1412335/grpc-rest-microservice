@@ -26,7 +26,9 @@ func NewRedisCache(store *redis.Redis, opts ...Options) (Cache, error) {
 		},
 	}
 	for _, o := range opts {
-		o(&c.opts)
+		if err := o(&c.opts); err != nil {
+			return nil, err
+		}
 	}
 	cache := rdCache.New(&rdCache.Options{
 		Redis:      store.GetClient(),

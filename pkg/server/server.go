@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"crypto/tls"
 	"net"
 	"os"
 	"os/signal"
@@ -13,6 +12,7 @@ import (
 	interceptor "github.com/1412335/grpc-rest-microservice/pkg/interceptor/server"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/tracing"
+	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/uber/jaeger-lib/metrics"
 	"go.uber.org/zap"
@@ -83,18 +83,11 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 }
 
 func (s *Server) loadServerTLSCredentials() (credentials.TransportCredentials, error) {
-	// Load server's certificate and private key
-	serverCert, err := tls.LoadX509KeyPair(s.config.TLSCert.CertPem, s.config.TLSCert.KeyPem)
+	config, err := utils.LoadServerTLSConfig(s.config.TLSCert.CertPem, s.config.TLSCert.KeyPem)
 	if err != nil {
 		return nil, err
 	}
-
 	// Create the credentials and return it
-	config := &tls.Config{
-		Certificates: []tls.Certificate{serverCert},
-		ClientAuth:   tls.NoClientCert,
-	}
-
 	return credentials.NewTLS(config), nil
 }
 

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 )
@@ -51,26 +50,28 @@ func (dal *DataAccessLayer) Connect(ctx context.Context) (*sql.DB, error) {
 	var err error
 	once.Do(func() {
 		// build connection string
-		dsn, err := dal.buildConnectionDSN()
-		if err != nil {
+		dsn, e := dal.buildConnectionDSN()
+		if e != nil {
+			err = e
 			return
 		}
 		// connect db
-		db, err := sql.Open("mysql", dsn)
-		if err != nil {
+		db, e := sql.Open("mysql", dsn)
+		if e != nil {
+			err = e
 			return
 		}
 		defer db.Close()
 
 		// https://github.com/go-sql-driver/mysql/
 		// SetMaxIdleConns sets the maximum number of connections in the idle connection pool.
-		db.SetMaxIdleConns(10)
+		db.SetMaxIdleConns(dal.dbConfig.MaxIdleConns)
 
 		// SetMaxOpenConns sets the maximum number of open connections to the database.
-		db.SetMaxOpenConns(100)
+		db.SetMaxOpenConns(dal.dbConfig.MaxOpenConns)
 
 		// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
-		db.SetConnMaxLifetime(time.Hour)
+		db.SetConnMaxLifetime(dal.dbConfig.ConnectTimeout)
 
 		dal.dbInstance = db
 	})

@@ -7,15 +7,20 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func BadRequest(msg, field, description string) error {
+func BadRequest(msg string, fields map[string]string) error {
 	st := status.New(codes.InvalidArgument, msg)
+	if len(fields) == 0 {
+		return st.Err()
+	}
+	var fieldViolations []*rpc.BadRequest_FieldViolation
+	for field, desc := range fields {
+		fieldViolations = append(fieldViolations, &rpc.BadRequest_FieldViolation{
+			Field:       field,
+			Description: desc,
+		})
+	}
 	des, err := st.WithDetails(&rpc.BadRequest{
-		FieldViolations: []*rpc.BadRequest_FieldViolation{
-			{
-				Field:       field,
-				Description: description,
-			},
-		},
+		FieldViolations: fieldViolations,
 	})
 	if err != nil {
 		return st.Err()
@@ -46,19 +51,24 @@ func Unauthenticated(msg, field, description string) error {
 	return des.Err()
 }
 
-func NotFound(msg, field, description string) error {
+func NotFound(msg string, fields map[string]string) error {
 	st := status.New(codes.NotFound, msg)
+	if len(fields) == 0 {
+		return st.Err()
+	}
+	var fieldViolations []*rpc.PreconditionFailure_Violation
+	for field, desc := range fields {
+		fieldViolations = append(fieldViolations, &rpc.PreconditionFailure_Violation{
+			Type:        "NotFound",
+			Subject:     field,
+			Description: desc,
+		})
+	}
 	des, err := st.WithDetails(&rpc.PreconditionFailure{
-		Violations: []*rpc.PreconditionFailure_Violation{
-			{
-				Type:        "NotFound",
-				Subject:     field,
-				Description: description,
-			},
-		},
+		Violations: fieldViolations,
 	})
 	if err != nil {
-		return des.Err()
+		return st.Err()
 	}
-	return st.Err()
+	return des.Err()
 }

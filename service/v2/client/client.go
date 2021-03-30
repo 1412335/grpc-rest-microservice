@@ -24,7 +24,7 @@ type Client interface {
 	DuplexStreaming(in []*api_v2.StreamingMessagePing) ([]*api_v2.StreamingMessagePong, error)
 }
 
-type ClientImpl struct {
+type clientImpl struct {
 	client   api_v2.ServiceExtraClient
 	conn     *grpcpool.ClientConn
 	ctx      context.Context
@@ -32,18 +32,18 @@ type ClientImpl struct {
 	password string
 }
 
-func (c *ClientImpl) Close() error {
+func (c *clientImpl) Close() error {
 	return c.conn.Close()
 }
 
-func (c *ClientImpl) setHeader(m map[string]string) context.Context {
+func (c *clientImpl) setHeader(m map[string]string) context.Context {
 	md := metadata.New(m)
 	ctx := metadata.NewOutgoingContext(c.ctx, md)
 	return ctx
 }
 
 // login & get token
-func (c *ClientImpl) Login() (string, error) {
+func (c *clientImpl) Login() (string, error) {
 	ctx := c.setHeader(map[string]string{"custom-req-header": "login"})
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -69,7 +69,7 @@ func (c *ClientImpl) Login() (string, error) {
 }
 
 // unary get
-func (c *ClientImpl) Ping(timestamp int64) (*api_v2.MessagePong, error) {
+func (c *clientImpl) Ping(timestamp int64) (*api_v2.MessagePong, error) {
 	ctx := c.setHeader(map[string]string{"custom-req-header": "ping"})
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -97,7 +97,7 @@ func (c *ClientImpl) Ping(timestamp int64) (*api_v2.MessagePong, error) {
 }
 
 // unary post
-func (c *ClientImpl) Post(timestamp int64) (*api_v2.MessagePong, error) {
+func (c *clientImpl) Post(timestamp int64) (*api_v2.MessagePong, error) {
 	ctx := c.setHeader(map[string]string{"custom-req-header": "post"})
 
 	msg := &api_v2.MessagePing{
@@ -117,7 +117,7 @@ func (c *ClientImpl) Post(timestamp int64) (*api_v2.MessagePong, error) {
 }
 
 // server streaming
-func (c *ClientImpl) StreamingPing(timestamp int64, count, interval int32) ([]*api_v2.StreamingMessagePong, error) {
+func (c *clientImpl) StreamingPing(timestamp int64, count, interval int32) ([]*api_v2.StreamingMessagePong, error) {
 	ctx := c.setHeader(map[string]string{"custom-req-header": "server-streaming-ping"})
 
 	msg := &api_v2.StreamingMessagePing{
@@ -146,7 +146,7 @@ func (c *ClientImpl) StreamingPing(timestamp int64, count, interval int32) ([]*a
 }
 
 // client streaming
-func (c *ClientImpl) StreamingPost(in []*api_v2.StreamingMessagePing) (*api_v2.StreamingMessagePong, error) {
+func (c *clientImpl) StreamingPost(in []*api_v2.StreamingMessagePing) (*api_v2.StreamingMessagePong, error) {
 	ctx := c.setHeader(map[string]string{"custom-req-header": "client-streaming-post"})
 
 	stream, err := c.client.StreamingPost(ctx)
@@ -172,7 +172,7 @@ func (c *ClientImpl) StreamingPost(in []*api_v2.StreamingMessagePing) (*api_v2.S
 }
 
 // bi-directional streaming
-func (c *ClientImpl) DuplexStreaming(in []*api_v2.StreamingMessagePing) ([]*api_v2.StreamingMessagePong, error) {
+func (c *clientImpl) DuplexStreaming(in []*api_v2.StreamingMessagePing) ([]*api_v2.StreamingMessagePong, error) {
 	ctx := c.setHeader(map[string]string{"custom-req-header": "duplex-streaming"})
 
 	stream, err := c.client.DuplexStreamingPing(ctx)

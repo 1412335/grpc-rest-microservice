@@ -10,7 +10,6 @@ import (
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
@@ -19,47 +18,34 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/postgres"
 	"github.com/1412335/grpc-rest-microservice/pkg/errors"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 )
 
 var (
-	ErrMissingUsername   = errors.BadRequest("MISSING_USERNAME", "username", "Missing username")
-	ErrMissingFullname   = errors.BadRequest("MISSING_FULLNAME", "fullname", "Missing fullname")
-	ErrMissingEmail      = errors.BadRequest("MISSING_EMAIL", "email", "Missing email")
-	ErrDuplicateEmail    = errors.BadRequest("DUPLICATE_EMAIL", "email", "A user with this email address already exists")
-	ErrInvalidEmail      = errors.BadRequest("INVALID_EMAIL", "email", "The email provided is invalid")
-	ErrInvalidPassword   = errors.BadRequest("INVALID_PASSWORD", "password", "Password must be at least 8 characters long")
+	ErrMissingUsername   = errors.BadRequest("MISSING_USERNAME", map[string]string{"username": "Missing username"})
+	ErrMissingFullname   = errors.BadRequest("MISSING_FULLNAME", map[string]string{"fullname": "Missing fullname"})
+	ErrMissingEmail      = errors.BadRequest("MISSING_EMAIL", map[string]string{"email": "Missing email"})
+	ErrDuplicateEmail    = errors.BadRequest("DUPLICATE_EMAIL", map[string]string{"email": "A user with this email address already exists"})
+	ErrInvalidEmail      = errors.BadRequest("INVALID_EMAIL", map[string]string{"email": "The email provided is invalid"})
+	ErrInvalidPassword   = errors.BadRequest("INVALID_PASSWORD", map[string]string{"password": "Password must be at least 8 characters long"})
 	ErrIncorrectPassword = errors.Unauthenticated("INCORRECT_PASSWORD", "password", "Email or password is incorrect")
-	ErrMissingID         = errors.BadRequest("MISSING_ID", "id", "Missing user id")
-	ErrMissingToken      = errors.BadRequest("MISSING_TOKEN", "token", "Missing token")
+	ErrMissingID         = errors.BadRequest("MISSING_ID", map[string]string{"id": "Missing user id"})
+	ErrMissingToken      = errors.BadRequest("MISSING_TOKEN", map[string]string{"token": "Missing token"})
 
 	ErrHashPassword = errors.InternalServerError("HASH_PASSWORD", "hash password failed")
 
 	ErrConnectDB = errors.InternalServerError("CONNECT_DB", "Connecting to database failed")
-	ErrNotFound  = errors.NotFound("NOT_FOUND", "user", "User not found")
+	ErrNotFound  = errors.NotFound("NOT_FOUND", map[string]string{"user": "User not found"})
 
 	ErrTokenGenerated = errors.InternalServerError("TOKEN_GEN_FAILED", "Generate token failed")
 	ErrTokenInvalid   = errors.Unauthenticated("TOKEN_INVALID", "token", "Token invalid")
 	// ErrTokenNotFound  = errors.BadRequest("TOKEN_NOT_FOUND", "Token not found")
 	// ErrTokenExpired   = errors.Unauthorized("TOKEN_EXPIRE", "Token expired")
 
+	ErrUserNotActive = errors.BadRequest("not active user", map[string]string{"active": "user not active yet"})
+
 	// ttlToken   = 24 * time.Hour
 )
-
-type UsersHandlerOption func(h *userServiceImpl) error
-
-// func WithAudit(audit *audit.Audit) UsersHandlerOption {
-// 	return func(h *userServiceImpl) error {
-// 		h.audit = audit
-// 		return nil
-// 	}
-// }
-
-// func WithCacheStore(cache cache.Cache) UsersHandlerOption {
-// 	return func(h *userServiceImpl) error {
-// 		h.cache = cache
-// 		return nil
-// 	}
-// }
 
 type userServiceImpl struct {
 	dal      *postgres.DataAccessLayer
@@ -77,39 +63,28 @@ func NewUserService(dal *postgres.DataAccessLayer, logger log.Factory, tokenSrv 
 	}
 }
 
-func (u *userServiceImpl) genHash(password string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
-	}
-	return string(hash), nil
-}
-
-func (u *userServiceImpl) compareHash(hash, password string) error {
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-}
-
+// get user by id from redis & db
 func (u *userServiceImpl) getUserByID(ctx context.Context, id string) (*User, error) {
 	user := &User{}
 	err := u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// cache
 		if DefaultCache != nil {
-			if err := DefaultCache.Get(id, user); err != nil {
-				u.logger.For(ctx).Error("Get user cache", zap.Error(err))
+			if e := DefaultCache.Get(id, user); e != nil {
+				u.logger.For(ctx).Error("Get user cache", zap.Error(e))
 			} else {
 				return nil
 			}
 		}
 		// find user by id
-		if err := tx.Where(&User{ID: id}).First(user).Error; err == gorm.ErrRecordNotFound {
+		if e := tx.Where(&User{ID: id}).First(user).Error; e == gorm.ErrRecordNotFound {
 			return ErrNotFound
-		} else if err != nil {
-			u.logger.For(ctx).Error("Find user", zap.Error(err))
+		} else if e != nil {
+			u.logger.For(ctx).Error("Find user", zap.Error(e))
 			return ErrConnectDB
 		}
 		// cache
-		if err := user.cache(); err != nil {
-			u.logger.For(ctx).Error("Cache user", zap.Error(err))
+		if e := user.cache(); e != nil {
+			u.logger.For(ctx).Error("Cache user", zap.Error(e))
 		}
 		return nil
 	})
@@ -119,7 +94,7 @@ func (u *userServiceImpl) getUserByID(ctx context.Context, id string) (*User, er
 	return user, err
 }
 
-// create user
+// create user & token
 func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequest) (*api_v3.CreateUserResponse, error) {
 	// validate request
 	if len(req.GetUsername()) == 0 {
@@ -128,18 +103,11 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 	if len(req.GetFullname()) == 0 {
 		return nil, ErrMissingUsername
 	}
-	if !isValidEmail(req.Email) {
+	if !isValidEmail(req.GetEmail()) {
 		return nil, ErrInvalidEmail
 	}
-	if !isValidPassword(req.Password) {
+	if !isValidPassword(req.GetPassword()) {
 		return nil, ErrInvalidPassword
-	}
-
-	// hash password
-	pwdHashed, err := u.genHash(req.Password)
-	if err != nil {
-		u.logger.For(ctx).Error("Hash password failed", zap.Error(err))
-		return nil, ErrHashPassword
 	}
 
 	// init response
@@ -149,12 +117,12 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 	return rsp, u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		user := &User{
 			ID:          uuid.New().String(),
-			Username:    req.Username,
-			Fullname:    req.Fullname,
+			Username:    req.GetUsername(),
+			Fullname:    req.GetFullname(),
 			Active:      false,
-			Email:       strings.ToLower(req.Email),
-			Password:    pwdHashed,
-			VerifyToken: pwdHashed[:10],
+			Email:       strings.ToLower(req.GetEmail()),
+			Password:    req.GetPassword(),
+			VerifyToken: "",
 			Role:        api_v3.Role_USER.String(),
 		}
 		if err := tx.Create(user).Error; err != nil && strings.Contains(err.Error(), "idx_users_email") {
@@ -204,62 +172,48 @@ func (u *userServiceImpl) Update(ctx context.Context, req *api_v3.UpdateUserRequ
 	if len(req.GetUser().GetId()) == 0 {
 		return nil, ErrMissingID
 	}
-	// response
 	rsp := &api_v3.UpdateUserResponse{}
 	err := u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var user User
 		// find user by id
-		if err := tx.Where(&User{ID: req.GetUser().GetId()}).First(&user).Error; err == gorm.ErrRecordNotFound {
-			return ErrNotFound
-		} else if err != nil {
-			u.logger.For(ctx).Error("Error find user", zap.Error(err))
-			return ErrConnectDB
+		user, e := u.getUserByID(tx.Statement.Context, req.GetUser().GetId())
+		if e != nil {
+			u.logger.For(ctx).Error("Get user by ID", zap.Error(e))
+			return errors.InternalServerError("Get user failed", "Lookup user by ID w redis/db failed")
 		}
 		// check active
 		if !user.Active {
-			return errors.BadRequest("not active user", "active", "user not active yet")
+			return ErrUserNotActive
 		}
 		u.logger.For(ctx).Info("mask", zap.Strings("path", req.GetUpdateMask().GetPaths()))
 		// If there is no update mask do a regular update
 		if req.GetUpdateMask() == nil || len(req.GetUpdateMask().GetPaths()) == 0 {
 			user.Fullname = req.GetUser().GetFullname()
 			user.Username = req.GetUser().GetUsername()
-			// check email valid
-			email := strings.ToLower(req.GetUser().GetEmail())
-			if !isValidEmail(email) {
+			// check fields valid
+			if !isValidEmail(req.GetUser().GetEmail()) {
 				return ErrInvalidEmail
 			}
-			user.Email = email
-			// hash password
-			pwdHashed, err := u.genHash(req.GetUser().GetPassword())
-			if err != nil {
-				u.logger.For(ctx).Error("Hash password failed", zap.Error(err))
-				return ErrHashPassword
+			if !isValidPassword(req.GetUser().GetPassword()) {
+				return ErrInvalidPassword
 			}
-			user.Password = pwdHashed
 		} else {
-			st := structs.New(user)
+			st := structs.New(*user)
 			in := structs.New(req.GetUser())
 			for _, path := range req.GetUpdateMask().GetPaths() {
 				if path == "id" {
-					return status.Error(codes.InvalidArgument, "cannot update id field")
+					return errors.BadRequest("cannot update id", map[string]string{"update_mask": "cannot update id field"})
 				}
+				// check fields valid
 				if path == "email" {
-					email := strings.ToLower(req.GetUser().GetEmail())
-					if !isValidEmail(email) {
+					if !isValidEmail(req.GetUser().GetEmail()) {
 						return ErrInvalidEmail
 					}
-					user.Email = email
 					continue
 				}
 				if path == "password" {
-					// hash password
-					pwdHashed, err := u.genHash(req.GetUser().GetPassword())
-					if err != nil {
-						u.logger.For(ctx).Error("Hash password failed", zap.Error(err))
-						return ErrHashPassword
+					if !isValidPassword(req.GetUser().GetPassword()) {
+						return ErrInvalidPassword
 					}
-					user.Password = pwdHashed
 					continue
 				}
 				// This doesn't translate properly if a CustomName setting is used,
@@ -267,29 +221,20 @@ func (u *userServiceImpl) Update(ctx context.Context, req *api_v3.UpdateUserRequ
 				fname := generator.CamelCase(path)
 				field, ok := st.FieldOk(fname)
 				if !ok {
-					st := status.New(codes.InvalidArgument, "invalid field specified")
-					des, err := st.WithDetails(&rpc.BadRequest{
-						FieldViolations: []*rpc.BadRequest_FieldViolation{{
-							Field:       "update_mask",
-							Description: fmt.Sprintf("The user message type does not have a field called %q", path),
-						}},
+					return errors.BadRequest("invalid field specified", map[string]string{
+						"update_mask": fmt.Sprintf("The user message type does not have a field called %q", path),
 					})
-					if err != nil {
-						return st.Err()
-					}
-					return des.Err()
 				}
 				// set update value
-				err := field.Set(in.Field(fname).Value())
-				if err != nil {
+				if err := field.Set(in.Field(fname).Value()); err != nil {
 					return err
 				}
 			}
 		}
 		// update user in db
-		if err := tx.Save(&user).Error; err != nil && strings.Contains(err.Error(), "idx_users_email") {
+		if e := tx.Save(user).Error; e != nil && strings.Contains(e.Error(), "idx_users_email") {
 			return ErrDuplicateEmail
-		} else if err != nil {
+		} else if e != nil {
 			return ErrConnectDB
 		}
 		// response
@@ -302,6 +247,7 @@ func (u *userServiceImpl) Update(ctx context.Context, req *api_v3.UpdateUserRequ
 	return rsp, err
 }
 
+// build query statement & get list users
 func (u *userServiceImpl) getUsers(ctx context.Context, req *api_v3.ListUsersRequest) ([]*api_v3.User, error) {
 	var users []User
 	// build sql statement
@@ -366,6 +312,7 @@ func (u *userServiceImpl) getUsers(ctx context.Context, req *api_v3.ListUsersReq
 	return rsp, nil
 }
 
+// list users w unary response
 func (u *userServiceImpl) List(ctx context.Context, req *api_v3.ListUsersRequest) (*api_v3.ListUsersResponse, error) {
 	users, err := u.getUsers(ctx, req)
 	if err != nil {
@@ -378,6 +325,7 @@ func (u *userServiceImpl) List(ctx context.Context, req *api_v3.ListUsersRequest
 	return rsp, nil
 }
 
+// list users w stream response
 func (u *userServiceImpl) ListStream(req *api_v3.ListUsersRequest, srv api_v3.UserService_ListStreamServer) error {
 	users, err := u.getUsers(srv.Context(), req)
 	if err != nil {
@@ -391,6 +339,7 @@ func (u *userServiceImpl) ListStream(req *api_v3.ListUsersRequest, srv api_v3.Us
 	return nil
 }
 
+// login w email + pwd & gen token
 func (u *userServiceImpl) Login(ctx context.Context, req *api_v3.LoginRequest) (*api_v3.LoginResponse, error) {
 	// validate request
 	if len(req.GetEmail()) == 0 {
@@ -414,11 +363,11 @@ func (u *userServiceImpl) Login(ctx context.Context, req *api_v3.LoginRequest) (
 			return ErrConnectDB
 		}
 		// verify password
-		if e := u.compareHash(user.Password, req.GetPassword()); e != nil {
+		if e := utils.CompareHash(user.Password, req.GetPassword()); e != nil {
 			return ErrIncorrectPassword
 		}
 		if !user.Active {
-			return errors.BadRequest("not active user", "active", "user not active yet")
+			return ErrUserNotActive
 		}
 		// gen new token
 		token, e := u.tokenSrv.Generate(&user)
@@ -441,13 +390,21 @@ func (u *userServiceImpl) Login(ctx context.Context, req *api_v3.LoginRequest) (
 	return rsp, err
 }
 
+// logout: clear redis cache
 func (u *userServiceImpl) Logout(ctx context.Context, req *api_v3.LogoutRequest) (*api_v3.LogoutResponse, error) {
 	if len(req.GetId()) == 0 {
 		return nil, ErrMissingID
 	}
-	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
+	if DefaultCache != nil {
+		if err := DefaultCache.Delete(req.GetId()); err != nil {
+			u.logger.For(ctx).Error("logout_clear", zap.Error(err))
+			return nil, errors.InternalServerError("logout", "clear cache failed")
+		}
+	}
+	return nil, nil
 }
 
+// validate token: update isActive=true & return user
 func (u *userServiceImpl) Validate(ctx context.Context, req *api_v3.ValidateRequest) (*api_v3.ValidateResponse, error) {
 	if len(req.GetToken()) == 0 {
 		return nil, ErrMissingToken
@@ -470,7 +427,8 @@ func (u *userServiceImpl) Validate(ctx context.Context, req *api_v3.ValidateRequ
 		// get cache user
 		user, e := u.getUserByID(ctx, claims.ID)
 		if e != nil {
-			return e
+			u.logger.For(ctx).Error("Get user by ID", zap.Error(e))
+			return errors.InternalServerError("Get user failed", "Lookup user by ID w redis/db failed")
 		}
 		// rsp.User = user.sanitize()
 		rsp.Id = claims.ID

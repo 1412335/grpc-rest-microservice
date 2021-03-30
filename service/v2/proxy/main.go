@@ -96,7 +96,7 @@ func logFormatter(cfg proxyConfig) handlers.LogFormatter {
 			uri = params.URL.RequestURI()
 		}
 
-		duration := int64(time.Now().Sub(params.TimeStamp) / time.Millisecond)
+		duration := int64(time.Since(params.TimeStamp) / time.Millisecond)
 
 		fields := logrus.Fields{
 			"host":       host,
@@ -150,8 +150,8 @@ func addRespHeaders(cfg proxyConfig, handler http.Handler) http.Handler {
 	})
 }
 
-// sanitizeApiPrefix forces prefix to be non-empty and end with a slash.
-func sanitizeApiPrefix(prefix string) string {
+// sanitizeAPIPrefix forces prefix to be non-empty and end with a slash.
+func sanitizeAPIPrefix(prefix string) string {
 	if len(prefix) == 0 || prefix[len(prefix)-1:] != "/" {
 		return prefix + "/"
 	}
@@ -288,7 +288,7 @@ func SetupMux(ctx context.Context, cfg proxyConfig) *http.ServeMux {
 		}
 	}
 
-	prefix := sanitizeApiPrefix(cfg.apiPrefix)
+	prefix := sanitizeAPIPrefix(cfg.apiPrefix)
 	logrus.Infof("API prefix is: %s", prefix)
 	mux.Handle(prefix, handlers.CustomLoggingHandler(os.Stdout, http.StripPrefix(prefix[:len(prefix)-1], addRespHeaders(cfg, gwmux)), formatter))
 	return mux
