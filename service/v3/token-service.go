@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
+	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
+	"go.uber.org/zap"
 
 	"github.com/dgrijalva/jwt-go"
 )
@@ -19,11 +21,13 @@ type UserClaims struct {
 }
 
 type TokenService struct {
+	logger     log.Factory
 	jwtManager *utils.JWTManager
 }
 
 func NewTokenService(config *configs.JWT) *TokenService {
 	return &TokenService{
+		logger:     DefaultLogger.With(zap.String("srv", "token")),
 		jwtManager: utils.NewJWTManager(config),
 	}
 }
@@ -43,10 +47,12 @@ func (t *TokenService) Generate(user *User) (string, error) {
 func (t *TokenService) Verify(accessToken string) (*UserClaims, error) {
 	claims, err := t.jwtManager.Verify(accessToken, &UserClaims{})
 	if err != nil {
+		t.logger.Bg().Error("verify token failed", zap.Error(err))
 		return nil, err
 	}
 	uc, ok := claims.(*UserClaims)
 	if !ok {
+		t.logger.Bg().Error("invalid", zap.Any("claims", claims))
 		return nil, fmt.Errorf("invalid token claims")
 	}
 	return uc, nil

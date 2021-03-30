@@ -6,6 +6,7 @@ import (
 
 	grpcClient "github.com/1412335/grpc-rest-microservice/pkg/client"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+	v3 "github.com/1412335/grpc-rest-microservice/service/v3"
 	"github.com/1412335/grpc-rest-microservice/service/v3/client"
 )
 
@@ -32,6 +33,8 @@ func V3ClientService() error {
 		zap.String("client-service-version", cfgs.ClientConfig.Version),
 	)
 	logger := log.NewFactory(zapLogger)
+	// set default logger
+	v3.DefaultLogger = logger
 
 	var opts []grpcClient.ClientOption
 	if cfgs.ClientConfig.EnableTracing {
@@ -39,7 +42,6 @@ func V3ClientService() error {
 	}
 	c, err := client.New(
 		cfgs.ClientConfig,
-		logger,
 		opts...,
 	)
 

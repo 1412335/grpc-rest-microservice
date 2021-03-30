@@ -55,10 +55,10 @@ type userServiceImpl struct {
 
 var _ api_v3.UserServiceServer = (*userServiceImpl)(nil)
 
-func NewUserService(dal *postgres.DataAccessLayer, logger log.Factory, tokenSrv *TokenService) api_v3.UserServiceServer {
+func NewUserService(dal *postgres.DataAccessLayer, tokenSrv *TokenService) api_v3.UserServiceServer {
 	return &userServiceImpl{
 		dal:      dal,
-		logger:   logger,
+		logger:   DefaultLogger.With(zap.String("srv", "user")),
 		tokenSrv: tokenSrv,
 	}
 }

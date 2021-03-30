@@ -3,7 +3,6 @@ package v3
 import (
 	"context"
 	"crypto/tls"
-	"log"
 	"mime"
 	"net"
 	"net/http"
@@ -20,11 +19,13 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/rakyll/statik/fs"
 	"github.com/unrolled/secure"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
 	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
+	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 
 	// Static files
@@ -35,11 +36,13 @@ import (
 )
 
 type Handler struct {
+	logger log.Factory
 	config *configs.ServiceConfig
 }
 
 func NewHandler(config *configs.ServiceConfig) *Handler {
 	return &Handler{
+		logger: DefaultLogger.With(zap.String("gateway", "gin")),
 		config: config,
 	}
 }
@@ -143,14 +146,14 @@ func (h *Handler) initRouter(handler http.Handler) *gin.Engine {
 
 			// If there was an error, do not continue.
 			if err != nil {
-				log.Println("err", err)
+				h.logger.For(c).Error("Process", zap.Error(err))
 				c.Abort()
 				return
 			}
 
 			// Avoid header rewrite if response is a redirection.
 			if status := c.Writer.Status(); status > 300 && status < 399 {
-				log.Println("status", status)
+				h.logger.For(c).Error("Write status", zap.Int("status", status), zap.Error(err))
 				c.Abort()
 			}
 		}
@@ -160,7 +163,7 @@ func (h *Handler) initRouter(handler http.Handler) *gin.Engine {
 	r.Use(secureFunc)
 
 	if err := serveOpenAPI(r); err != nil {
-		log.Println("serveOpenAPI failed:", err)
+		h.logger.Bg().Error("Serve OpenAPI", zap.Error(err))
 	}
 
 	// r.GET("/", func(c *gin.Context) {
@@ -240,12 +243,12 @@ func (h *Handler) Run() error {
 	if h.config.EnableTLS && h.config.TLSCert != nil {
 		creds, err := h.loadClientTLSCredentials()
 		if err != nil {
-			log.Fatal("Load client TLS credentials failed:", err)
-		} else {
-			opts = []grpc.DialOption{
-				grpc.WithTransportCredentials(creds),
-				// grpc.WithBlock(),
-			}
+			h.logger.For(ctx).Error("Load client TLS credentials", zap.Error(err))
+			return err
+		}
+		opts = []grpc.DialOption{
+			grpc.WithTransportCredentials(creds),
+			// grpc.WithBlock(),
 		}
 	}
 
@@ -268,7 +271,7 @@ func (h *Handler) Run() error {
 		opts,
 	)
 	if err != nil {
-		log.Fatalln("Failed to register gateway:", err)
+		h.logger.For(ctx).Error("Register gateway", zap.Error(err))
 		return err
 	}
 
@@ -279,7 +282,8 @@ func (h *Handler) Run() error {
 	// http server
 	tlsConfig, err := h.loadServerTLSCredentials()
 	if err != nil {
-		log.Fatal("Load http server TLS credentials failed:", err)
+		h.logger.For(ctx).Error("Load http server TLS credentials", zap.Error(err))
+		return err
 	}
 	srv := &http.Server{
 		Addr:      addr,
@@ -293,14 +297,14 @@ func (h *Handler) Run() error {
 	go func() {
 		select {
 		case sig := <-signals:
-			log.Println("Proxy gateway signal received:", sig)
+			h.logger.For(ctx).Info("Received signal", zap.Any("signal", sig))
 			shutdown, can := context.WithTimeout(ctx, 10*time.Second)
 			srv.Shutdown(shutdown)
 			defer can()
 		}
 	}()
 
-	log.Println("Serving gRPC-Gateway on https://" + addr)
-	log.Println("Serving OpenAPI Documentation on https://" + addr + "/openapi-ui/")
+	h.logger.For(ctx).Info("Serving gRPC-Gateway on", zap.String("addr", "https://"+addr))
+	h.logger.For(ctx).Info("Serving OpenAPI Documentation on", zap.String("addr", "https://"+addr+"/openapi-ui/"))
 	return srv.ListenAndServeTLS("", "")
 }

@@ -25,9 +25,9 @@ type AuthServerInterceptor struct {
 
 var _ interceptor.ServerInterceptor = (*AuthServerInterceptor)(nil)
 
-func NewAuthServerInterceptor(logger log.Factory, jwtManager *TokenService, accessibleRoles map[string][]string) *AuthServerInterceptor {
+func NewAuthServerInterceptor(jwtManager *TokenService, accessibleRoles map[string][]string) *AuthServerInterceptor {
 	return &AuthServerInterceptor{
-		logger:          logger,
+		logger:          DefaultLogger.With(zap.String("interceptor", "auth")),
 		jwtManager:      jwtManager,
 		accessibleRoles: accessibleRoles,
 	}

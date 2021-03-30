@@ -14,7 +14,8 @@ import (
 )
 
 var (
-	DefaultCache cache.Cache
+	DefaultCache  cache.Cache
+	DefaultLogger = log.DefaultLogger
 )
 
 type Server struct {
@@ -23,7 +24,7 @@ type Server struct {
 	dal      *postgres.DataAccessLayer
 }
 
-func NewServer(srvConfig *configs.ServiceConfig, logger log.Factory, opt ...server.ServerOption) *Server {
+func NewServer(srvConfig *configs.ServiceConfig, opt ...server.ServerOption) *Server {
 	// simple server interceptor
 	// simpleInterceptor := &interceptor.SimpleServerInterceptor{}
 	// opt = append(opt, server.WithInterceptors(simpleInterceptor))
@@ -32,12 +33,12 @@ func NewServer(srvConfig *configs.ServiceConfig, logger log.Factory, opt ...serv
 	// init postgres
 	dal, err := postgres.NewDataAccessLayer(context.Background(), srvConfig.Database)
 	if err != nil || dal.GetDatabase() == nil {
-		logger.Bg().Error("init db failed", zap.Error(err))
+		DefaultLogger.Bg().Error("init db failed", zap.Error(err))
 		return nil
 	}
 	// migrate model
 	if err := dal.GetDatabase().AutoMigrate(&User{}); err != nil {
-		logger.Bg().Error("migrate db failed", zap.Error(err))
+		DefaultLogger.Bg().Error("migrate db failed", zap.Error(err))
 		return nil
 	}
 
@@ -48,12 +49,12 @@ func NewServer(srvConfig *configs.ServiceConfig, logger log.Factory, opt ...serv
 	}
 
 	// auth server interceptor
-	authInterceptor := NewAuthServerInterceptor(logger, srv.tokenSrv, srvConfig.AccessibleRoles)
+	authInterceptor := NewAuthServerInterceptor(srv.tokenSrv, srvConfig.AccessibleRoles)
 
 	// append server options with logger + auth token interceptor
 	opt = append(opt,
 		server.WithInterceptors(authInterceptor),
-		server.WithLoggerFactory(logger),
+		server.WithLoggerFactory(DefaultLogger),
 	)
 
 	// grpc server
@@ -66,7 +67,7 @@ func NewServer(srvConfig *configs.ServiceConfig, logger log.Factory, opt ...serv
 func (s *Server) Run() error {
 	return s.server.Run(func(srv *grpc.Server) error {
 		// implement service
-		api := NewUserService(s.dal, s.server.Logger(), s.tokenSrv)
+		api := NewUserService(s.dal, s.tokenSrv)
 
 		// register impl service
 		api_v3.RegisterUserServiceServer(srv, api)

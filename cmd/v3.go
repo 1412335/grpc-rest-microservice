@@ -34,6 +34,8 @@ func V3Service() error {
 	// create log factory
 	zapLogger := logger.With(zap.String("service", cfgs.ServiceName), zap.String("version", cfgs.Version))
 	logger := log.NewFactory(zapLogger)
+	// set default logger
+	v3.DefaultLogger = logger
 
 	// cache
 	if redisStore, err := redis.New(redis.WithNodes(cfgs.Redis.Nodes), redis.WithPrefix(cfgs.ServiceName)); err != nil {
@@ -41,13 +43,13 @@ func V3Service() error {
 	} else if cache, err := cache.NewRedisCache(redisStore, cache.WithExpiryDuration(120*time.Second), cache.WithPrefix(cfgs.ServiceName)); err != nil {
 		zapLogger.Error("Create cache w redis store failed", zap.Error(err))
 	} else {
+		// set default cache
 		v3.DefaultCache = cache
 	}
 
 	// server
 	server := v3.NewServer(
 		cfgs,
-		logger,
 		server.WithMetricsFactory(metricsFactory),
 	)
 
@@ -73,14 +75,13 @@ func V3Service() error {
 	return err
 }
 
-func testGrpcClient(cfgs *configs.ClientConfig, logger log.Factory) error {
+func testGrpcClient(cfgs *configs.ClientConfig) error {
 	var opts []grpcClient.ClientOption
 	if cfgs.EnableTracing {
 		opts = append(opts, grpcClient.WithMetricsFactory(metricsFactory))
 	}
 	c, err := client.New(
 		cfgs,
-		logger,
 		opts...,
 	)
 	if err != nil {
@@ -93,7 +94,7 @@ func testGrpcClient(cfgs *configs.ClientConfig, logger log.Factory) error {
 	if token, err := c.Login(username, password); err != nil {
 		return err
 	} else {
-		logger.Bg().Info("login resp", zap.String("token", token))
+		v3.DefaultLogger.Bg().Info("login resp", zap.String("token", token))
 	}
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 	interceptor "github.com/1412335/grpc-rest-microservice/pkg/interceptor/client"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+	v3 "github.com/1412335/grpc-rest-microservice/service/v3"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -26,7 +27,8 @@ type ClientImpl struct {
 	userSrvClient api_v3.UserServiceClient
 }
 
-func New(cfgs *configs.ClientConfig, logger log.Factory, opt ...grpcClient.ClientOption) (Client, error) {
+func New(cfgs *configs.ClientConfig, opt ...grpcClient.ClientOption) (Client, error) {
+	logger := v3.DefaultLogger.With(zap.String("client", "user"))
 	opt = append(opt,
 		grpcClient.WithLoggerFactory(logger),
 		grpcClient.WithInterceptors(interceptor.NewSimpleClientInterceptor(logger)),
