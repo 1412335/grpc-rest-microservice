@@ -191,32 +191,14 @@ func (u *userServiceImpl) Update(ctx context.Context, req *api_v3.UpdateUserRequ
 		if req.GetUpdateMask() == nil || len(req.GetUpdateMask().GetPaths()) == 0 {
 			user.Fullname = req.GetUser().GetFullname()
 			user.Username = req.GetUser().GetUsername()
-			// check fields valid
-			if !isValidEmail(req.GetUser().GetEmail()) {
-				return ErrInvalidEmail
-			}
-			if !isValidPassword(req.GetUser().GetPassword()) {
-				return ErrInvalidPassword
-			}
+			user.Email = req.GetUser().GetEmail()
+			user.Password = req.GetUser().GetPassword()
 		} else {
 			st := structs.New(*user)
 			in := structs.New(req.GetUser())
 			for _, path := range req.GetUpdateMask().GetPaths() {
 				if path == "id" {
 					return errors.BadRequest("cannot update id", map[string]string{"update_mask": "cannot update id field"})
-				}
-				// check fields valid
-				if path == "email" {
-					if !isValidEmail(req.GetUser().GetEmail()) {
-						return ErrInvalidEmail
-					}
-					continue
-				}
-				if path == "password" {
-					if !isValidPassword(req.GetUser().GetPassword()) {
-						return ErrInvalidPassword
-					}
-					continue
 				}
 				// This doesn't translate properly if a CustomName setting is used,
 				// but none of the fields except ID has that set, so NO WORRIES.
@@ -228,10 +210,21 @@ func (u *userServiceImpl) Update(ctx context.Context, req *api_v3.UpdateUserRequ
 					})
 				}
 				// set update value
-				if err := field.Set(in.Field(fname).Value()); err != nil {
-					return err
+				if e := field.Set(in.Field(fname).Value()); e != nil {
+					return e
 				}
 			}
+		}
+		// check fields valid
+		if !isValidEmail(user.Email) {
+			return ErrInvalidEmail
+		}
+		if !isValidPassword(user.Password) {
+			return ErrInvalidPassword
+		}
+		if err := user.validate(); err != nil {
+			u.logger.For(ctx).Error("Error validate user", zap.Error(err))
+			return err
 		}
 		// update user in db
 		if e := tx.Save(user).Error; e != nil && strings.Contains(e.Error(), "idx_users_email") {
@@ -420,7 +413,7 @@ func (u *userServiceImpl) Validate(ctx context.Context, req *api_v3.ValidateRequ
 			return ErrTokenInvalid
 		}
 		// update active
-		if e := tx.Model(&User{ID: claims.ID}).Update("active", true).Error; e == gorm.ErrRecordNotFound {
+		if e = tx.Model(&User{ID: claims.ID}).Update("active", true).Error; e == gorm.ErrRecordNotFound {
 			return ErrNotFound
 		} else if e != nil {
 			u.logger.For(ctx).Error("Error update user", zap.Error(e))
