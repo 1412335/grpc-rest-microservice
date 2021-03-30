@@ -6,25 +6,27 @@ import (
 	"time"
 
 	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
+	"github.com/1412335/grpc-rest-microservice/pkg/errors"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
-
+	"github.com/microcosm-cc/bluemonday"
+	"gopkg.in/validator.v2"
 	"gorm.io/gorm"
 )
 
 type User struct {
 	ID          string `json:"id"`
-	Username    string
-	Fullname    string
+	Username    string `validate:"nonzero,regexp=^[a-zA-Z0-9_]*$"`
+	Fullname    string `validate:"nonzero,max=100"`
 	Active      bool
-	Password    string `json:"-"`
-	Email       string `gorm:"uniqueIndex"`
+	Password    string `json:"-" validate:"min=8"`
+	Email       string `gorm:"uniqueIndex" validate:"nonzero"`
 	VerifyToken string
 	Role        string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
 
-func (u *User) sanitize() *api_v3.User {
+func (u *User) transform2GRPC() *api_v3.User {
 	return &api_v3.User{
 		Id:          u.ID,
 		Username:    u.Username,
@@ -59,9 +61,6 @@ func (u *User) rmCache() error {
 }
 
 func (u *User) hashPassword() error {
-	if u.Password != "" {
-		return nil
-	}
 	// hash password
 	hashedPassword, err := utils.GenHash(u.Password)
 	if err != nil {
@@ -70,6 +69,27 @@ func (u *User) hashPassword() error {
 	}
 	u.Password = hashedPassword
 	return nil
+}
+
+func (u *User) sanitize() {
+	p := bluemonday.UGCPolicy()
+	u.Username = p.Sanitize(u.Username)
+	u.Fullname = p.Sanitize(u.Fullname)
+}
+
+func (u *User) validate() error {
+	// sanitize fileds
+	u.sanitize()
+	// validate
+	errs, ok := validator.Validate(u).(validator.ErrorMap)
+	if !ok {
+		return errors.BadRequest("validate failed", map[string]string{"errors": errs.Error()})
+	}
+	fields := make(map[string]string, len(errs))
+	for field, err := range errs {
+		fields[field] = err[0].Error()
+	}
+	return errors.BadRequest("validate failed", fields)
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {

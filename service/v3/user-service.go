@@ -100,9 +100,6 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 	if len(req.GetUsername()) == 0 {
 		return nil, ErrMissingUsername
 	}
-	if len(req.GetFullname()) == 0 {
-		return nil, ErrMissingUsername
-	}
 	if !isValidEmail(req.GetEmail()) {
 		return nil, ErrInvalidEmail
 	}
@@ -110,21 +107,26 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 		return nil, ErrInvalidPassword
 	}
 
+	user := &User{
+		ID:          uuid.New().String(),
+		Username:    req.GetUsername(),
+		Fullname:    req.GetFullname(),
+		Active:      false,
+		Email:       strings.ToLower(req.GetEmail()),
+		Password:    req.GetPassword(),
+		VerifyToken: "",
+		Role:        api_v3.Role_USER.String(),
+	}
+	if err := user.validate(); err != nil {
+		u.logger.For(ctx).Error("Error validate user", zap.Error(err))
+		return nil, err
+	}
+
 	// init response
 	rsp := &api_v3.CreateUserResponse{}
 
 	// create
 	return rsp, u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		user := &User{
-			ID:          uuid.New().String(),
-			Username:    req.GetUsername(),
-			Fullname:    req.GetFullname(),
-			Active:      false,
-			Email:       strings.ToLower(req.GetEmail()),
-			Password:    req.GetPassword(),
-			VerifyToken: "",
-			Role:        api_v3.Role_USER.String(),
-		}
 		if err := tx.Create(user).Error; err != nil && strings.Contains(err.Error(), "idx_users_email") {
 			return ErrDuplicateEmail
 		} else if err != nil {
@@ -139,7 +141,7 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 			return ErrTokenGenerated
 		}
 
-		rsp.User = user.sanitize()
+		rsp.User = user.transform2GRPC()
 		rsp.Token = token
 		return nil
 	})
@@ -238,7 +240,7 @@ func (u *userServiceImpl) Update(ctx context.Context, req *api_v3.UpdateUserRequ
 			return ErrConnectDB
 		}
 		// response
-		rsp.User = user.sanitize()
+		rsp.User = user.transform2GRPC()
 		return nil
 	})
 	if err != nil {
@@ -307,7 +309,7 @@ func (u *userServiceImpl) getUsers(ctx context.Context, req *api_v3.ListUsersReq
 		// 	case req.GetOlderThen() != nil && time.Since(user.CreatedAt) >= *req.GetOlderThen():
 		// 		continue
 		// 	}
-		rsp[i] = user.sanitize()
+		rsp[i] = user.transform2GRPC()
 	}
 	return rsp, nil
 }
@@ -380,7 +382,7 @@ func (u *userServiceImpl) Login(ctx context.Context, req *api_v3.LoginRequest) (
 			u.logger.For(ctx).Error("Cache user", zap.Error(e))
 		}
 		//
-		rsp.User = user.sanitize()
+		rsp.User = user.transform2GRPC()
 		rsp.Token = token
 		return nil
 	})
@@ -430,7 +432,7 @@ func (u *userServiceImpl) Validate(ctx context.Context, req *api_v3.ValidateRequ
 			u.logger.For(ctx).Error("Get user by ID", zap.Error(e))
 			return errors.InternalServerError("Get user failed", "Lookup user by ID w redis/db failed")
 		}
-		// rsp.User = user.sanitize()
+		// rsp.User = user.transform2GRPC()
 		rsp.Id = claims.ID
 		rsp.Username = user.Username
 		rsp.Fullname = user.Fullname
