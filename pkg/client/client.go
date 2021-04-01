@@ -52,6 +52,7 @@ func New(cfgs *configs.ClientConfig, opt ...ClientOption) (*Client, error) {
 	client := &Client{
 		config: cfgs,
 		logger: log.DefaultLogger,
+		// logger: log.DefaultLogger.With(zap.String("client", cfgs.ServiceName)),
 	}
 	// set options
 	for _, o := range opt {

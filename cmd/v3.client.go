@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"errors"
+
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
@@ -26,22 +28,29 @@ func init() {
 
 func V3ClientService() error {
 	// create log factory
-	zapLogger := logger.With(
+	logger := log.DefaultLogger.With(
 		zap.String("service", cfgs.ServiceName),
 		zap.String("version", cfgs.Version),
-		zap.String("client-service", cfgs.ClientConfig.ServiceName),
-		zap.String("client-service-version", cfgs.ClientConfig.Version),
 	)
-	logger := log.NewFactory(zapLogger)
+	// get user client configs
+	clientCfgs, ok := cfgs.ClientConfig["user"]
+	if !ok {
+		return logError(logger, errors.New("not found user client config"))
+	}
+	zapLogger := logger.With(
+		zap.String("client-service", clientCfgs.ServiceName),
+		zap.String("client-service-version", clientCfgs.Version),
+	)
+
 	// set default logger
-	v3.DefaultLogger = logger
+	v3.DefaultLogger = zapLogger
 
 	var opts []grpcClient.ClientOption
-	if cfgs.ClientConfig.EnableTracing {
+	if clientCfgs.EnableTracing {
 		opts = append(opts, grpcClient.WithMetricsFactory(metricsFactory))
 	}
 	c, err := client.New(
-		cfgs.ClientConfig,
+		clientCfgs,
 		opts...,
 	)
 
@@ -55,7 +64,7 @@ func V3ClientService() error {
 	if token, err := c.Login(username, password); err != nil {
 		return logError(zapLogger, err)
 	} else {
-		zapLogger.Info("login resp", zap.String("token", token))
+		zapLogger.Bg().Info("login resp", zap.String("token", token))
 	}
 
 	return nil

@@ -24,13 +24,12 @@ func init() {
 
 func V1Service() error {
 	// create log factory
-	zapLogger := logger.With(zap.String("service", cfgs.ServiceName), zap.String("version", cfgs.Version))
-	logger := log.NewFactory(zapLogger)
+	logger := log.DefaultLogger.With(zap.String("service", cfgs.ServiceName), zap.String("version", cfgs.Version))
 	// server
 	server := v1.NewServer(
 		cfgs,
 		v1.WithMetricsFactory(metricsFactory),
 		v1.WithLoggerFactory(logger),
 	)
-	return logError(zapLogger, server.Run())
+	return logError(logger, server.Run())
 }

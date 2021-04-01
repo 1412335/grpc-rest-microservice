@@ -32,16 +32,15 @@ func init() {
 
 func V3Service() error {
 	// create log factory
-	zapLogger := logger.With(zap.String("service", cfgs.ServiceName), zap.String("version", cfgs.Version))
-	logger := log.NewFactory(zapLogger)
+	zapLogger := log.DefaultLogger.With(zap.String("service", cfgs.ServiceName), zap.String("version", cfgs.Version))
 	// set default logger
-	v3.DefaultLogger = logger
+	v3.DefaultLogger = zapLogger
 
 	// cache
 	if redisStore, err := redis.New(redis.WithNodes(cfgs.Redis.Nodes), redis.WithPrefix(cfgs.ServiceName)); err != nil {
-		zapLogger.Error("Connect redis store failed", zap.Error(err))
+		zapLogger.Bg().Error("Connect redis store failed", zap.Error(err))
 	} else if cache, err := cache.NewRedisCache(redisStore, cache.WithExpiryDuration(120*time.Second), cache.WithPrefix(cfgs.ServiceName)); err != nil {
-		zapLogger.Error("Create cache w redis store failed", zap.Error(err))
+		zapLogger.Bg().Error("Create cache w redis store failed", zap.Error(err))
 	} else {
 		// set default cache
 		v3.DefaultCache = cache
@@ -70,7 +69,7 @@ func V3Service() error {
 	handler := v3.NewHandler(cfgs)
 	err := handler.Run()
 	if err != nil {
-		zapLogger.Error("Starting gRPC-gateway error", zap.Error(err))
+		zapLogger.Bg().Error("Starting gRPC-gateway error", zap.Error(err))
 	}
 	return err
 }

@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
+	"github.com/1412335/grpc-rest-microservice/pkg/log"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -11,7 +12,6 @@ import (
 	"github.com/uber/jaeger-lib/metrics/expvar"
 	jprom "github.com/uber/jaeger-lib/metrics/prometheus"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 var (
@@ -23,7 +23,7 @@ var (
 	// service config
 	cfgs *configs.ServiceConfig
 	// log
-	logger *zap.Logger
+	logger log.Logger
 	// tracing
 	metricsFactory metrics.Factory
 	// cmd
@@ -34,9 +34,9 @@ var (
 	}
 )
 
-func logError(logger *zap.Logger, err error) error {
+func logError(logger log.Factory, err error) error {
 	if err != nil {
-		logger.Error("Error running cmd", zap.Error(err))
+		logger.Bg().Error("Error running cmd", zap.Error(err))
 	}
 	return err
 }
@@ -46,6 +46,12 @@ func initConfig() {
 	cfgs = &configs.ServiceConfig{}
 	if err := configs.LoadConfig(cfgFile, cfgs); err != nil {
 		logger.Fatal("Load config failed", zap.Error(err))
+	}
+
+	if cfgs.Log != nil {
+		// set default logger
+		log.DefaultLogger = log.NewFactory(log.WithLevel(cfgs.Log.Level))
+		logger = log.DefaultLogger.Bg()
 	}
 
 	logger.Info("Load config success", zap.String("file", viper.ConfigFileUsed()), zap.Any("config", cfgs))
@@ -86,10 +92,7 @@ func init() {
 	}
 
 	// set logger
-	logger, _ = zap.NewDevelopment(
-		zap.AddStacktrace(zapcore.FatalLevel),
-		zap.AddCallerSkip(1),
-	)
+	logger = log.DefaultLogger.Bg()
 	logger.Info("Root.Init")
 }
 

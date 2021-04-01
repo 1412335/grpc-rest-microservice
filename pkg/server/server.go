@@ -56,8 +56,8 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 	// create server
 	srv := &Server{
 		config: srvConfig,
-		logger: log.DefaultLogger,
 	}
+	srv.setLogger()
 	// set options
 	for _, o := range opt {
 		if err := o(srv); err != nil {
@@ -80,6 +80,10 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 	// grpc reflection: use with evans
 	reflection.Register(srv.grpcServer)
 	return srv
+}
+
+func (s *Server) setLogger() {
+	s.logger = log.DefaultLogger.With(zap.String("service", s.config.ServiceName), zap.String("version", s.config.Version))
 }
 
 func (s *Server) loadServerTLSCredentials() (credentials.TransportCredentials, error) {

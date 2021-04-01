@@ -12,6 +12,7 @@ import (
 
 	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/grpc-gateway/gen"
 	"github.com/1412335/grpc-rest-microservice/pkg/bridge"
+	"github.com/1412335/grpc-rest-microservice/pkg/log"
 )
 
 var clientCmd = &cobra.Command{
@@ -30,7 +31,7 @@ func init() {
 
 func ClientService() error {
 	// create log factory
-	zapLogger := logger.With(zap.String("client-service", cfgs.ServiceName), zap.String("version", cfgs.Version))
+	zapLogger := log.DefaultLogger.With(zap.String("client-service", cfgs.ServiceName), zap.String("version", cfgs.Version))
 	// logger := log.NewFactory(zapLogger)
 
 	//
@@ -48,18 +49,18 @@ func ClientService() error {
 	// unary request
 	timestamp := int64(2222)
 	if resp, err := client.Ping(timestamp); err != nil {
-		zapLogger.Error("Ping error", zap.Error(err))
+		zapLogger.Bg().Error("Ping error", zap.Error(err))
 		return err
 	} else {
-		zapLogger.Info("Ping resp", zap.Any("resp", resp))
+		zapLogger.Bg().Info("Ping resp", zap.Any("resp", resp))
 	}
 
 	for i := int64(0); i < 2; i++ {
 		if resp, err := client.Post(timestamp + i); err != nil {
-			zapLogger.Error("Post error", zap.Error(err))
+			zapLogger.Bg().Error("Post error", zap.Error(err))
 			return err
 		} else {
-			zapLogger.Info("Post resp", zap.Any("resp", resp))
+			zapLogger.Bg().Info("Post resp", zap.Any("resp", resp))
 		}
 		time.Sleep(time.Second)
 	}
@@ -68,10 +69,10 @@ func ClientService() error {
 	count := int32(2)
 	interval := int32(100)
 	if resp, err := client.StreamingPing(timestamp, count, interval); err != nil {
-		zapLogger.Error("Server streaming ping error", zap.Error(err))
+		zapLogger.Bg().Error("Server streaming ping error", zap.Error(err))
 		return err
 	} else {
-		zapLogger.Info("Server streaming ping resp", zap.Any("resp", resp))
+		zapLogger.Bg().Info("Server streaming ping resp", zap.Any("resp", resp))
 	}
 
 	// client streaming
@@ -86,18 +87,18 @@ func ClientService() error {
 		},
 	}
 	if resp, err := client.StreamingPost(msg); err != nil {
-		zapLogger.Error("Client streaming post error", zap.Error(err))
+		zapLogger.Bg().Error("Client streaming post error", zap.Error(err))
 		return err
 	} else {
-		zapLogger.Info("Client streaming post resp", zap.Any("resp", resp))
+		zapLogger.Bg().Info("Client streaming post resp", zap.Any("resp", resp))
 	}
 
 	// duplex streaming
 	if resp, err := client.DuplexStreaming(msg); err != nil {
-		zapLogger.Error("Duplex streaming post error", zap.Error(err))
+		zapLogger.Bg().Error("Duplex streaming post error", zap.Error(err))
 		return err
 	} else {
-		zapLogger.Info("Duplex streaming post resp", zap.Any("resp", resp))
+		zapLogger.Bg().Info("Duplex streaming post resp", zap.Any("resp", resp))
 	}
 
 	return nil

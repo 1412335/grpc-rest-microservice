@@ -140,8 +140,7 @@ run:
     - internal/cache
     - internal/renameio
     - internal/robustio
-    - pkg/api/v1
-    - pkg/api/v2/gen
+    - pkg/api/v*
 
 # golangci.com configuration
 # https://github.com/golangci/golangci/wiki/Configuration

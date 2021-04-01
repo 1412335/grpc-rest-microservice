@@ -17,7 +17,7 @@ type ServiceConfig struct {
 	ServiceName    string
 	GRPC           *GRPC
 	Proxy          *Proxy
-	ClientConfig   *ClientConfig
+	ClientConfig   map[string]*ClientConfig
 	ManagerClient  *ManagerClient
 	JWT            *JWT
 	Database       *Database
@@ -36,6 +36,8 @@ type ServiceConfig struct {
 	TLSCert   *TLSCert
 	// swaggers
 	Swagger []string
+	// log factory
+	Log *Log
 }
 
 type ClientConfig struct {
@@ -143,6 +145,28 @@ type ManagerClient struct {
 type Authentication struct {
 	Username string
 	Password string
+}
+
+// ZPDLog config
+type Log struct {
+	Mode        string
+	Level       string
+	IsLogFile   bool
+	PathLogFile string
+}
+
+// Consul config
+type Consul struct {
+	AddressConsul                  string
+	ID                             string
+	Name                           string
+	Tag                            string
+	GRPCPort                       int
+	GRPCHost                       string
+	Interval                       int
+	DeregisterCriticalServiceAfter int
+	SessionTimeout                 string
+	KeyLeader                      string
 }
 
 // type AccessibleRoles map[string][]string

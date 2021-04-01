@@ -4,12 +4,18 @@ enableTracing: true
 tracing:
   metrics: "prometheus"
 clientConfig:
-  version: "v3"
-  serviceName: "v3"
-  enableTracing: true
-  grpc: 
-    host: "v3"
-    port: 9090
-  enableTLS: true
-  TLSCert:
-    CACert : "./cert/ca-cert.pem"
+  user:
+    version: "v3"
+    serviceName: "srvs.user.v3"
+    enableTracing: true
+    grpc: 
+      host: "v3"
+      port: 9090
+    enableTLS: true
+    TLSCert:
+      CACert : "./cert/ca-cert.pem"
+# log:
+#   #PANNIC, FATAL, ERROR, WARN, INFO, DEBUG, TRACE
+#   level: "ERROR"
+#   isLogFile: false
+#   pathLogFile: "./logFile.log"

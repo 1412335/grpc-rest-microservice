@@ -27,14 +27,29 @@ type User struct {
 }
 
 func (u *User) transform2GRPC() *api_v3.User {
-	return &api_v3.User{
+	user := &api_v3.User{
 		Id:          u.ID,
 		Username:    u.Username,
 		Fullname:    u.Fullname,
 		Active:      u.Active,
 		Email:       u.Email,
-		Role:        api_v3.Role(api_v3.Role_value[u.Role]),
 		VerifyToken: u.VerifyToken,
+	}
+	if role, ok := api_v3.Role_value[u.Role]; ok {
+		user.Role = api_v3.Role(role)
+	}
+	return user
+}
+
+func (u *User) updateFromGRPC(user *api_v3.User) {
+	u.Username = user.GetUsername()
+	u.Fullname = user.GetFullname()
+	u.Email = user.GetEmail()
+	u.Password = user.GetPassword()
+	// check gte admin
+	if role, ok := api_v3.Role_value[u.Role]; ok && api_v3.Role(role) >= api_v3.Role_ADMIN {
+		u.Role = user.GetRole().String()
+		u.Active = user.GetActive()
 	}
 }
 

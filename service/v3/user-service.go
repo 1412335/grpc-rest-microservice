@@ -112,7 +112,7 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 		Username:    req.GetUsername(),
 		Fullname:    req.GetFullname(),
 		Active:      false,
-		Email:       strings.ToLower(req.GetEmail()),
+		Email:       req.GetEmail(),
 		Password:    req.GetPassword(),
 		VerifyToken: "",
 		Role:        api_v3.Role_USER.String(),
@@ -189,10 +189,7 @@ func (u *userServiceImpl) Update(ctx context.Context, req *api_v3.UpdateUserRequ
 		u.logger.For(ctx).Info("mask", zap.Strings("path", req.GetUpdateMask().GetPaths()))
 		// If there is no update mask do a regular update
 		if req.GetUpdateMask() == nil || len(req.GetUpdateMask().GetPaths()) == 0 {
-			user.Fullname = req.GetUser().GetFullname()
-			user.Username = req.GetUser().GetUsername()
-			user.Email = req.GetUser().GetEmail()
-			user.Password = req.GetUser().GetPassword()
+			user.updateFromGRPC(req.GetUser())
 		} else {
 			st := structs.New(*user)
 			in := structs.New(req.GetUser())

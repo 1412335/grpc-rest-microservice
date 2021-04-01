@@ -42,15 +42,22 @@ TLSCert:
   CACert : "./cert/ca-cert.pem"
   CertPem: "./cert/server-cert.pem"
   KeyPem : "./cert/server-key.pem"
+log:
+  #PANNIC, FATAL, ERROR, WARN, INFO, DEBUG, TRACE
+  mode: "dev"
+  level: "FATAL"
+  isLogFile: false
+  pathLogFile: "./logFile.log"
 clientConfig:
-  version: "v3"
-  serviceName: "localhost:9090"
-  grpc: 
-    host: "localhost"
-    port: 9090
-  enableTLS: true
-  TLSCert:
-    CACert : "./cert/ca-cert.pem"
+  user:
+    version: "v3"
+    serviceName: "localhost:9090"
+    grpc: 
+      host: "localhost"
+      port: 9090
+    enableTLS: true
+    TLSCert:
+      CACert : "./cert/ca-cert.pem"
 redis:
   nodes:
     - "host.docker.internal:6379"
