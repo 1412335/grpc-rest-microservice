@@ -18,13 +18,13 @@ var v1Cmd = &cobra.Command{
 }
 
 func init() {
-	logger.Info("v1.Init")
+	log.Info("v1.Init")
 	rootCmd.AddCommand(v1Cmd)
 }
 
 func V1Service() error {
 	// create log factory
-	logger := log.DefaultLogger.With(zap.String("service", cfgs.ServiceName), zap.String("version", cfgs.Version))
+	logger := log.With(zap.String("service", cfgs.ServiceName), zap.String("version", cfgs.Version))
 	// server
 	server := v1.NewServer(
 		cfgs,

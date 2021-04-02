@@ -58,7 +58,7 @@ var _ api_v3.UserServiceServer = (*userServiceImpl)(nil)
 func NewUserService(dal *postgres.DataAccessLayer, tokenSrv *TokenService) api_v3.UserServiceServer {
 	return &userServiceImpl{
 		dal:      dal,
-		logger:   DefaultLogger.With(zap.String("srv", "user")),
+		logger:   log.With(zap.String("srv", "user")),
 		tokenSrv: tokenSrv,
 	}
 }

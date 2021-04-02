@@ -27,7 +27,7 @@ type TokenService struct {
 
 func NewTokenService(config *configs.JWT) *TokenService {
 	return &TokenService{
-		logger:     DefaultLogger.With(zap.String("srv", "token")),
+		logger:     log.With(zap.String("srv", "token")),
 		jwtManager: utils.NewJWTManager(config),
 	}
 }

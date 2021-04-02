@@ -15,7 +15,9 @@ clientConfig:
     TLSCert:
       CACert : "./cert/ca-cert.pem"
 # log:
-#   #PANNIC, FATAL, ERROR, WARN, INFO, DEBUG, TRACE
-#   level: "ERROR"
+#   #PANNIC, FATAL, ERROR, WARN, INFO, DEBUG
+#   mode: "dev"
+#   level: "DEBUG"
+#   # levelTrace: "FATAL"
 #   isLogFile: false
 #   pathLogFile: "./logFile.log"

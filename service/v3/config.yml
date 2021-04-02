@@ -43,9 +43,10 @@ TLSCert:
   CertPem: "./cert/server-cert.pem"
   KeyPem : "./cert/server-key.pem"
 log:
-  #PANNIC, FATAL, ERROR, WARN, INFO, DEBUG, TRACE
+  #PANNIC, FATAL, ERROR, WARN, INFO, DEBUG
   mode: "dev"
-  level: "FATAL"
+  level: "DEBUG"
+  # levelTrace: "FATAL"
   isLogFile: false
   pathLogFile: "./logFile.log"
 clientConfig:

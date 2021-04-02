@@ -15,6 +15,8 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/uber/jaeger-lib/metrics"
+	"github.com/uber/jaeger-lib/metrics/expvar"
+	"github.com/uber/jaeger-lib/metrics/prometheus"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -105,15 +107,32 @@ func (s *Server) insecureServer() grpc.ServerOption {
 	return grpc.Creds(creds)
 }
 
+func (s *Server) tracingInterceptor() (grpc.UnaryServerInterceptor, grpc.StreamServerInterceptor) {
+	// metrics
+	if s.config.EnableTracing && s.config.Tracing != nil {
+		if s.config.Tracing.Metrics == "expvar" {
+			s.metricsFactory = expvar.NewFactory(10) // 10 buckets for histograms
+			s.logger.Bg().Info("[Tracing] Using expvar as metrics backend")
+		} else {
+			s.metricsFactory = prometheus.New().Namespace(metrics.NSOptions{Name: "tracing", Tags: nil})
+			s.logger.Bg().Info("[Tracing] Using prometheus as metrics backend")
+		}
+	}
+	// create tracer
+	tracer := tracing.Init(s.config.ServiceName, s.metricsFactory, s.logger)
+	// tracing interceptor
+	return otgrpc.OpenTracingServerInterceptor(tracer), otgrpc.OpenTracingStreamServerInterceptor(tracer)
+}
+
 func (s *Server) buildServerInterceptors() []grpc.ServerOption {
 	var unaryInterceptors []grpc.UnaryServerInterceptor
 	var streamInterceptors []grpc.StreamServerInterceptor
+
+	// tracing
 	if s.config.EnableTracing {
-		// create tracer
-		tracer := tracing.Init(s.config.ServiceName, s.metricsFactory, s.logger)
-		// tracing interceptor
-		unaryInterceptors = append(unaryInterceptors, otgrpc.OpenTracingServerInterceptor(tracer))
-		streamInterceptors = append(streamInterceptors, otgrpc.OpenTracingStreamServerInterceptor(tracer))
+		unaryTracing, streamTracing := s.tracingInterceptor()
+		unaryInterceptors = append(unaryInterceptors, unaryTracing)
+		streamInterceptors = append(streamInterceptors, streamTracing)
 	}
 
 	// server interceptor

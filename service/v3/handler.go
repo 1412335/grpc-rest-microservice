@@ -42,7 +42,7 @@ type Handler struct {
 
 func NewHandler(config *configs.ServiceConfig) *Handler {
 	return &Handler{
-		logger: DefaultLogger.With(zap.String("gateway", "gin")),
+		logger: log.With(zap.String("gateway", "gin")),
 		config: config,
 	}
 }

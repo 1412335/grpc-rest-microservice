@@ -151,6 +151,7 @@ type Authentication struct {
 type Log struct {
 	Mode        string
 	Level       string
+	TraceLevel  string
 	IsLogFile   bool
 	PathLogFile string
 }

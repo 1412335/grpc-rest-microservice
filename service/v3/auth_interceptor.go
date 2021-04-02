@@ -27,7 +27,7 @@ var _ interceptor.ServerInterceptor = (*AuthServerInterceptor)(nil)
 
 func NewAuthServerInterceptor(jwtManager *TokenService, accessibleRoles map[string][]string) *AuthServerInterceptor {
 	return &AuthServerInterceptor{
-		logger:          DefaultLogger.With(zap.String("interceptor", "auth")),
+		logger:          log.With(zap.String("interceptor", "auth")),
 		jwtManager:      jwtManager,
 		accessibleRoles: accessibleRoles,
 	}

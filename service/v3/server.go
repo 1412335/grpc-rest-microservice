@@ -14,8 +14,7 @@ import (
 )
 
 var (
-	DefaultCache  cache.Cache
-	DefaultLogger = log.DefaultLogger
+	DefaultCache cache.Cache
 )
 
 type Server struct {
@@ -33,12 +32,12 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.ServerOption) *Se
 	// init postgres
 	dal, err := postgres.NewDataAccessLayer(context.Background(), srvConfig.Database)
 	if err != nil || dal.GetDatabase() == nil {
-		DefaultLogger.Bg().Error("init db failed", zap.Error(err))
+		log.Error("init db failed", zap.Error(err))
 		return nil
 	}
 	// migrate model
 	if err := dal.GetDatabase().AutoMigrate(&User{}); err != nil {
-		DefaultLogger.Bg().Error("migrate db failed", zap.Error(err))
+		log.Error("migrate db failed", zap.Error(err))
 		return nil
 	}
 
@@ -54,7 +53,6 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.ServerOption) *Se
 	// append server options with logger + auth token interceptor
 	opt = append(opt,
 		server.WithInterceptors(authInterceptor),
-		server.WithLoggerFactory(DefaultLogger),
 	)
 
 	// grpc server

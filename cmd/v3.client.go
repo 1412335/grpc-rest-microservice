@@ -8,7 +8,6 @@ import (
 
 	grpcClient "github.com/1412335/grpc-rest-microservice/pkg/client"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
-	v3 "github.com/1412335/grpc-rest-microservice/service/v3"
 	"github.com/1412335/grpc-rest-microservice/service/v3/client"
 )
 
@@ -43,7 +42,7 @@ func V3ClientService() error {
 	)
 
 	// set default logger
-	v3.DefaultLogger = zapLogger
+	// v3.DefaultLogger = zapLogger
 
 	var opts []grpcClient.ClientOption
 	if clientCfgs.EnableTracing {

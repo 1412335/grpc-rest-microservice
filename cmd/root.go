@@ -23,7 +23,7 @@ var (
 	// service config
 	cfgs *configs.ServiceConfig
 	// log
-	logger log.Logger
+	// logger log.Logger
 	// tracing
 	metricsFactory metrics.Factory
 	// cmd
@@ -45,28 +45,23 @@ func initConfig() {
 	// load config from file
 	cfgs = &configs.ServiceConfig{}
 	if err := configs.LoadConfig(cfgFile, cfgs); err != nil {
-		logger.Fatal("Load config failed", zap.Error(err))
+		log.Fatal("Load config failed", zap.Error(err))
 	}
+	log.Info("Load config success", zap.String("file", viper.ConfigFileUsed()), zap.Any("config", cfgs))
 
 	if cfgs.Log != nil {
 		// set default logger
 		log.DefaultLogger = log.NewFactory(log.WithLevel(cfgs.Log.Level))
-		logger = log.DefaultLogger.Bg()
 	}
 
-	logger.Info("Load config success", zap.String("file", viper.ConfigFileUsed()), zap.Any("config", cfgs))
-	// set from cmd args
-	// cfgs.Tracing.Flag = tracing
-	// cfgs.Tracing.Metrics = metricsBackend
-
 	// tracing
-	if cfgs.EnableTracing {
-		if cfgs.Tracing != nil && cfgs.Tracing.Metrics == "expvar" {
+	if cfgs.EnableTracing && cfgs.Tracing != nil {
+		if cfgs.Tracing.Metrics == "expvar" {
 			metricsFactory = expvar.NewFactory(10) // 10 buckets for histograms
-			logger.Info("[Tracing] Using expvar as metrics backend")
+			log.Info("[Tracing] Using expvar as metrics backend")
 		} else {
 			metricsFactory = jprom.New().Namespace(metrics.NSOptions{Name: "tracing", Tags: nil})
-			logger.Info("[Tracing] Using prometheus as metrics backend")
+			log.Info("[Tracing] Using prometheus as metrics backend")
 		}
 	}
 }
@@ -81,24 +76,27 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&metricsBackend, "metrics", "m", "prometheus", "metrics backend expvar|prometheus")
 
 	// bind from cobra cmd to viper
+	// set from cmd args
+	// cfgs.Tracing.Flag = tracing
+	// cfgs.Tracing.Metrics = metricsBackend
 	if err := viper.BindPFlag("version", rootCmd.PersistentFlags().Lookup("version")); err != nil {
-		logger.Error("Bind pflag version error", zap.Error(err))
+		log.Error("Bind pflag version error", zap.Error(err))
 	}
 	if err := viper.BindPFlag("tracing.metrics", rootCmd.PersistentFlags().Lookup("metrics")); err != nil {
-		logger.Error("Bind pflag tracing.metrics error", zap.Error(err))
+		log.Error("Bind pflag tracing.metrics error", zap.Error(err))
 	}
 	if err := viper.BindPFlag("tracing.flag", rootCmd.PersistentFlags().Lookup("tracing")); err != nil {
-		logger.Error("Bind pflag tracing.flag error", zap.Error(err))
+		log.Error("Bind pflag tracing.flag error", zap.Error(err))
 	}
 
 	// set logger
-	logger = log.DefaultLogger.Bg()
-	logger.Info("Root.Init")
+	// logger = log.DefaultLogger.Bg()
+	log.Info("Root.Init")
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		logger.Fatal("Execute cmd failed", zap.Error(err))
+		log.Fatal("Execute cmd failed", zap.Error(err))
 		os.Exit(-1)
 	}
 }
