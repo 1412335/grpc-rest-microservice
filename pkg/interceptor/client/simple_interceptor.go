@@ -13,14 +13,16 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type SimpleClientInterceptor struct {
-	logger log.Factory
-}
+type SimpleClientInterceptor struct{}
 
 var _ ClientInterceptor = (*SimpleClientInterceptor)(nil)
 
-func NewSimpleClientInterceptor(logger log.Factory) *SimpleClientInterceptor {
-	return &SimpleClientInterceptor{logger}
+func NewSimpleClientInterceptor() *SimpleClientInterceptor {
+	return &SimpleClientInterceptor{}
+}
+
+func (i *SimpleClientInterceptor) Log() log.Factory {
+	return DefaultLogger.With(zap.String("interceptor-name", "simple"))
 }
 
 func (i *SimpleClientInterceptor) Unary() grpc.UnaryClientInterceptor {
@@ -34,7 +36,7 @@ func (i *SimpleClientInterceptor) Stream() grpc.StreamClientInterceptor {
 func (i *SimpleClientInterceptor) unaryClientInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			i.logger.For(ctx).Error("unary req", zap.Any("panic", r))
+			i.Log().For(ctx).Error("unary req", zap.Any("panic", r))
 			err = status.Error(codes.Unknown, "server error")
 		}
 	}()
@@ -58,7 +60,7 @@ func (i *SimpleClientInterceptor) unaryClientInterceptor(ctx context.Context, me
 	xrespid := header.Get("x-response-id")
 	customHeader := header.Get("custom-resp-header")
 
-	i.logger.For(ctx).Info("unary client request",
+	i.Log().For(ctx).Info("unary client request",
 		zap.String("method", method),
 		zap.String("x-request-id", xrid),
 		zap.Strings("x-response-id", xrespid),
@@ -73,7 +75,7 @@ func (i *SimpleClientInterceptor) unaryClientInterceptor(ctx context.Context, me
 func (i *SimpleClientInterceptor) streamClientInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (clientStream grpc.ClientStream, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			i.logger.For(ctx).Error("stream req", zap.Any("panic", r))
+			i.Log().For(ctx).Error("stream req", zap.Any("panic", r))
 			err = status.Error(codes.Unknown, "server error")
 		}
 	}()
@@ -103,7 +105,7 @@ func (i *SimpleClientInterceptor) streamClientInterceptor(ctx context.Context, d
 		customHeader = header.Get("custom-resp-header")
 	}
 
-	i.logger.For(ctx).Info("stream client request",
+	i.Log().For(ctx).Info("stream client request",
 		zap.String("method", method),
 		zap.String("x-request-id", xrid),
 		zap.Strings("x-response-id", xrespid),

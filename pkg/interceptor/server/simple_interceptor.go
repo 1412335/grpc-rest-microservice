@@ -16,24 +16,27 @@ import (
 )
 
 // Simple interceptor
-type SimpleServerInterceptor struct {
-	logger log.Factory
+type SimpleServerInterceptor struct{}
+
+var _ ServerInterceptor = (*SimpleServerInterceptor)(nil)
+
+func NewSimpleServerInterceptor() ServerInterceptor {
+	return &SimpleServerInterceptor{}
 }
 
-func (interceptor *SimpleServerInterceptor) WithLogger(logger log.Factory) {
-	interceptor.logger = logger
+func (interceptor *SimpleServerInterceptor) Log() log.Factory {
+	return DefaultLogger.With(zap.String("interceptor-name", "simple"))
 }
 
 func (interceptor *SimpleServerInterceptor) Unary() grpc.UnaryServerInterceptor {
-	return interceptor.unaryServerInterceptor
+	return interceptor.UnaryInterceptor
 }
-
 func (interceptor *SimpleServerInterceptor) Stream() grpc.StreamServerInterceptor {
-	return interceptor.streamServerInterceptor
+	return interceptor.StreamInterceptor
 }
 
 // unary request to grpc server
-func (interceptor *SimpleServerInterceptor) unaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+func (interceptor *SimpleServerInterceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	var xrid []string
 	var customHeader []string
 	defer func() {
@@ -42,7 +45,12 @@ func (interceptor *SimpleServerInterceptor) unaryServerInterceptor(ctx context.C
 		}
 	}()
 	defer func() {
-		interceptor.logger.For(ctx).Info("unary request", zap.String("method", info.FullMethod), zap.Any("customHeader", customHeader), zap.Any("xrid", xrid), zap.Error(err))
+		interceptor.Log().For(ctx).Info("unary request",
+			zap.String("method", info.FullMethod),
+			zap.Any("customHeader", customHeader),
+			zap.Any("xrid", xrid),
+			zap.Error(err),
+		)
 	}()
 
 	// fetch headers req
@@ -95,7 +103,7 @@ func (interceptor *SimpleServerInterceptor) unaryServerInterceptor(ctx context.C
 }
 
 // stream request interceptor
-func (interceptor *SimpleServerInterceptor) streamServerInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+func (interceptor *SimpleServerInterceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)
@@ -118,7 +126,7 @@ func (interceptor *SimpleServerInterceptor) streamServerInterceptor(srv interfac
 	// fetch custom-request-header
 	customHeader := md.Get("custom-req-header")
 
-	interceptor.logger.For(ss.Context()).Info("stream request",
+	interceptor.Log().For(ss.Context()).Info("stream request",
 		zap.String("method", info.FullMethod),
 		zap.Any("customHeader", customHeader),
 		zap.Any("xrid", xrid),

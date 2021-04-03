@@ -44,10 +44,7 @@ func V3ClientService() error {
 	// set default logger
 	// v3.DefaultLogger = zapLogger
 
-	var opts []grpcClient.ClientOption
-	if clientCfgs.EnableTracing {
-		opts = append(opts, grpcClient.WithMetricsFactory(metricsFactory))
-	}
+	var opts []grpcClient.Option
 	c, err := client.New(
 		clientCfgs,
 		opts...,

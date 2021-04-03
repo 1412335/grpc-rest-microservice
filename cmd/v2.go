@@ -28,7 +28,6 @@ func V2Service() error {
 	// server
 	server := v2.NewServer(
 		cfgs,
-		v2.WithMetricsFactory(metricsFactory),
 		v2.WithLoggerFactory(logger),
 	)
 

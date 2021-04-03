@@ -22,17 +22,15 @@ type Client interface {
 type ClientImpl struct {
 	ctx           context.Context
 	logger        log.Factory
-	conn          *grpcClient.Client
+	client        *grpcClient.Client
 	userSrvClient api_v3.UserServiceClient
 }
 
-func New(cfgs *configs.ClientConfig, opt ...grpcClient.ClientOption) (Client, error) {
-	logger := log.With(zap.String("client", "user"))
+func New(cfgs *configs.ClientConfig, opt ...grpcClient.Option) (Client, error) {
 	opt = append(opt,
-		grpcClient.WithLoggerFactory(logger),
-		grpcClient.WithInterceptors(interceptor.NewSimpleClientInterceptor(logger)),
+		grpcClient.WithInterceptors(interceptor.NewSimpleClientInterceptor()),
 	)
-	conn, err := grpcClient.New(cfgs, opt...)
+	client, err := grpcClient.New(cfgs, opt...)
 	if err != nil {
 		return nil, err
 	}
@@ -40,14 +38,14 @@ func New(cfgs *configs.ClientConfig, opt ...grpcClient.ClientOption) (Client, er
 	ctx := context.Background()
 	return &ClientImpl{
 		ctx:           ctx,
-		logger:        logger,
-		conn:          conn,
-		userSrvClient: api_v3.NewUserServiceClient(conn.ClientConn),
+		logger:        client.GetLogger(),
+		client:        client,
+		userSrvClient: api_v3.NewUserServiceClient(client.ClientConn),
 	}, nil
 }
 
 func (c *ClientImpl) Close() error {
-	return c.conn.Close()
+	return c.client.Close()
 }
 
 func (c *ClientImpl) setHeader(m map[string]string) context.Context {

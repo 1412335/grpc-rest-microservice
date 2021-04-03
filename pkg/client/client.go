@@ -11,28 +11,23 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/uber/jaeger-lib/metrics"
+	"github.com/uber/jaeger-lib/metrics/expvar"
+	"github.com/uber/jaeger-lib/metrics/prometheus"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
-type ClientOption func(*Client) error
+type Option func(*Client) error
 
-func WithMetricsFactory(metricsFactory metrics.Factory) ClientOption {
-	return func(c *Client) error {
-		c.metricsFactory = metricsFactory
-		return nil
-	}
-}
-
-func WithLoggerFactory(logger log.Factory) ClientOption {
+func WithLoggerFactory(logger log.Factory) Option {
 	return func(c *Client) error {
 		c.logger = logger
 		return nil
 	}
 }
 
-func WithInterceptors(interceptor ...interceptor.ClientInterceptor) ClientOption {
+func WithInterceptors(interceptor ...interceptor.ClientInterceptor) Option {
 	return func(c *Client) error {
 		c.interceptors = append(c.interceptors, interceptor...)
 		return nil
@@ -40,26 +35,25 @@ func WithInterceptors(interceptor ...interceptor.ClientInterceptor) ClientOption
 }
 
 type Client struct {
-	config         *configs.ClientConfig
-	ClientConn     *grpc.ClientConn
-	logger         log.Factory
-	metricsFactory metrics.Factory
-	interceptors   []interceptor.ClientInterceptor
+	config       *configs.ClientConfig
+	ClientConn   *grpc.ClientConn
+	logger       log.Factory
+	interceptors []interceptor.ClientInterceptor
 }
 
-func New(cfgs *configs.ClientConfig, opt ...ClientOption) (*Client, error) {
+func New(cfgs *configs.ClientConfig, opt ...Option) (*Client, error) {
 	// create client
 	client := &Client{
 		config: cfgs,
-		logger: log.DefaultLogger,
-		// logger: log.DefaultLogger.With(zap.String("client", cfgs.ServiceName)),
 	}
+
+	// set log w client service name + version
+	client.setLogger()
+
 	// set options
-	for _, o := range opt {
-		if err := o(client); err != nil {
-			client.logger.Bg().Error("Set client option error", zap.Error(err))
-			return nil, err
-		}
+	if err := client.Init(opt...); err != nil {
+		client.logger.Error("Set client option error", zap.Error(err))
+		return nil, err
 	}
 
 	// resolve grpc-server address
@@ -74,9 +68,9 @@ func New(cfgs *configs.ClientConfig, opt ...ClientOption) (*Client, error) {
 	if cfgs.EnableTLS && cfgs.TLSCert != nil {
 		creds, err := client.loadClientTLSCredentials()
 		if err != nil {
-			client.logger.Bg().Error("Load client TLS credentials failed", zap.Error(err))
+			client.logger.Error("Load client TLS credentials failed", zap.Error(err))
 		} else {
-			client.logger.Bg().Info("Load client TLS credentials")
+			client.logger.Info("Load client TLS credentials")
 			opts = []grpc.DialOption{
 				grpc.WithTransportCredentials(creds),
 				// grpc.WithBlock(),
@@ -104,11 +98,21 @@ func New(cfgs *configs.ClientConfig, opt ...ClientOption) (*Client, error) {
 		opts...,
 	)
 	if err != nil {
-		client.logger.Bg().Error("Dial grpc server failed", zap.Error(err))
+		client.logger.Error("Dial grpc server failed", zap.Error(err))
 		return nil, err
 	}
 	client.ClientConn = conn
 	return client, nil
+}
+
+// override options
+func (c *Client) Init(opt ...Option) error {
+	for _, o := range opt {
+		if err := o(c); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (c *Client) loadClientTLSCredentials() (credentials.TransportCredentials, error) {
@@ -120,21 +124,40 @@ func (c *Client) loadClientTLSCredentials() (credentials.TransportCredentials, e
 	return credentials.NewTLS(config), nil
 }
 
+func (c *Client) tracingInterceptor() (grpc.UnaryClientInterceptor, grpc.StreamClientInterceptor) {
+	// metrics
+	var metricsFactory metrics.Factory
+	if c.config.EnableTracing {
+		if c.config.Tracing != nil && c.config.Tracing.Metrics == "expvar" {
+			metricsFactory = expvar.NewFactory(10) // 10 buckets for histograms
+			c.logger.Info("[Tracing] Using expvar as metrics backend")
+		} else {
+			metricsFactory = prometheus.New().Namespace(metrics.NSOptions{Name: "tracing", Tags: nil})
+			c.logger.Info("[Tracing] Using prometheus as metrics backend")
+		}
+	}
+	// create tracer
+	tracer := tracing.Init(c.config.ServiceName, metricsFactory, c.logger)
+	// tracing interceptor
+	return otgrpc.OpenTracingClientInterceptor(tracer), otgrpc.OpenTracingStreamClientInterceptor(tracer)
+}
+
 func (c *Client) buildInterceptors() []grpc.DialOption {
 	var unaryInterceptors []grpc.UnaryClientInterceptor
 	var streamInterceptors []grpc.StreamClientInterceptor
+
+	// tracing
 	if c.config.EnableTracing {
-		// create tracer
-		tracer := tracing.Init(c.config.ServiceName, c.metricsFactory, c.logger)
-		// tracing interceptor
-		unaryInterceptors = append(unaryInterceptors, otgrpc.OpenTracingClientInterceptor(tracer))
-		streamInterceptors = append(streamInterceptors, otgrpc.OpenTracingStreamClientInterceptor(tracer))
+		unaryTracing, streamTracing := c.tracingInterceptor()
+		unaryInterceptors = append(unaryInterceptors, unaryTracing)
+		streamInterceptors = append(streamInterceptors, streamTracing)
 	}
 
 	// client interceptors
-	for _, interceptor := range c.interceptors {
-		unaryInterceptors = append(unaryInterceptors, interceptor.Unary())
-		streamInterceptors = append(streamInterceptors, interceptor.Stream())
+	interceptor.DefaultLogger = c.logger.With(zap.String("interceptor-type", "client"))
+	for _, i := range c.interceptors {
+		unaryInterceptors = append(unaryInterceptors, i.Unary())
+		streamInterceptors = append(streamInterceptors, i.Stream())
 	}
 
 	// create grpc server
@@ -142,6 +165,14 @@ func (c *Client) buildInterceptors() []grpc.DialOption {
 		grpc.WithChainUnaryInterceptor(unaryInterceptors...),
 		grpc.WithChainStreamInterceptor(streamInterceptors...),
 	}
+}
+
+func (c *Client) setLogger() {
+	c.logger = log.DefaultLogger.With(zap.String("client-service", c.config.ServiceName), zap.String("client-version", c.config.Version))
+}
+
+func (c *Client) GetLogger() log.Factory {
+	return c.logger
 }
 
 func (c *Client) Close() error {

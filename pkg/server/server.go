@@ -23,23 +23,16 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-type ServerOption func(*Server) error
+type Option func(*Server) error
 
-func WithMetricsFactory(metricsFactory metrics.Factory) ServerOption {
-	return func(s *Server) error {
-		s.metricsFactory = metricsFactory
-		return nil
-	}
-}
-
-func WithLoggerFactory(logger log.Factory) ServerOption {
+func WithLoggerFactory(logger log.Factory) Option {
 	return func(s *Server) error {
 		s.logger = logger
 		return nil
 	}
 }
 
-func WithInterceptors(interceptor ...interceptor.ServerInterceptor) ServerOption {
+func WithInterceptors(interceptor ...interceptor.ServerInterceptor) Option {
 	return func(s *Server) error {
 		s.interceptors = append(s.interceptors, interceptor...)
 		return nil
@@ -47,26 +40,25 @@ func WithInterceptors(interceptor ...interceptor.ServerInterceptor) ServerOption
 }
 
 type Server struct {
-	config         *configs.ServiceConfig
-	grpcServer     *grpc.Server
-	logger         log.Factory
-	metricsFactory metrics.Factory
-	interceptors   []interceptor.ServerInterceptor
+	config       *configs.ServiceConfig
+	grpcServer   *grpc.Server
+	logger       log.Factory
+	interceptors []interceptor.ServerInterceptor
 }
 
-func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
+func NewServer(srvConfig *configs.ServiceConfig, opt ...Option) *Server {
 	// create server
 	srv := &Server{
 		config: srvConfig,
 	}
 	srv.setLogger()
+
 	// set options
-	for _, o := range opt {
-		if err := o(srv); err != nil {
-			srv.logger.Bg().Fatal("Set server option error", zap.Error(err))
-			return nil
-		}
+	if err := srv.Init(opt...); err != nil {
+		srv.logger.Error("Init server error", zap.Error(err))
+		return nil
 	}
+
 	// server options
 	opts := []grpc.ServerOption{}
 
@@ -75,17 +67,31 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 		opts = append(opts, srv.insecureServer())
 	}
 
+	// interceptors
 	opts = append(opts, srv.buildServerInterceptors()...)
+
 	// create grpc server
 	srv.grpcServer = grpc.NewServer(opts...)
+
 	// NOTE: gogo/protobuf is currently not working perfectly with server reflection
 	// grpc reflection: use with evans
 	reflection.Register(srv.grpcServer)
+
 	return srv
 }
 
+// override options
+func (s *Server) Init(opt ...Option) error {
+	for _, o := range opt {
+		if err := o(s); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *Server) setLogger() {
-	s.logger = log.DefaultLogger.With(zap.String("service", s.config.ServiceName), zap.String("version", s.config.Version))
+	s.logger = log.With(zap.String("service", s.config.ServiceName), zap.String("version", s.config.Version))
 }
 
 func (s *Server) loadServerTLSCredentials() (credentials.TransportCredentials, error) {
@@ -100,7 +106,7 @@ func (s *Server) loadServerTLSCredentials() (credentials.TransportCredentials, e
 func (s *Server) insecureServer() grpc.ServerOption {
 	creds, err := s.loadServerTLSCredentials()
 	if err != nil {
-		s.logger.Bg().Fatal("Failed to parse key pair:", zap.Error(err))
+		s.logger.Fatal("Failed to parse key pair:", zap.Error(err))
 		return nil
 	}
 	// return grpc.Creds(credentials.NewServerTLSFromCert(&utils.Cert))
@@ -109,17 +115,18 @@ func (s *Server) insecureServer() grpc.ServerOption {
 
 func (s *Server) tracingInterceptor() (grpc.UnaryServerInterceptor, grpc.StreamServerInterceptor) {
 	// metrics
-	if s.config.EnableTracing && s.config.Tracing != nil {
-		if s.config.Tracing.Metrics == "expvar" {
-			s.metricsFactory = expvar.NewFactory(10) // 10 buckets for histograms
-			s.logger.Bg().Info("[Tracing] Using expvar as metrics backend")
+	var metricsFactory metrics.Factory
+	if s.config.EnableTracing {
+		if s.config.Tracing != nil && s.config.Tracing.Metrics == "expvar" {
+			metricsFactory = expvar.NewFactory(10) // 10 buckets for histograms
+			s.logger.Info("[Tracing] Using expvar as metrics backend")
 		} else {
-			s.metricsFactory = prometheus.New().Namespace(metrics.NSOptions{Name: "tracing", Tags: nil})
-			s.logger.Bg().Info("[Tracing] Using prometheus as metrics backend")
+			metricsFactory = prometheus.New().Namespace(metrics.NSOptions{Name: "tracing", Tags: nil})
+			s.logger.Info("[Tracing] Using prometheus as metrics backend")
 		}
 	}
 	// create tracer
-	tracer := tracing.Init(s.config.ServiceName, s.metricsFactory, s.logger)
+	tracer := tracing.Init(s.config.ServiceName, metricsFactory, s.logger)
 	// tracing interceptor
 	return otgrpc.OpenTracingServerInterceptor(tracer), otgrpc.OpenTracingStreamServerInterceptor(tracer)
 }
@@ -136,9 +143,10 @@ func (s *Server) buildServerInterceptors() []grpc.ServerOption {
 	}
 
 	// server interceptor
-	for _, interceptor := range s.interceptors {
-		unaryInterceptors = append(unaryInterceptors, interceptor.Unary())
-		streamInterceptors = append(streamInterceptors, interceptor.Stream())
+	interceptor.DefaultLogger = s.logger.With(zap.String("interceptor-type", "server"))
+	for _, i := range s.interceptors {
+		unaryInterceptors = append(unaryInterceptors, i.Unary())
+		streamInterceptors = append(streamInterceptors, i.Stream())
 	}
 
 	// create grpc server
@@ -181,8 +189,4 @@ func (s *Server) Run(registerService func(*grpc.Server) error, stopper func()) e
 
 	// run grpc server
 	return s.grpcServer.Serve(listen)
-}
-
-func (s *Server) Logger() log.Factory {
-	return s.logger
 }

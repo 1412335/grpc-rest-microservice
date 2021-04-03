@@ -8,9 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/uber/jaeger-lib/metrics"
-	"github.com/uber/jaeger-lib/metrics/expvar"
-	jprom "github.com/uber/jaeger-lib/metrics/prometheus"
 	"go.uber.org/zap"
 )
 
@@ -24,8 +21,6 @@ var (
 	cfgs *configs.ServiceConfig
 	// log
 	// logger log.Logger
-	// tracing
-	metricsFactory metrics.Factory
 	// cmd
 	rootCmd = &cobra.Command{
 		Use:   "grpc-gateway",
@@ -53,17 +48,8 @@ func initConfig() {
 		// set default logger
 		log.DefaultLogger = log.NewFactory(log.WithLevel(cfgs.Log.Level))
 	}
-
-	// tracing
-	if cfgs.EnableTracing && cfgs.Tracing != nil {
-		if cfgs.Tracing.Metrics == "expvar" {
-			metricsFactory = expvar.NewFactory(10) // 10 buckets for histograms
-			log.Info("[Tracing] Using expvar as metrics backend")
-		} else {
-			metricsFactory = jprom.New().Namespace(metrics.NSOptions{Name: "tracing", Tags: nil})
-			log.Info("[Tracing] Using prometheus as metrics backend")
-		}
-	}
+	// // add serviceName + version to log
+	// log.With(zap.String("service", cfgs.ServiceName), zap.String("version", cfgs.Version))
 }
 
 func init() {

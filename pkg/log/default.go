@@ -46,7 +46,7 @@ func NewFactory(opts ...Option) Factory {
 		)
 	} else {
 		logger, _ = zap.NewDevelopment(
-			zap.IncreaseLevel(level),
+			// zap.IncreaseLevel(level),
 			zap.AddStacktrace(traceLevel),
 			zap.AddCallerSkip(1),
 		)

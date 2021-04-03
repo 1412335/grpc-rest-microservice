@@ -37,9 +37,9 @@ func V3Service() error {
 
 	// cache
 	if redisStore, err := redis.New(redis.WithNodes(cfgs.Redis.Nodes), redis.WithPrefix(cfgs.ServiceName)); err != nil {
-		zapLogger.Bg().Error("Connect redis store failed", zap.Error(err))
+		zapLogger.Error("Connect redis store failed", zap.Error(err))
 	} else if cache, err := cache.NewRedisCache(redisStore, cache.WithExpiryDuration(120*time.Second), cache.WithPrefix(cfgs.ServiceName)); err != nil {
-		zapLogger.Bg().Error("Create cache w redis store failed", zap.Error(err))
+		zapLogger.Error("Create cache w redis store failed", zap.Error(err))
 	} else {
 		// set default cache
 		v3.DefaultCache = cache
@@ -48,7 +48,6 @@ func V3Service() error {
 	// server
 	server := v3.NewServer(
 		cfgs,
-		// server.WithMetricsFactory(metricsFactory),
 	)
 
 	// run grpc server
@@ -68,16 +67,13 @@ func V3Service() error {
 	handler := v3.NewHandler(cfgs)
 	err := handler.Run()
 	if err != nil {
-		zapLogger.Bg().Error("Starting gRPC-gateway error", zap.Error(err))
+		zapLogger.Error("Starting gRPC-gateway error", zap.Error(err))
 	}
 	return err
 }
 
 func testGrpcClient(cfgs *configs.ClientConfig) error {
-	var opts []grpcClient.ClientOption
-	if cfgs.EnableTracing {
-		opts = append(opts, grpcClient.WithMetricsFactory(metricsFactory))
-	}
+	var opts []grpcClient.Option
 	c, err := client.New(
 		cfgs,
 		opts...,
@@ -92,7 +88,7 @@ func testGrpcClient(cfgs *configs.ClientConfig) error {
 	if token, err := c.Login(username, password); err != nil {
 		return err
 	} else {
-		log.Bg().Info("login resp", zap.String("token", token))
+		log.Info("login resp", zap.String("token", token))
 	}
 	return nil
 }

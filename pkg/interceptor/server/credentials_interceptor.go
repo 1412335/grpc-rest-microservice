@@ -21,6 +21,8 @@ type CredentialsServerInterceptor struct {
 	password string
 }
 
+var _ ServerInterceptor = (*CredentialsServerInterceptor)(nil)
+
 func NewCredentialsServerInterceptor(config *configs.Authentication) *CredentialsServerInterceptor {
 	return &CredentialsServerInterceptor{
 		username: config.Username,
@@ -29,15 +31,15 @@ func NewCredentialsServerInterceptor(config *configs.Authentication) *Credential
 }
 
 func (interceptor *CredentialsServerInterceptor) Unary() grpc.UnaryServerInterceptor {
-	return interceptor.unaryServerInterceptor
+	return interceptor.UnaryInterceptor
 }
 
 func (interceptor *CredentialsServerInterceptor) Stream() grpc.StreamServerInterceptor {
-	return interceptor.streamServerInterceptor
+	return interceptor.StreamInterceptor
 }
 
 // unary request to grpc server
-func (interceptor *CredentialsServerInterceptor) unaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+func (interceptor *CredentialsServerInterceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	var xrid []string
 	var customHeader []string
 	defer func() {
@@ -106,7 +108,7 @@ func (interceptor *CredentialsServerInterceptor) unaryServerInterceptor(ctx cont
 }
 
 // stream request interceptor
-func (interceptor *CredentialsServerInterceptor) streamServerInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+func (interceptor *CredentialsServerInterceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic: %v", r)

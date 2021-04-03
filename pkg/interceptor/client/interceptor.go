@@ -3,10 +3,18 @@ package interceptor
 import (
 	"context"
 
+	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"google.golang.org/grpc"
 )
 
+var (
+	DefaultLogger = log.DefaultLogger
+)
+
 type ClientInterceptor interface {
+	// set logger
+	// SetLogger(logger log.Factory)
+
 	// client interceptor for unary request
 	Unary() grpc.UnaryClientInterceptor
 	unaryClientInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error

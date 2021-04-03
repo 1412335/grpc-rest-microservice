@@ -36,19 +36,19 @@ database:
   maxIdleConns: 10
   maxOpenConns: 100
   connectTimeout: "1h"
-  debug: true
+  debug: false
 enableTLS: true
 TLSCert:
   CACert : "./cert/ca-cert.pem"
   CertPem: "./cert/server-cert.pem"
   KeyPem : "./cert/server-key.pem"
-log:
-  #PANNIC, FATAL, ERROR, WARN, INFO, DEBUG
-  mode: "dev"
-  level: "DEBUG"
-  # levelTrace: "FATAL"
-  isLogFile: false
-  pathLogFile: "./logFile.log"
+# log:
+#   #PANNIC, FATAL, ERROR, WARN, INFO, DEBUG
+#   mode: "dev"
+#   level: "DEBUG"
+#   # levelTrace: "FATAL"
+#   isLogFile: false
+#   pathLogFile: "./logFile.log"
 clientConfig:
   user:
     version: "v3"

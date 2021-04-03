@@ -23,20 +23,17 @@ type Server struct {
 	dal      *postgres.DataAccessLayer
 }
 
-func NewServer(srvConfig *configs.ServiceConfig, opt ...server.ServerOption) *Server {
-	// simple server interceptor
-	// simpleInterceptor := &interceptor.SimpleServerInterceptor{}
-	// opt = append(opt, server.WithInterceptors(simpleInterceptor))
-	// simpleInterceptor.WithLogger(srv.logger)
-
+func NewServer(srvConfig *configs.ServiceConfig, opt ...server.Option) *Server {
 	// init postgres
 	dal, err := postgres.NewDataAccessLayer(context.Background(), srvConfig.Database)
 	if err != nil || dal.GetDatabase() == nil {
 		log.Error("init db failed", zap.Error(err))
 		return nil
 	}
-	// migrate model
-	if err := dal.GetDatabase().AutoMigrate(&User{}); err != nil {
+	// migrate db
+	if err := dal.GetDatabase().AutoMigrate(
+		&User{},
+	); err != nil {
 		log.Error("migrate db failed", zap.Error(err))
 		return nil
 	}
@@ -52,7 +49,10 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.ServerOption) *Se
 
 	// append server options with logger + auth token interceptor
 	opt = append(opt,
-		server.WithInterceptors(authInterceptor),
+		server.WithInterceptors(
+			// interceptor.NewSimpleServerInterceptor(),
+			authInterceptor,
+		),
 	)
 
 	// grpc server
@@ -64,6 +64,8 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.ServerOption) *Se
 
 func (s *Server) Run() error {
 	return s.server.Run(func(srv *grpc.Server) error {
+		log.Info("Register", zap.String("service", "user"))
+
 		// implement service
 		api := NewUserService(s.dal, s.tokenSrv)
 

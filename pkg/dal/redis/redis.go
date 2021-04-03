@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	redis "github.com/go-redis/redis/v8"
 )
@@ -46,9 +47,10 @@ func (r *Redis) configure() error {
 	if err != nil {
 		//Backwards compatibility
 		redisOptions = &redis.Options{
-			Addr:     nodes[0],
-			Password: "", // no password set
-			DB:       0,  // use default DB
+			Addr:        nodes[0],
+			Password:    "",          // no password set
+			DB:          0,           // use default DB
+			PoolTimeout: time.Minute, //
 		}
 	}
 

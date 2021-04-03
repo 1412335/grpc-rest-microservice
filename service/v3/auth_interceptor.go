@@ -17,8 +17,6 @@ import (
 
 // Auth interceptor with JWT
 type AuthServerInterceptor struct {
-	interceptor.ServerInterceptor
-	logger          log.Factory
 	jwtManager      *TokenService
 	accessibleRoles map[string][]string
 }
@@ -27,24 +25,26 @@ var _ interceptor.ServerInterceptor = (*AuthServerInterceptor)(nil)
 
 func NewAuthServerInterceptor(jwtManager *TokenService, accessibleRoles map[string][]string) *AuthServerInterceptor {
 	return &AuthServerInterceptor{
-		logger:          log.With(zap.String("interceptor", "auth")),
 		jwtManager:      jwtManager,
 		accessibleRoles: accessibleRoles,
 	}
 }
 
-func (a *AuthServerInterceptor) Unary() grpc.UnaryServerInterceptor {
-	return a.unaryServerInterceptor
+func (a *AuthServerInterceptor) Log() log.Factory {
+	return interceptor.DefaultLogger.With(zap.String("interceptor-name", "auth"))
 }
 
+func (a *AuthServerInterceptor) Unary() grpc.UnaryServerInterceptor {
+	return a.UnaryInterceptor
+}
 func (a *AuthServerInterceptor) Stream() grpc.StreamServerInterceptor {
-	return a.streamServerInterceptor
+	return a.StreamInterceptor
 }
 
 func (a *AuthServerInterceptor) authorize(ctx context.Context, method string, req interface{}) error {
 	// check accessiable method with user role got from header authorization
 	accessibleRoles, ok := a.accessibleRoles[method]
-	a.logger.For(ctx).Info("authorize", zap.String("method", method), zap.Any("accessibleRoles", accessibleRoles), zap.Bool("ok", ok))
+	a.Log().For(ctx).Info("authorize", zap.String("method", method), zap.Any("accessibleRoles", accessibleRoles), zap.Bool("ok", ok))
 	if !ok {
 		return nil
 	}
@@ -61,7 +61,7 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string, re
 	if strings.Trim(accessToken[0], " ") == "" {
 		return status.Errorf(codes.InvalidArgument, "empty 'authorization' header")
 	}
-	a.logger.For(ctx).Info("accessToken", zap.String("accessToken", accessToken[0]))
+	a.Log().For(ctx).Info("accessToken", zap.String("accessToken", accessToken[0]))
 
 	// verify token
 	userClaims, err := a.jwtManager.Verify(accessToken[0])
@@ -89,14 +89,14 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string, re
 }
 
 // unary request to grpc server
-func (a *AuthServerInterceptor) unaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+func (a *AuthServerInterceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			a.logger.For(ctx).Error("unary req", zap.Any("panic", r))
+			a.Log().For(ctx).Error("unary req", zap.Any("panic", r))
 			err = status.Error(codes.Unknown, "server error")
 		}
 	}()
-	a.logger.For(ctx).Info("unary req", zap.String("method", info.FullMethod))
+	a.Log().For(ctx).Info("unary req", zap.String("method", info.FullMethod))
 
 	// authorize request
 	err = a.authorize(ctx, info.FullMethod, req)
@@ -117,14 +117,14 @@ func (a *AuthServerInterceptor) unaryServerInterceptor(ctx context.Context, req 
 }
 
 // stream request interceptor
-func (a *AuthServerInterceptor) streamServerInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+func (a *AuthServerInterceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			a.logger.For(ss.Context()).Error("stream req", zap.Any("panic", r))
+			a.Log().For(ss.Context()).Error("stream req", zap.Any("panic", r))
 			err = status.Error(codes.Unknown, "server error")
 		}
 	}()
-	a.logger.For(ss.Context()).Info("stream req", zap.String("method", info.FullMethod), zap.Any("serverStream", info.IsServerStream))
+	a.Log().For(ss.Context()).Info("stream req", zap.String("method", info.FullMethod), zap.Any("serverStream", info.IsServerStream))
 
 	err = a.authorize(ss.Context(), info.FullMethod, nil)
 	if err != nil {

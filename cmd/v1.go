@@ -28,7 +28,6 @@ func V1Service() error {
 	// server
 	server := v1.NewServer(
 		cfgs,
-		v1.WithMetricsFactory(metricsFactory),
 		v1.WithLoggerFactory(logger),
 	)
 	return logError(logger, server.Run())
