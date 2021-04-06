@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/grpc-gateway/gen"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"go.uber.org/zap"
 
@@ -91,12 +90,6 @@ func (interceptor *SimpleServerInterceptor) UnaryInterceptor(ctx context.Context
 	resp, err = handler(ctx, req)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "serve handler error: %+v", err)
-	}
-
-	// add serviceName into response
-	if msg, ok := resp.(*api_v2.MessagePong); ok {
-		msg.ServiceName = info.FullMethod
-		return msg, nil
 	}
 
 	return resp, nil
