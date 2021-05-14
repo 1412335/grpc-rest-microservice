@@ -7,6 +7,7 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/cache"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/postgres"
+	"github.com/1412335/grpc-rest-microservice/pkg/dal/redis"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/server"
 	"go.uber.org/zap"
@@ -14,7 +15,8 @@ import (
 )
 
 var (
-	DefaultCache cache.Cache
+	DefaultRedisStore *redis.Redis
+	DefaultCache      cache.Cache
 )
 
 type Server struct {
@@ -45,7 +47,7 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.Option) *Server {
 	}
 
 	// auth server interceptor
-	authInterceptor := NewAuthServerInterceptor(srv.tokenSrv, srvConfig.AccessibleRoles)
+	authInterceptor := NewAuthServerInterceptor(srv.tokenSrv, srvConfig.AuthRequiredMethods, srvConfig.AccessibleRoles)
 
 	// append server options with logger + auth token interceptor
 	opt = append(opt,

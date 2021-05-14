@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
+	"github.com/google/uuid"
 
 	"github.com/dgrijalva/jwt-go"
 )
@@ -25,6 +26,7 @@ func NewJWTManager(config *configs.JWT) *JWTManager {
 
 func (manager *JWTManager) GetStandardClaims() jwt.StandardClaims {
 	return jwt.StandardClaims{
+		Id:        uuid.New().String(),
 		ExpiresAt: time.Now().Add(manager.tokenDuration).Unix(),
 		Issuer:    manager.issuer,
 	}

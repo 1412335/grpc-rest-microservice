@@ -22,9 +22,11 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/protobuf/runtime/protoiface"
 
 	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
+	"github.com/1412335/grpc-rest-microservice/pkg/errors"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 
@@ -48,7 +50,7 @@ func NewHandler(config *configs.ServiceConfig) *Handler {
 }
 
 // isPermanentHTTPHeader checks whether hdr belongs to the list of
-// permenant request headers maintained by IANA.
+// permanent request headers maintained by IANA.
 // http://www.iana.org/assignments/message-headers/message-headers.xml
 // From https://github.com/grpc-ecosystem/grpc-gateway/blob/7a2a43655ccd9a488d423ea41a3fc723af103eda/runtime/context.go#L157
 func (h *Handler) isPermanentHTTPHeader(hdr string) bool {
@@ -113,6 +115,27 @@ func (h *Handler) incomingHeaderMatcher(key string) (string, bool) {
 // We return any response metadata as is.
 func (h *Handler) outgoingHeaderMatcher(metadata string) (string, bool) {
 	return metadata, true
+}
+
+//
+func (h *Handler) httpResponseModifier(ctx context.Context, w http.ResponseWriter, _ protoiface.MessageV1) error {
+	md, ok := runtime.ServerMetadataFromContext(ctx)
+	if !ok {
+		return nil
+	}
+
+	// set http status code
+	if vals := md.HeaderMD.Get("X-Http-Code"); len(vals) > 0 {
+		code, err := strconv.Atoi(vals[0])
+		if err != nil {
+			return err
+		}
+		w.WriteHeader(code)
+		// delete the headers to not expose any grpc-metadata in http response
+		delete(md.HeaderMD, "X-Http-Code")
+		delete(w.Header(), "Grpc-Metadata-X-Http-Code")
+	}
+	return nil
 }
 
 // init gin router
@@ -201,7 +224,7 @@ func (h *Handler) loadClientTLSCredentials() (credentials.TransportCredentials, 
 		return nil, err
 	}
 	// config.ServerName = h.addr
-	// config.InsecureSkipVerify = true
+	config.InsecureSkipVerify = true
 	// Create the credentials and return it
 	return credentials.NewTLS(config), nil
 }
@@ -219,16 +242,20 @@ func (h *Handler) Run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// custom http error
+	runtime.HTTPError = errors.CustomHTTPError
+
 	mux := runtime.NewServeMux(
 		runtime.WithIncomingHeaderMatcher(h.incomingHeaderMatcher),
 		runtime.WithOutgoingHeaderMatcher(h.outgoingHeaderMatcher),
+		runtime.WithForwardResponseOption(h.httpResponseModifier),
 		// runtime.WithMarshalerOption(runtime.MIMEWildcard, &gateway.JSONPb{
 		// 	OrigName:     true,
 		// 	EmitDefaults: false,
 		// 	Indent:       "  ",
 		// }),
 		// // This is necessary to get error details properly
-		// // marshalled in unary requests.
+		// // marshaled in unary requests.
 		// runtime.WithProtoErrorHandler(runtime.DefaultHTTPProtoErrorHandler),
 	)
 
@@ -280,31 +307,36 @@ func (h *Handler) Run() error {
 	// router
 	router := h.initRouter(mux)
 	// http server
-	tlsConfig, err := h.loadServerTLSCredentials()
-	if err != nil {
-		h.logger.For(ctx).Error("Load http server TLS credentials", zap.Error(err))
-		return err
-	}
 	srv := &http.Server{
-		Addr:      addr,
-		TLSConfig: tlsConfig,
-		Handler:   router,
+		Addr:    addr,
+		Handler: router,
+	}
+
+	// insecure
+	if h.config.EnableTLS && h.config.TLSCert != nil {
+		tlsConfig, err := h.loadServerTLSCredentials()
+		if err != nil {
+			h.logger.For(ctx).Error("Load http server TLS credentials", zap.Error(err))
+			return err
+		}
+		srv.TLSConfig = tlsConfig
 	}
 
 	// graceful shutdown
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		select {
-		case sig := <-signals:
-			h.logger.For(ctx).Info("Received signal", zap.Any("signal", sig))
-			shutdown, can := context.WithTimeout(ctx, 10*time.Second)
-			srv.Shutdown(shutdown)
-			defer can()
-		}
+		sig := <-signals
+		h.logger.For(ctx).Info("Received signal", zap.Any("signal", sig))
+		shutdown, can := context.WithTimeout(ctx, 10*time.Second)
+		srv.Shutdown(shutdown)
+		defer can()
 	}()
 
-	h.logger.For(ctx).Info("Serving gRPC-Gateway on", zap.String("addr", "https://"+addr))
-	h.logger.For(ctx).Info("Serving OpenAPI Documentation on", zap.String("addr", "https://"+addr+"/openapi-ui/"))
-	return srv.ListenAndServeTLS("", "")
+	h.logger.For(ctx).Info("Serving gRPC-Gateway on", zap.String("addr", "http://"+addr), zap.String("openapi", "http://"+addr+"/openapi-ui/"))
+	// run gateway
+	if h.config.EnableTLS && h.config.TLSCert != nil {
+		return srv.ListenAndServeTLS("", "")
+	}
+	return srv.ListenAndServe()
 }

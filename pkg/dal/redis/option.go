@@ -43,6 +43,6 @@ type WriteOptions struct {
 
 type Record struct {
 	Key    string        `json:"key"`
-	Value  []byte        `json:"value"`
+	Value  interface{}   `json:"value"`
 	Expiry time.Duration `json:"expiry"`
 }

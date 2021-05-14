@@ -161,3 +161,66 @@ func (r *Redis) Write(record *Record, opts ...WriteOption) error {
 	rkey := fmt.Sprintf("%s%s", wOpts.Prefix, record.Key)
 	return r.client.Set(ctx, rkey, record.Value, wOpts.Expiry).Err()
 }
+
+func (r *Redis) Expire(key string, opts ...WriteOption) error {
+	var wOpts WriteOptions
+	wOpts.Prefix = r.prefix
+	for _, opt := range opts {
+		if err := opt(&wOpts); err != nil {
+			return err
+		}
+	}
+	rkey := fmt.Sprintf("%s%s", wOpts.Prefix, key)
+	return r.client.Expire(ctx, rkey, wOpts.Expiry).Err()
+}
+
+/**
+* LIST
+ */
+func (r *Redis) LRange(key string, opts ...ReadOption) (*Record, error) {
+	var rOpts ReadOptions
+	rOpts.Prefix = r.prefix
+	for _, opt := range opts {
+		if err := opt(&rOpts); err != nil {
+			return nil, err
+		}
+	}
+
+	rkey := fmt.Sprintf("%s%s", rOpts.Prefix, key)
+	val, err := r.client.LRange(ctx, rkey, int64(rOpts.Offset), int64(rOpts.Offset+rOpts.Limit)).Result()
+
+	if err != nil && err == redis.Nil {
+		return nil, errors.New("not found")
+	} else if err != nil {
+		return nil, err
+	}
+	if val == nil {
+		return nil, errors.New("not found")
+	}
+	d, err := r.client.TTL(ctx, rkey).Result()
+	if err != nil {
+		return nil, err
+	}
+	return &Record{
+		Key:    key,
+		Value:  val,
+		Expiry: d,
+	}, nil
+}
+
+func (r *Redis) LPush(record *Record, opts ...WriteOption) error {
+	var wOpts WriteOptions
+	wOpts.Prefix = r.prefix
+	wOpts.Expiry = record.Expiry
+	for _, opt := range opts {
+		if err := opt(&wOpts); err != nil {
+			return err
+		}
+	}
+	rkey := fmt.Sprintf("%s%s", wOpts.Prefix, record.Key)
+	err := r.client.LPush(ctx, rkey, record.Value).Err()
+	if err != nil {
+		return err
+	}
+	return r.client.Expire(ctx, rkey, record.Expiry).Err()
+}

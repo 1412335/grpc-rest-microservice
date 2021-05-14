@@ -10,7 +10,9 @@ import (
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
 
@@ -126,7 +128,7 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 	rsp := &api_v3.CreateUserResponse{}
 
 	// create
-	return rsp, u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(user).Error; err != nil && strings.Contains(err.Error(), "idx_users_email") {
 			return ErrDuplicateEmail
 		} else if err != nil {
@@ -145,6 +147,12 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 		rsp.Token = token
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	// set header in your handler
+	grpc.SetHeader(ctx, metadata.Pairs("X-Http-Code", "201"))
+	return rsp, nil
 }
 
 // delete user by id
@@ -389,11 +397,20 @@ func (u *userServiceImpl) Logout(ctx context.Context, req *api_v3.LogoutRequest)
 	}
 	if DefaultCache != nil {
 		if err := DefaultCache.Delete(req.GetId()); err != nil {
-			u.logger.For(ctx).Error("logout_clear", zap.Error(err))
+			u.logger.For(ctx).Error("clear cache", zap.Error(err))
 			return nil, errors.InternalServerError("logout", "clear cache failed")
 		}
 	}
-	return nil, nil
+	// invalidate token
+	// fetch authorization header
+	md, _ := metadata.FromIncomingContext(ctx)
+	accessToken := strings.Trim(md.Get("authorization")[0], " ")
+	if _, err := u.tokenSrv.Invalidate(req.GetId(), accessToken); err != nil {
+		u.logger.For(ctx).Error("invalidate token", zap.String("token", accessToken), zap.Error(err))
+	}
+	// set header in your handler
+	grpc.SetHeader(ctx, metadata.Pairs("X-Http-Code", "201"))
+	return &api_v3.LogoutResponse{}, nil
 }
 
 // validate token: update isActive=true & return user
@@ -407,6 +424,10 @@ func (u *userServiceImpl) Validate(ctx context.Context, req *api_v3.ValidateRequ
 		claims, e := u.tokenSrv.Verify(req.Token)
 		if e != nil {
 			u.logger.For(ctx).Error("verify token failed", zap.Error(e))
+			return ErrTokenInvalid
+		}
+		// invalidate token
+		if invalidate, _ := u.tokenSrv.IsInvalidated(claims.ID, claims.Id); invalidate {
 			return ErrTokenInvalid
 		}
 		// update active

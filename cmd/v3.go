@@ -35,14 +35,18 @@ func V3Service() error {
 	// set default logger
 	// v3.DefaultLogger = zapLogger
 
-	// cache
+	// connect redis
 	if redisStore, err := redis.New(redis.WithNodes(cfgs.Redis.Nodes), redis.WithPrefix(cfgs.ServiceName)); err != nil {
 		zapLogger.Error("Connect redis store failed", zap.Error(err))
-	} else if cache, err := cache.NewRedisCache(redisStore, cache.WithExpiryDuration(120*time.Second), cache.WithPrefix(cfgs.ServiceName)); err != nil {
-		zapLogger.Error("Create cache w redis store failed", zap.Error(err))
-	} else {
-		// set default cache
-		v3.DefaultCache = cache
+	} else if redisStore != nil {
+		// set default redis store
+		v3.DefaultRedisStore = redisStore
+		if cache, err := cache.NewRedisCache(redisStore, cache.WithExpiryDuration(120*time.Second), cache.WithPrefix(cfgs.ServiceName)); err != nil {
+			zapLogger.Error("Create cache w redis store failed", zap.Error(err))
+		} else {
+			// set default cache
+			v3.DefaultCache = cache
+		}
 	}
 
 	// server

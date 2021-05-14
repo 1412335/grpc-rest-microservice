@@ -25,7 +25,8 @@ type ServiceConfig struct {
 	// redis
 	Redis *Redis
 	// server using
-	AccessibleRoles map[string][]string
+	AccessibleRoles     map[string][]string
+	AuthRequiredMethods map[string]bool
 	// client using
 	AuthMethods map[string]bool
 	// opentracing
@@ -79,9 +80,11 @@ type Proxy struct {
 
 // json web token
 type JWT struct {
-	Issuer    string
-	SecretKey string
-	Duration  time.Duration
+	Issuer           string
+	SecretKey        string
+	Duration         time.Duration
+	InvalidateKey    string
+	InvalidateExpiry time.Duration
 }
 
 type Redis struct {

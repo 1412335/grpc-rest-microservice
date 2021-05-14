@@ -126,7 +126,7 @@ lint: fmt
 
 .PHONY: test
 test: lint
-	go test -v $(go list ./... | grep -v /vendor/)
+	go test -v -short -race -coverprofile=coverage.out -covermode=atomic $(go list ./... | grep -v /vendor/)
 
 # cleaning
 .PHONY: clean
@@ -136,3 +136,15 @@ clean:
 	rm -rf ./docker/mysql/data
 	# docker system prune -af --volumes
 	# docker rm $(docker ps -aq -f "status=exited")
+	go clean -testcache
+	rm -f coverage.out
+
+.PHONY: cover
+cover: test  ## Run unit tests and open the coverage report
+	go tool cover -html=coverage.out
+
+.PHONY: help
+help:  ## Print usage information
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
+
+.DEFAULT_GOAL := help

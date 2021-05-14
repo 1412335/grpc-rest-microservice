@@ -17,16 +17,18 @@ import (
 
 // Auth interceptor with JWT
 type AuthServerInterceptor struct {
-	jwtManager      *TokenService
-	accessibleRoles map[string][]string
+	jwtManager          *TokenService
+	authRequiredMethods map[string]bool
+	accessibleRoles     map[string][]string
 }
 
 var _ interceptor.ServerInterceptor = (*AuthServerInterceptor)(nil)
 
-func NewAuthServerInterceptor(jwtManager *TokenService, accessibleRoles map[string][]string) *AuthServerInterceptor {
+func NewAuthServerInterceptor(jwtManager *TokenService, authRequiredMethods map[string]bool, accessibleRoles map[string][]string) *AuthServerInterceptor {
 	return &AuthServerInterceptor{
-		jwtManager:      jwtManager,
-		accessibleRoles: accessibleRoles,
+		jwtManager:          jwtManager,
+		authRequiredMethods: authRequiredMethods,
+		accessibleRoles:     accessibleRoles,
 	}
 }
 
@@ -42,10 +44,8 @@ func (a *AuthServerInterceptor) Stream() grpc.StreamServerInterceptor {
 }
 
 func (a *AuthServerInterceptor) authorize(ctx context.Context, method string, req interface{}) error {
-	// check accessiable method with user role got from header authorization
-	accessibleRoles, ok := a.accessibleRoles[method]
-	a.Log().For(ctx).Info("authorize", zap.String("method", method), zap.Any("accessibleRoles", accessibleRoles), zap.Bool("ok", ok))
-	if !ok {
+	authReq, ok := a.authRequiredMethods[method]
+	if !authReq || !ok {
 		return nil
 	}
 
@@ -61,7 +61,7 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string, re
 	if strings.Trim(accessToken[0], " ") == "" {
 		return status.Errorf(codes.InvalidArgument, "empty 'authorization' header")
 	}
-	a.Log().For(ctx).Info("accessToken", zap.String("accessToken", accessToken[0]))
+	a.Log().For(ctx).Info("authorize", zap.String("token", accessToken[0]))
 
 	// verify token
 	userClaims, err := a.jwtManager.Verify(accessToken[0])
@@ -69,17 +69,40 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string, re
 		return status.Errorf(codes.Unauthenticated, "verify failed: %v", err)
 	}
 
-	// check user self update
-	if msg, ok := req.(*api_v3.UpdateUserRequest); ok && msg.GetUser().GetId() == userClaims.ID {
+	// invalidate token
+	if invalidate, _ := a.jwtManager.IsInvalidated(userClaims.ID, userClaims.Id); invalidate {
+		return status.Errorf(codes.Unauthenticated, "invalidated token")
+	}
+
+	// root full access
+	if strings.ToLower(userClaims.Role) == api_v3.Role_ROOT.String() {
 		return nil
 	}
 
-	// check role
+	// check accessiable method with user role got from header authorization
+	accessibleRoles, ok := a.accessibleRoles[method]
+	if !ok {
+		return nil
+	}
+	// check accessible role for method
 	for _, role := range accessibleRoles {
-		if role == api_v3.Role_ROOT.String() || role == strings.ToLower(userClaims.Role) {
+		if role == strings.ToLower(userClaims.Role) {
 			return nil
 		}
 	}
+
+	// check action with same userID
+	switch method {
+	case "/api_v3.UserService/Update":
+		if msg, ok := req.(*api_v3.UpdateUserRequest); ok && msg.GetUser().GetId() == userClaims.ID {
+			return nil
+		}
+	case "/api_v3.UserService/Delete":
+		if msg, ok := req.(*api_v3.DeleteUserRequest); ok && msg.GetId() == userClaims.ID {
+			return nil
+		}
+	}
+
 	// fetch custom-request-header
 	// customHeader = md.Get("custom-req-header")
 
@@ -93,7 +116,7 @@ func (a *AuthServerInterceptor) UnaryInterceptor(ctx context.Context, req interf
 	defer func() {
 		if r := recover(); r != nil {
 			a.Log().For(ctx).Error("unary req", zap.Any("panic", r))
-			err = status.Error(codes.Unknown, "server error")
+			err = status.Error(codes.Unknown, "Internal server error")
 		}
 	}()
 	a.Log().For(ctx).Info("unary req", zap.String("method", info.FullMethod))
@@ -113,6 +136,14 @@ func (a *AuthServerInterceptor) UnaryInterceptor(ctx context.Context, req interf
 	// 	return msg, nil
 	// }
 
+	// check request timeout or canceled by the client
+	if ctx.Err() == context.Canceled {
+		return nil, status.Error(codes.Canceled, "request is canceled")
+	}
+	if ctx.Err() == context.DeadlineExceeded {
+		return nil, status.Error(codes.DeadlineExceeded, "deadline is exceeded")
+	}
+
 	return handler(ctx, req)
 }
 
@@ -121,7 +152,7 @@ func (a *AuthServerInterceptor) StreamInterceptor(srv interface{}, ss grpc.Serve
 	defer func() {
 		if r := recover(); r != nil {
 			a.Log().For(ss.Context()).Error("stream req", zap.Any("panic", r))
-			err = status.Error(codes.Unknown, "server error")
+			err = status.Error(codes.Unknown, "Internal server error")
 		}
 	}()
 	a.Log().For(ss.Context()).Info("stream req", zap.String("method", info.FullMethod), zap.Any("serverStream", info.IsServerStream))
