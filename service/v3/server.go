@@ -10,13 +10,9 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/redis"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/server"
+	"github.com/1412335/grpc-rest-microservice/service/v3/model"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-)
-
-var (
-	DefaultRedisStore *redis.Redis
-	DefaultCache      cache.Cache
 )
 
 type Server struct {
@@ -34,15 +30,27 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.Option) *Server {
 	}
 	// migrate db
 	if err := dal.GetDatabase().AutoMigrate(
-		&User{},
+		&model.User{},
 	); err != nil {
 		log.Error("migrate db failed", zap.Error(err))
 		return nil
 	}
 
+	// connect redis
+	redisStore, err := redis.New(redis.WithNodes(srvConfig.Redis.Nodes), redis.WithPrefix(srvConfig.ServiceName))
+	if err != nil {
+		log.Error("connect redis store failed", zap.Error(err))
+	} else if redisStore != nil {
+		// cache w redis store
+		cache.DefaultCache, err = cache.NewRedisCache(redisStore, cache.WithPrefix(srvConfig.ServiceName))
+		if err != nil {
+			log.Error("create cache redis store failed", zap.Error(err))
+		}
+	}
+
 	// create server
 	srv := &Server{
-		tokenSrv: NewTokenService(srvConfig.JWT),
+		tokenSrv: NewTokenService(srvConfig.JWT, redisStore),
 		dal:      dal,
 	}
 

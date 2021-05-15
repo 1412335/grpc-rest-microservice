@@ -1,59 +1,8 @@
 package cache
 
-import (
-	"context"
-	"time"
+var (
+	DefaultCache Cache
 )
-
-// cacheDefaultExpiration defaults time for a value in the cache to expire
-const cacheDefaultExpiration = 1 * time.Hour
-
-// cacheMaxListLimit defines maximum number of items to pull from the cache when doing a list of keys
-const cacheLRUMaxSize = 200
-
-type Option func(*Options) error
-
-func WithDatabase(database string) Option {
-	return func(c *Options) error {
-		c.database = database
-		return nil
-	}
-}
-
-func WithPrefix(prefix string) Option {
-	return func(c *Options) error {
-		c.prefix = prefix
-		return nil
-	}
-}
-
-func WithExpiryDuration(expiryDuration time.Duration) Option {
-	return func(c *Options) error {
-		if expiryDuration == 0 {
-			expiryDuration = cacheDefaultExpiration
-		}
-		c.expiryDuration = expiryDuration
-		return nil
-	}
-}
-
-func WithLRUMaxSize(size int) Option {
-	return func(c *Options) error {
-		if size == 0 {
-			size = cacheLRUMaxSize
-		}
-		c.lruMaxSize = size
-		return nil
-	}
-}
-
-type Options struct {
-	ctx            context.Context
-	database       string
-	prefix         string
-	expiryDuration time.Duration
-	lruMaxSize     int
-}
 
 type Cache interface {
 	Close() error
@@ -61,4 +10,24 @@ type Cache interface {
 	Get(key string, val interface{}) error
 	Delete(key string) error
 	Ratio() float64
+}
+
+func Set(key, value string) error {
+	return DefaultCache.Set(key, value)
+}
+
+func Get(key string, val interface{}) error {
+	return DefaultCache.Get(key, val)
+}
+
+func Delete(key string) error {
+	return DefaultCache.Delete(key)
+}
+
+func Close() error {
+	return DefaultCache.Close()
+}
+
+func Ratio() float64 {
+	return DefaultCache.Ratio()
 }

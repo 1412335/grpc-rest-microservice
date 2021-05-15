@@ -21,32 +21,8 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/errors"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
-)
-
-var (
-	ErrMissingUsername   = errors.BadRequest("MISSING_USERNAME", map[string]string{"username": "Missing username"})
-	ErrMissingFullname   = errors.BadRequest("MISSING_FULLNAME", map[string]string{"fullname": "Missing fullname"})
-	ErrMissingEmail      = errors.BadRequest("MISSING_EMAIL", map[string]string{"email": "Missing email"})
-	ErrDuplicateEmail    = errors.BadRequest("DUPLICATE_EMAIL", map[string]string{"email": "A user with this email address already exists"})
-	ErrInvalidEmail      = errors.BadRequest("INVALID_EMAIL", map[string]string{"email": "The email provided is invalid"})
-	ErrInvalidPassword   = errors.BadRequest("INVALID_PASSWORD", map[string]string{"password": "Password must be at least 8 characters long"})
-	ErrIncorrectPassword = errors.Unauthenticated("INCORRECT_PASSWORD", "password", "Email or password is incorrect")
-	ErrMissingID         = errors.BadRequest("MISSING_ID", map[string]string{"id": "Missing user id"})
-	ErrMissingToken      = errors.BadRequest("MISSING_TOKEN", map[string]string{"token": "Missing token"})
-
-	ErrHashPassword = errors.InternalServerError("HASH_PASSWORD", "hash password failed")
-
-	ErrConnectDB = errors.InternalServerError("CONNECT_DB", "Connecting to database failed")
-	ErrNotFound  = errors.NotFound("NOT_FOUND", map[string]string{"user": "User not found"})
-
-	ErrTokenGenerated = errors.InternalServerError("TOKEN_GEN_FAILED", "Generate token failed")
-	ErrTokenInvalid   = errors.Unauthenticated("TOKEN_INVALID", "token", "Token invalid")
-	// ErrTokenNotFound  = errors.BadRequest("TOKEN_NOT_FOUND", "Token not found")
-	// ErrTokenExpired   = errors.Unauthorized("TOKEN_EXPIRE", "Token expired")
-
-	ErrUserNotActive = errors.BadRequest("not active user", map[string]string{"active": "user not active yet"})
-
-	// ttlToken   = 24 * time.Hour
+	errorSrv "github.com/1412335/grpc-rest-microservice/service/v3/error"
+	"github.com/1412335/grpc-rest-microservice/service/v3/model"
 )
 
 type userServiceImpl struct {
@@ -66,26 +42,24 @@ func NewUserService(dal *postgres.DataAccessLayer, tokenSrv *TokenService) api_v
 }
 
 // get user by id from redis & db
-func (u *userServiceImpl) getUserByID(ctx context.Context, id string) (*User, error) {
-	user := &User{}
+func (u *userServiceImpl) getUserByID(ctx context.Context, id string) (*model.User, error) {
+	user := &model.User{ID: id}
+	// get from cache
+	if e := user.GetCache(); e != nil {
+		u.logger.For(ctx).Error("Get user cache", zap.Error(e))
+	} else {
+		return user, nil
+	}
 	err := u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// cache
-		if DefaultCache != nil {
-			if e := DefaultCache.Get(id, user); e != nil {
-				u.logger.For(ctx).Error("Get user cache", zap.Error(e))
-			} else {
-				return nil
-			}
-		}
 		// find user by id
-		if e := tx.Where(&User{ID: id}).First(user).Error; e == gorm.ErrRecordNotFound {
-			return ErrNotFound
+		if e := tx.Where(&model.User{ID: id}).First(user).Error; e == gorm.ErrRecordNotFound {
+			return errorSrv.ErrUserNotFound
 		} else if e != nil {
 			u.logger.For(ctx).Error("Find user", zap.Error(e))
-			return ErrConnectDB
+			return errorSrv.ErrConnectDB
 		}
 		// cache
-		if e := user.cache(); e != nil {
+		if e := user.Cache(); e != nil {
 			u.logger.For(ctx).Error("Cache user", zap.Error(e))
 		}
 		return nil
@@ -100,16 +74,16 @@ func (u *userServiceImpl) getUserByID(ctx context.Context, id string) (*User, er
 func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequest) (*api_v3.CreateUserResponse, error) {
 	// validate request
 	if len(req.GetUsername()) == 0 {
-		return nil, ErrMissingUsername
+		return nil, errorSrv.ErrMissingUsername
 	}
 	if !isValidEmail(req.GetEmail()) {
-		return nil, ErrInvalidEmail
+		return nil, errorSrv.ErrInvalidEmail
 	}
 	if !isValidPassword(req.GetPassword()) {
-		return nil, ErrInvalidPassword
+		return nil, errorSrv.ErrInvalidPassword
 	}
 
-	user := &User{
+	user := &model.User{
 		ID:          uuid.New().String(),
 		Username:    req.GetUsername(),
 		Fullname:    req.GetFullname(),
@@ -119,7 +93,7 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 		VerifyToken: "",
 		Role:        api_v3.Role_USER.String(),
 	}
-	if err := user.validate(); err != nil {
+	if err := user.Validate(); err != nil {
 		u.logger.For(ctx).Error("Error validate user", zap.Error(err))
 		return nil, err
 	}
@@ -130,20 +104,20 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 	// create
 	err := u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(user).Error; err != nil && strings.Contains(err.Error(), "idx_users_email") {
-			return ErrDuplicateEmail
+			return errorSrv.ErrDuplicateEmail
 		} else if err != nil {
 			u.logger.For(ctx).Error("Error connecting from db", zap.Error(err))
-			return ErrConnectDB
+			return errorSrv.ErrConnectDB
 		}
 
 		// create token
 		token, err := u.tokenSrv.Generate(user)
 		if err != nil {
 			u.logger.For(ctx).Error("Error generate token", zap.Error(err))
-			return ErrTokenGenerated
+			return errorSrv.ErrTokenGenerated
 		}
 
-		rsp.User = user.transform2GRPC()
+		rsp.User = user.Transform2GRPC()
 		rsp.Token = token
 		return nil
 	})
@@ -158,14 +132,14 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 // delete user by id
 func (u *userServiceImpl) Delete(ctx context.Context, req *api_v3.DeleteUserRequest) (*api_v3.DeleteUserResponse, error) {
 	if len(req.GetId()) == 0 {
-		return nil, ErrMissingID
+		return nil, errorSrv.ErrMissingUserID
 	}
 	err := u.dal.GetDatabase().Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where(req.GetId()).Delete(&User{}).Error; err == gorm.ErrRecordNotFound {
-			return ErrNotFound
+		if err := tx.Where(req.GetId()).Delete(&model.User{}).Error; err == gorm.ErrRecordNotFound {
+			return errorSrv.ErrUserNotFound
 		} else if err != nil {
 			u.logger.For(ctx).Error("Error connecting from db", zap.Error(err))
-			return ErrConnectDB
+			return errorSrv.ErrConnectDB
 		}
 		return nil
 	})
@@ -180,7 +154,7 @@ func (u *userServiceImpl) Delete(ctx context.Context, req *api_v3.DeleteUserRequ
 // update user by id
 func (u *userServiceImpl) Update(ctx context.Context, req *api_v3.UpdateUserRequest) (*api_v3.UpdateUserResponse, error) {
 	if len(req.GetUser().GetId()) == 0 {
-		return nil, ErrMissingID
+		return nil, errorSrv.ErrMissingUserID
 	}
 	rsp := &api_v3.UpdateUserResponse{}
 	err := u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -192,12 +166,12 @@ func (u *userServiceImpl) Update(ctx context.Context, req *api_v3.UpdateUserRequ
 		}
 		// check active
 		if !user.Active {
-			return ErrUserNotActive
+			return errorSrv.ErrUserNotActive
 		}
 		u.logger.For(ctx).Info("mask", zap.Strings("path", req.GetUpdateMask().GetPaths()))
 		// If there is no update mask do a regular update
 		if req.GetUpdateMask() == nil || len(req.GetUpdateMask().GetPaths()) == 0 {
-			user.updateFromGRPC(req.GetUser())
+			user.UpdateFromGRPC(req.GetUser())
 		} else {
 			st := structs.New(*user)
 			in := structs.New(req.GetUser())
@@ -222,23 +196,23 @@ func (u *userServiceImpl) Update(ctx context.Context, req *api_v3.UpdateUserRequ
 		}
 		// check fields valid
 		if !isValidEmail(user.Email) {
-			return ErrInvalidEmail
+			return errorSrv.ErrInvalidEmail
 		}
 		if !isValidPassword(user.Password) {
-			return ErrInvalidPassword
+			return errorSrv.ErrInvalidPassword
 		}
-		if err := user.validate(); err != nil {
+		if err := user.Validate(); err != nil {
 			u.logger.For(ctx).Error("Error validate user", zap.Error(err))
 			return err
 		}
 		// update user in db
 		if e := tx.Save(user).Error; e != nil && strings.Contains(e.Error(), "idx_users_email") {
-			return ErrDuplicateEmail
+			return errorSrv.ErrDuplicateEmail
 		} else if e != nil {
-			return ErrConnectDB
+			return errorSrv.ErrConnectDB
 		}
 		// response
-		rsp.User = user.transform2GRPC()
+		rsp.User = user.Transform2GRPC()
 		return nil
 	})
 	if err != nil {
@@ -249,7 +223,7 @@ func (u *userServiceImpl) Update(ctx context.Context, req *api_v3.UpdateUserRequ
 
 // build query statement & get list users
 func (u *userServiceImpl) getUsers(ctx context.Context, req *api_v3.ListUsersRequest) ([]*api_v3.User, error) {
-	var users []User
+	var users []model.User
 	// build sql statement
 	psql := u.dal.GetDatabase().WithContext(ctx)
 	if req.GetCreatedSince() != nil {
@@ -279,7 +253,7 @@ func (u *userServiceImpl) getUsers(ctx context.Context, req *api_v3.ListUsersReq
 	// exec
 	if err := psql.Order("created_at desc").Find(&users).Error; err != nil {
 		u.logger.For(ctx).Error("Error find users", zap.Error(err))
-		return nil, ErrConnectDB
+		return nil, errorSrv.ErrConnectDB
 	}
 	// check empty from db
 	if len(users) == 0 {
@@ -307,7 +281,7 @@ func (u *userServiceImpl) getUsers(ctx context.Context, req *api_v3.ListUsersReq
 		// 	case req.GetOlderThen() != nil && time.Since(user.CreatedAt) >= *req.GetOlderThen():
 		// 		continue
 		// 	}
-		rsp[i] = user.transform2GRPC()
+		rsp[i] = user.Transform2GRPC()
 	}
 	return rsp, nil
 }
@@ -343,44 +317,44 @@ func (u *userServiceImpl) ListStream(req *api_v3.ListUsersRequest, srv api_v3.Us
 func (u *userServiceImpl) Login(ctx context.Context, req *api_v3.LoginRequest) (*api_v3.LoginResponse, error) {
 	// validate request
 	if len(req.GetEmail()) == 0 {
-		return nil, ErrMissingEmail
+		return nil, errorSrv.ErrMissingEmail
 	}
 	if !isValidEmail(req.GetEmail()) {
-		return nil, ErrInvalidEmail
+		return nil, errorSrv.ErrInvalidEmail
 	}
 	if len(req.GetPassword()) == 0 {
-		return nil, ErrInvalidPassword
+		return nil, errorSrv.ErrInvalidPassword
 	}
 	// response
 	rsp := &api_v3.LoginResponse{}
 	err := u.dal.GetDatabase().Transaction(func(tx *gorm.DB) error {
-		var user User
+		var user model.User
 		// find user by email
-		if e := tx.Where(&User{Email: strings.ToLower(req.GetEmail())}).First(&user).Error; e == gorm.ErrRecordNotFound {
-			return ErrNotFound
+		if e := tx.Where(&model.User{Email: strings.ToLower(req.GetEmail())}).First(&user).Error; e == gorm.ErrRecordNotFound {
+			return errorSrv.ErrUserNotFound
 		} else if e != nil {
 			u.logger.For(ctx).Error("Error find user", zap.Error(e))
-			return ErrConnectDB
+			return errorSrv.ErrConnectDB
 		}
 		// verify password
 		if e := utils.CompareHash(user.Password, req.GetPassword()); e != nil {
-			return ErrIncorrectPassword
+			return errorSrv.ErrIncorrectPassword
 		}
 		if !user.Active {
-			return ErrUserNotActive
+			return errorSrv.ErrUserNotActive
 		}
 		// gen new token
 		token, e := u.tokenSrv.Generate(&user)
 		if e != nil {
 			u.logger.For(ctx).Error("Error gen token", zap.Error(e))
-			return ErrTokenGenerated
+			return errorSrv.ErrTokenGenerated
 		}
 		// cache user
-		if e := user.cache(); e != nil {
+		if e := user.Cache(); e != nil {
 			u.logger.For(ctx).Error("Cache user", zap.Error(e))
 		}
 		//
-		rsp.User = user.transform2GRPC()
+		rsp.User = user.Transform2GRPC()
 		rsp.Token = token
 		return nil
 	})
@@ -393,13 +367,11 @@ func (u *userServiceImpl) Login(ctx context.Context, req *api_v3.LoginRequest) (
 // logout: clear redis cache
 func (u *userServiceImpl) Logout(ctx context.Context, req *api_v3.LogoutRequest) (*api_v3.LogoutResponse, error) {
 	if len(req.GetId()) == 0 {
-		return nil, ErrMissingID
+		return nil, errorSrv.ErrMissingUserID
 	}
-	if DefaultCache != nil {
-		if err := DefaultCache.Delete(req.GetId()); err != nil {
-			u.logger.For(ctx).Error("clear cache", zap.Error(err))
-			return nil, errors.InternalServerError("logout", "clear cache failed")
-		}
+	if err := (&model.User{ID: req.GetId()}).DelCache(); err != nil {
+		u.logger.For(ctx).Error("clear cache", zap.Error(err))
+		return nil, errors.InternalServerError("logout", "clear cache failed")
 	}
 	// invalidate token
 	// fetch authorization header
@@ -416,7 +388,7 @@ func (u *userServiceImpl) Logout(ctx context.Context, req *api_v3.LogoutRequest)
 // validate token: update isActive=true & return user
 func (u *userServiceImpl) Validate(ctx context.Context, req *api_v3.ValidateRequest) (*api_v3.ValidateResponse, error) {
 	if len(req.GetToken()) == 0 {
-		return nil, ErrMissingToken
+		return nil, errorSrv.ErrMissingToken
 	}
 	rsp := &api_v3.ValidateResponse{}
 	err := u.dal.GetDatabase().Transaction(func(tx *gorm.DB) error {
@@ -424,18 +396,18 @@ func (u *userServiceImpl) Validate(ctx context.Context, req *api_v3.ValidateRequ
 		claims, e := u.tokenSrv.Verify(req.Token)
 		if e != nil {
 			u.logger.For(ctx).Error("verify token failed", zap.Error(e))
-			return ErrTokenInvalid
+			return errorSrv.ErrTokenInvalid
 		}
 		// invalidate token
 		if invalidate, _ := u.tokenSrv.IsInvalidated(claims.ID, claims.Id); invalidate {
-			return ErrTokenInvalid
+			return errorSrv.ErrTokenInvalid
 		}
 		// update active
-		if e = tx.Model(&User{ID: claims.ID}).Update("active", true).Error; e == gorm.ErrRecordNotFound {
-			return ErrNotFound
+		if e = tx.Model(&model.User{ID: claims.ID}).Update("active", true).Error; e == gorm.ErrRecordNotFound {
+			return errorSrv.ErrUserNotFound
 		} else if e != nil {
 			u.logger.For(ctx).Error("Error update user", zap.Error(e))
-			return ErrConnectDB
+			return errorSrv.ErrConnectDB
 		}
 		// get cache user
 		user, e := u.getUserByID(ctx, claims.ID)
@@ -443,7 +415,7 @@ func (u *userServiceImpl) Validate(ctx context.Context, req *api_v3.ValidateRequ
 			u.logger.For(ctx).Error("Get user by ID", zap.Error(e))
 			return errors.InternalServerError("Get user failed", "Lookup user by ID w redis/db failed")
 		}
-		// rsp.User = user.transform2GRPC()
+		// rsp.User = user.Transform2GRPC()
 		rsp.Id = claims.ID
 		rsp.Username = user.Username
 		rsp.Fullname = user.Fullname

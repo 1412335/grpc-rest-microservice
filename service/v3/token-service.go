@@ -7,6 +7,7 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/redis"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
+	"github.com/1412335/grpc-rest-microservice/service/v3/model"
 	"go.uber.org/zap"
 
 	"github.com/dgrijalva/jwt-go"
@@ -15,27 +16,29 @@ import (
 type UserClaims struct {
 	jwt.StandardClaims
 	ID       string `json:"id"`
-	Username string
-	Fullname string
-	Email    string
-	Role     string
+	Username string `json:"username"`
+	Fullname string `json:"fullname"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
 }
 
 type TokenService struct {
 	config     *configs.JWT
 	logger     log.Factory
 	jwtManager *utils.JWTManager
+	redis      *redis.Redis
 }
 
-func NewTokenService(config *configs.JWT) *TokenService {
+func NewTokenService(config *configs.JWT, redis *redis.Redis) *TokenService {
 	return &TokenService{
 		config:     config,
 		logger:     log.With(zap.String("srv", "token")),
 		jwtManager: utils.NewJWTManager(config),
+		redis:      redis,
 	}
 }
 
-func (t *TokenService) Generate(user *User) (string, error) {
+func (t *TokenService) Generate(user *model.User) (string, error) {
 	claims := UserClaims{
 		StandardClaims: t.jwtManager.GetStandardClaims(),
 		ID:             user.ID,
@@ -66,10 +69,10 @@ func (t *TokenService) getInvalidTokensKey(id string) string {
 }
 
 func (t *TokenService) IsInvalidated(id, jwtID string) (bool, error) {
-	if DefaultRedisStore == nil {
-		return false, fmt.Errorf("RedisStore is nil")
+	if t.redis == nil {
+		return false, fmt.Errorf("redis store is nil")
 	}
-	invalidTokens, err := DefaultRedisStore.LRange(t.getInvalidTokensKey(id))
+	invalidTokens, err := t.redis.LRange(t.getInvalidTokensKey(id))
 	if err != nil {
 		return false, err
 	}
@@ -85,8 +88,8 @@ func (t *TokenService) IsInvalidated(id, jwtID string) (bool, error) {
 }
 
 func (t *TokenService) Invalidate(id, accessToken string) (bool, error) {
-	if DefaultRedisStore == nil {
-		return false, fmt.Errorf("RedisStore is nil")
+	if t.redis == nil {
+		return false, fmt.Errorf("redis store is nil")
 	}
 	claims, err := t.Verify(accessToken)
 	if err != nil {
@@ -95,7 +98,7 @@ func (t *TokenService) Invalidate(id, accessToken string) (bool, error) {
 	if invalid, err := t.IsInvalidated(id, claims.Id); err != nil || invalid {
 		return true, err
 	}
-	if err := DefaultRedisStore.LPush(&redis.Record{
+	if err := t.redis.LPush(&redis.Record{
 		Key:    t.getInvalidTokensKey(id),
 		Value:  claims.Id,
 		Expiry: t.config.InvalidateExpiry,

@@ -1,15 +1,12 @@
 package cmd
 
 import (
-	"time"
-
-	"github.com/1412335/grpc-rest-microservice/pkg/cache"
 	grpcClient "github.com/1412335/grpc-rest-microservice/pkg/client"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
-	"github.com/1412335/grpc-rest-microservice/pkg/dal/redis"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	v3 "github.com/1412335/grpc-rest-microservice/service/v3"
 	"github.com/1412335/grpc-rest-microservice/service/v3/client"
+	"github.com/1412335/grpc-rest-microservice/service/v3/handler"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -35,20 +32,6 @@ func V3Service() error {
 	// set default logger
 	// v3.DefaultLogger = zapLogger
 
-	// connect redis
-	if redisStore, err := redis.New(redis.WithNodes(cfgs.Redis.Nodes), redis.WithPrefix(cfgs.ServiceName)); err != nil {
-		zapLogger.Error("Connect redis store failed", zap.Error(err))
-	} else if redisStore != nil {
-		// set default redis store
-		v3.DefaultRedisStore = redisStore
-		if cache, err := cache.NewRedisCache(redisStore, cache.WithExpiryDuration(120*time.Second), cache.WithPrefix(cfgs.ServiceName)); err != nil {
-			zapLogger.Error("Create cache w redis store failed", zap.Error(err))
-		} else {
-			// set default cache
-			v3.DefaultCache = cache
-		}
-	}
-
 	// server
 	server := v3.NewServer(
 		cfgs,
@@ -60,15 +43,15 @@ func V3Service() error {
 		logError(zapLogger, server.Run())
 	}()
 
-	// go func() {
-	// 	err := testGrpcClient(cfgs.ClientConfig, logger)
-	// 	if err != nil {
-	// 		logError(zapLogger, err)
-	// 	}
-	// }()
+	go func() {
+		err := testGrpcClient(cfgs.ClientConfig["user"])
+		if err != nil {
+			logError(zapLogger, err)
+		}
+	}()
 
 	// run grpc-gateway
-	handler := v3.NewHandler(cfgs)
+	handler := handler.NewHandler(cfgs)
 	err := handler.Run()
 	if err != nil {
 		zapLogger.Error("Starting gRPC-gateway error", zap.Error(err))

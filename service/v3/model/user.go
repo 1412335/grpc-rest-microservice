@@ -1,4 +1,4 @@
-package v3
+package model
 
 import (
 	"encoding/json"
@@ -6,8 +6,10 @@ import (
 	"time"
 
 	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
+	"github.com/1412335/grpc-rest-microservice/pkg/cache"
 	"github.com/1412335/grpc-rest-microservice/pkg/errors"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
+	errorSrv "github.com/1412335/grpc-rest-microservice/service/v3/error"
 	"github.com/microcosm-cc/bluemonday"
 	"gopkg.in/validator.v2"
 	"gorm.io/gorm"
@@ -26,7 +28,7 @@ type User struct {
 	UpdatedAt   time.Time
 }
 
-func (u *User) transform2GRPC() *api_v3.User {
+func (u *User) Transform2GRPC() *api_v3.User {
 	user := &api_v3.User{
 		Id:          u.ID,
 		Username:    u.Username,
@@ -41,7 +43,7 @@ func (u *User) transform2GRPC() *api_v3.User {
 	return user
 }
 
-func (u *User) updateFromGRPC(user *api_v3.User) {
+func (u *User) UpdateFromGRPC(user *api_v3.User) {
 	u.Username = user.GetUsername()
 	u.Fullname = user.GetFullname()
 	u.Email = user.GetEmail()
@@ -53,23 +55,30 @@ func (u *User) updateFromGRPC(user *api_v3.User) {
 	}
 }
 
-func (u *User) cache() error {
-	if DefaultCache == nil {
-		return nil
-	}
+func (u *User) GetCache() error {
+	// if cache.DefaultCache == nil {
+	// 	return nil
+	// }
+	return cache.Get(u.ID, u)
+}
+
+func (u *User) Cache() error {
+	// if cache.DefaultCache == nil {
+	// 	return nil
+	// }
 	if bytes, err := json.Marshal(u); err != nil {
 		return err
-	} else if err := DefaultCache.Set(u.ID, string(bytes)); err != nil {
+	} else if err := cache.Set(u.ID, string(bytes)); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (u *User) rmCache() error {
-	if DefaultCache == nil {
-		return nil
-	}
-	if err := DefaultCache.Delete(u.ID); err != nil {
+func (u *User) DelCache() error {
+	// if cache.DefaultCache == nil {
+	// 	return nil
+	// }
+	if err := cache.Delete(u.ID); err != nil {
 		return err
 	}
 	return nil
@@ -80,7 +89,7 @@ func (u *User) hashPassword() error {
 	hashedPassword, err := utils.GenHash(u.Password)
 	if err != nil {
 		// 	u.logger.For(ctx).Error("Hash password failed", zap.Error(err))
-		return ErrHashPassword
+		return errorSrv.ErrHashPassword
 	}
 	u.Password = hashedPassword
 	return nil
@@ -92,7 +101,7 @@ func (u *User) sanitize() {
 	u.Fullname = p.Sanitize(u.Fullname)
 }
 
-func (u *User) validate() error {
+func (u *User) Validate() error {
 	// sanitize fileds
 	u.sanitize()
 	// validate
@@ -120,7 +129,7 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 
 func (u *User) AfterCreate(tx *gorm.DB) error {
 	// cache user
-	if err := u.cache(); err != nil {
+	if err := u.Cache(); err != nil {
 		return err
 	}
 	return nil
@@ -137,7 +146,7 @@ func (u *User) BeforeUpdate(tx *gorm.DB) error {
 // Updating data in same transaction
 func (u *User) AfterUpdate(tx *gorm.DB) error {
 	// cache user
-	if err := u.cache(); err != nil {
+	if err := u.Cache(); err != nil {
 		return err
 	}
 	return nil
@@ -149,7 +158,7 @@ func (u *User) BeforeDelete(tx *gorm.DB) error {
 
 func (u *User) AfterDelete(tx *gorm.DB) error {
 	// rm cache user
-	if err := u.rmCache(); err != nil {
+	if err := u.DelCache(); err != nil {
 		return err
 	}
 	return nil
