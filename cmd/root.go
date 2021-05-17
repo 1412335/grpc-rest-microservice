@@ -86,3 +86,12 @@ func Execute() {
 		os.Exit(-1)
 	}
 }
+
+func AddCommand(cmd ...*cobra.Command) {
+	log.Info("Root.AddCommand")
+	rootCmd.AddCommand(cmd...)
+}
+
+func LoadConfig() *configs.ServiceConfig {
+	return cfgs
+}
