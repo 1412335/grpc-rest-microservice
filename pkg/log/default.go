@@ -39,17 +39,21 @@ func NewFactory(opts ...Option) Factory {
 
 	// new zap.Logger w mode
 	var logger *zap.Logger
+	var err error
 	if f.opts.Mode == "pro" || f.opts.Mode == "production" {
-		logger, _ = zap.NewProduction(
+		logger, err = zap.NewProduction(
 			zap.IncreaseLevel(level),
 			zap.AddStacktrace(traceLevel),
 		)
 	} else {
-		logger, _ = zap.NewDevelopment(
+		logger, err = zap.NewDevelopment(
 			// zap.IncreaseLevel(level),
 			zap.AddStacktrace(traceLevel),
 			zap.AddCallerSkip(1),
 		)
+	}
+	if err != nil {
+		f.Bg().Error("init zap.Logger failed", zap.Error(err))
 	}
 	f.logger = logger
 	return f

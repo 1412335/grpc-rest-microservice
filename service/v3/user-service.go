@@ -402,18 +402,22 @@ func (u *userServiceImpl) Validate(ctx context.Context, req *api_v3.ValidateRequ
 		if invalidate, _ := u.tokenSrv.IsInvalidated(claims.ID, claims.Id); invalidate {
 			return errorSrv.ErrTokenInvalid
 		}
-		// update active
-		if e = tx.Model(&model.User{ID: claims.ID}).Update("active", true).Error; e == gorm.ErrRecordNotFound {
+		// get cache user
+		user, e := u.getUserByID(tx.Statement.Context, claims.ID)
+		if e == errorSrv.ErrUserNotFound {
 			return errorSrv.ErrUserNotFound
 		} else if e != nil {
-			u.logger.For(ctx).Error("Error update user", zap.Error(e))
-			return errorSrv.ErrConnectDB
-		}
-		// get cache user
-		user, e := u.getUserByID(ctx, claims.ID)
-		if e != nil {
 			u.logger.For(ctx).Error("Get user by ID", zap.Error(e))
 			return errors.InternalServerError("Get user failed", "Lookup user by ID w redis/db failed")
+		}
+		if !user.Active {
+			// update active
+			if e = tx.Model(&model.User{ID: claims.ID}).Update("active", true).Error; e == gorm.ErrRecordNotFound {
+				return errorSrv.ErrUserNotFound
+			} else if e != nil {
+				u.logger.For(ctx).Error("Error update user", zap.Error(e))
+				return errorSrv.ErrConnectDB
+			}
 		}
 		// rsp.User = user.Transform2GRPC()
 		rsp.Id = claims.ID

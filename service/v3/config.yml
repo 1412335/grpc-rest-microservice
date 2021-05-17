@@ -44,7 +44,7 @@ database:
   maxIdleConns: 10
   maxOpenConns: 100
   connectTimeout: "1h"
-  debug: false
+  debug: true
 enableTLS: false
 TLSCert:
   CACert : "./cert/ca-cert.pem"
@@ -54,7 +54,7 @@ log:
   #PANNIC, FATAL, ERROR, WARN, INFO, DEBUG
   mode: "dev"
   level: "DEBUG"
-  traceLevel: "FATAL"
+  traceLevel: "ERROR"
   isLogFile: false
   pathLogFile: "./logFile.log"
 clientConfig:

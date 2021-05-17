@@ -46,7 +46,7 @@ func initConfig() {
 
 	if cfgs.Log != nil {
 		// set default logger
-		log.DefaultLogger = log.NewFactory(log.WithLevel(cfgs.Log.Level))
+		log.DefaultLogger = log.NewFactory(log.WithLevel(cfgs.Log.Level), log.WithLevel(cfgs.Log.Level), log.WithTraceLevel(cfgs.Log.TraceLevel))
 	}
 	// // add serviceName + version to log
 	// log.With(zap.String("service", cfgs.ServiceName), zap.String("version", cfgs.Version))

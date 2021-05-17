@@ -56,29 +56,33 @@ func (u *User) UpdateFromGRPC(user *api_v3.User) {
 }
 
 func (u *User) GetCache() error {
-	// if cache.DefaultCache == nil {
-	// 	return nil
-	// }
-	return cache.Get(u.ID, u)
+	var bytes []byte
+	if err := cache.Get(u.ID, &bytes); err == cache.ErrCacheNotAvailable {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(bytes, u); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (u *User) Cache() error {
-	// if cache.DefaultCache == nil {
-	// 	return nil
-	// }
 	if bytes, err := json.Marshal(u); err != nil {
 		return err
-	} else if err := cache.Set(u.ID, string(bytes)); err != nil {
+	} else if err := cache.Set(u.ID, string(bytes)); err == cache.ErrCacheNotAvailable {
+		return nil
+	} else if err != nil {
 		return err
 	}
 	return nil
 }
 
 func (u *User) DelCache() error {
-	// if cache.DefaultCache == nil {
-	// 	return nil
-	// }
-	if err := cache.Delete(u.ID); err != nil {
+	if err := cache.Delete(u.ID); err == cache.ErrCacheNotAvailable {
+		return nil
+	} else if err != nil {
 		return err
 	}
 	return nil
@@ -145,11 +149,21 @@ func (u *User) BeforeUpdate(tx *gorm.DB) error {
 
 // Updating data in same transaction
 func (u *User) AfterUpdate(tx *gorm.DB) error {
+	// find user by id
+	if e := tx.First(u).Error; e == gorm.ErrRecordNotFound {
+		return errorSrv.ErrUserNotFound
+	} else if e != nil {
+		return errorSrv.ErrConnectDB
+	}
 	// cache user
 	if err := u.Cache(); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (u *User) AfterSave(tx *gorm.DB) (err error) {
+	return
 }
 
 func (u *User) BeforeDelete(tx *gorm.DB) error {

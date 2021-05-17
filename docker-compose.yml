@@ -142,7 +142,7 @@ services:
   v1:
     image: grpc-rest/v1:latest
     container_name: v1
-    restart: on-failure
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
@@ -165,7 +165,7 @@ services:
   v2:
     image: grpc-rest/v2:latest
     container_name: v2
-    restart: on-failure
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
@@ -190,6 +190,7 @@ services:
   v2-client:
     image: grpc-rest/v2:client
     container_name: v2-client
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
@@ -226,7 +227,7 @@ services:
   v3:
     image: grpc-rest/v3:latest
     container_name: v3
-    # restart: on-failure
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile

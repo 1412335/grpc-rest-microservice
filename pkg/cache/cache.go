@@ -1,7 +1,10 @@
 package cache
 
+import "errors"
+
 var (
-	DefaultCache Cache
+	DefaultCache         Cache
+	ErrCacheNotAvailable = errors.New("cache not available")
 )
 
 type Cache interface {
@@ -13,21 +16,36 @@ type Cache interface {
 }
 
 func Set(key, value string) error {
+	if DefaultCache == nil {
+		return ErrCacheNotAvailable
+	}
 	return DefaultCache.Set(key, value)
 }
 
 func Get(key string, val interface{}) error {
+	if DefaultCache == nil {
+		return ErrCacheNotAvailable
+	}
 	return DefaultCache.Get(key, val)
 }
 
 func Delete(key string) error {
+	if DefaultCache == nil {
+		return ErrCacheNotAvailable
+	}
 	return DefaultCache.Delete(key)
 }
 
 func Close() error {
+	if DefaultCache == nil {
+		return ErrCacheNotAvailable
+	}
 	return DefaultCache.Close()
 }
 
 func Ratio() float64 {
+	if DefaultCache == nil {
+		return 0.0
+	}
 	return DefaultCache.Ratio()
 }
