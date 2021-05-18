@@ -159,7 +159,7 @@ func sanitizeAPIPrefix(prefix string) string {
 }
 
 // isPermanentHTTPHeader checks whether hdr belongs to the list of
-// permenant request headers maintained by IANA.
+// Permanent request headers maintained by IANA.
 // http://www.iana.org/assignments/message-headers/message-headers.xml
 // From https://github.com/grpc-ecosystem/grpc-gateway/blob/7a2a43655ccd9a488d423ea41a3fc723af103eda/runtime/context.go#L157
 func isPermanentHTTPHeader(hdr string) bool {
@@ -301,7 +301,9 @@ func bindEnvVars(viper *viper.Viper, r *strings.Replacer, prefix string, secondP
 		if strings.HasPrefix(pair[0], prefix+EnvVarSepChar) {
 			key := strings.TrimPrefix(pair[0], prefix+EnvVarSepChar)
 			if strings.HasPrefix(key, secondPrefix+EnvVarSepChar) {
-				viper.BindEnv(strings.ToLower(r.Replace(key)), pair[1])
+				if err := viper.BindEnv(strings.ToLower(r.Replace(key)), pair[1]); err != nil {
+					logrus.Errorf("Could not bind environment variable: %v", err)
+				}
 			}
 		}
 	}
@@ -319,7 +321,9 @@ func SetupViper() *viper.Viper {
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
-	viper.BindPFlags(pflag.CommandLine)
+	if err := viper.BindPFlags(pflag.CommandLine); err != nil {
+		logrus.Errorf("Could not bind pflags: %v", err)
+	}
 
 	err := viper.ReadInConfig()
 	if err != nil {
@@ -382,6 +386,8 @@ func main() {
 		},
 		func() {
 			shutdown, _ := context.WithTimeout(ctx, 10*time.Second)
-			server.Shutdown(shutdown)
+			if err := server.Shutdown(shutdown); err != nil {
+				logrus.Fatalf("Could not shutdown http server: %v", err)
+			}
 		})
 }

@@ -329,7 +329,9 @@ func (h *Handler) Run() error {
 		sig := <-signals
 		h.logger.For(ctx).Info("Received signal", zap.Any("signal", sig))
 		shutdown, can := context.WithTimeout(ctx, 10*time.Second)
-		srv.Shutdown(shutdown)
+		if err := srv.Shutdown(shutdown); err != nil {
+			h.logger.For(ctx).Error("Server shutdown failed", zap.Error(err))
+		}
 		defer can()
 	}()
 

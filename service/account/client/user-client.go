@@ -5,10 +5,12 @@ import (
 	"time"
 
 	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
+
 	grpcClient "github.com/1412335/grpc-rest-microservice/pkg/client"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 	interceptor "github.com/1412335/grpc-rest-microservice/pkg/interceptor/client"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -16,7 +18,7 @@ import (
 
 type UserClient interface {
 	Login(email, password string) (token string, err error)
-	Validate(token string) (userID string, err error)
+	Validate(token string) (userID string, role string, err error)
 	Close() error
 }
 
@@ -83,7 +85,7 @@ func (c *userClientImpl) Login(email, password string) (string, error) {
 }
 
 // validate token
-func (c *userClientImpl) Validate(token string) (string, error) {
+func (c *userClientImpl) Validate(token string) (string, string, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	defer cancel()
 	// prepare request
@@ -94,7 +96,7 @@ func (c *userClientImpl) Validate(token string) (string, error) {
 	reply, err := c.userSrvClient.Validate(ctx, msg)
 	if err != nil {
 		c.logger.For(ctx).Error("validate token failed", zap.Error(err))
-		return "", err
+		return "", "", err
 	}
-	return reply.GetId(), nil
+	return reply.GetUser().GetId(), reply.GetUser().GetRole().String(), nil
 }

@@ -35,12 +35,6 @@
         },
         "parameters": [
           {
-            "name": "Authorization",
-            "in": "header",
-            "required": true,
-            "type": "string"
-          },
-          {
             "name": "created_since",
             "description": "list users created after timestamp.",
             "in": "query",
@@ -189,12 +183,6 @@
         },
         "parameters": [
           {
-            "name": "Authorization",
-            "in": "header",
-            "required": true,
-            "type": "string"
-          },
-          {
             "name": "body",
             "in": "body",
             "required": true,
@@ -235,12 +223,6 @@
           }
         },
         "parameters": [
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "created_since",
             "description": "list users created after timestamp.",
@@ -363,12 +345,6 @@
             "in": "path",
             "required": true,
             "type": "string"
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": true,
-            "type": "string"
           }
         ],
         "tags": [
@@ -407,12 +383,6 @@
             "schema": {
               "$ref": "#/definitions/api_v3UpdateUserRequest"
             }
-          },
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": true,
-            "type": "string"
           }
         ],
         "tags": [
@@ -504,7 +474,12 @@
       }
     },
     "api_v3LogoutResponse": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
     },
     "api_v3Role": {
       "type": "string",
@@ -587,17 +562,8 @@
     "api_v3ValidateResponse": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "username": {
-          "type": "string"
-        },
-        "fullname": {
-          "type": "string"
-        },
-        "email": {
-          "type": "string"
+        "user": {
+          "$ref": "#/definitions/api_v3User"
         }
       }
     },

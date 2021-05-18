@@ -38,7 +38,7 @@ func NewHandler(config *configs.ServiceConfig) *handler {
 }
 
 // isPermanentHTTPHeader checks whether hdr belongs to the list of
-// permenant request headers maintained by IANA.
+// permanent request headers maintained by IANA.
 // http://www.iana.org/assignments/message-headers/message-headers.xml
 // From https://github.com/grpc-ecosystem/grpc-gateway/blob/7a2a43655ccd9a488d423ea41a3fc723af103eda/runtime/context.go#L157
 func (h *handler) isPermanentHTTPHeader(hdr string) bool {
@@ -169,7 +169,9 @@ func (h *handler) initRouter(handler http.Handler) *gin.Engine {
 // serveOpenAPI serves an OpenAPI UI on /openapi-ui/
 // Adapted from https://github.com/philips/grpc-gateway-example/blob/a269bcb5931ca92be0ceae6130ac27ae89582ecc/cmd/serve.go#L63
 func serveOpenAPI(r *gin.Engine) error {
-	mime.AddExtensionType(".svg", "image/svg+xml")
+	if err := mime.AddExtensionType(".svg", "image/svg+xml"); err != nil {
+		return err
+	}
 	statikFS, err := fs.New()
 	if err != nil {
 		return err
@@ -234,7 +236,9 @@ func (h *handler) Run() error {
 		case sig := <-signals:
 			log.Println("Proxy gateway signal received:", sig)
 			shutdown, can := context.WithTimeout(ctx, 10*time.Second)
-			srv.Shutdown(shutdown)
+			if err := srv.Shutdown(shutdown); err != nil {
+				log.Println("Server shutdown failed:", err)
+			}
 			defer can()
 		}
 	}()

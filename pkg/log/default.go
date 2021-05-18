@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
+
 	"github.com/opentracing/opentracing-go"
 	"github.com/uber/jaeger-client-go"
 	"go.uber.org/zap"

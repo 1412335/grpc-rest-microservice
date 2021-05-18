@@ -17,7 +17,7 @@ services:
     #   - JAEGER_AGENT_HOST=jaeger
     #   - JAEGER_AGENT_PORT=6831
     # networks:
-    #   - grpc-rest-microservice_grpc-rest
+    #   - github.com/1412335/grpc-rest-microservice_grpc-rest
     logging:
       driver: loki
       options:
@@ -26,4 +26,4 @@ services:
 networks:
   default:
     external: true
-    name: grpc-rest-microservice_grpc-rest
+    name: github.com/1412335/grpc-rest-microservice_grpc-rest

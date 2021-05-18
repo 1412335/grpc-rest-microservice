@@ -13,6 +13,7 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/mysql"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/tracing"
+
 	_ "github.com/go-sql-driver/mysql"
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/uber/jaeger-lib/metrics"

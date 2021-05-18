@@ -125,7 +125,9 @@ func (u *userServiceImpl) Create(ctx context.Context, req *api_v3.CreateUserRequ
 		return nil, err
 	}
 	// set header in your handler
-	grpc.SetHeader(ctx, metadata.Pairs("X-Http-Code", "201"))
+	if e := grpc.SetHeader(ctx, metadata.Pairs("X-Http-Code", "201")); e != nil {
+		return nil, errors.InternalServerError("unable to send 'X-Http-Code' header: %v", e.Error())
+	}
 	return rsp, nil
 }
 
@@ -381,8 +383,12 @@ func (u *userServiceImpl) Logout(ctx context.Context, req *api_v3.LogoutRequest)
 		u.logger.For(ctx).Error("invalidate token", zap.String("token", accessToken), zap.Error(err))
 	}
 	// set header in your handler
-	grpc.SetHeader(ctx, metadata.Pairs("X-Http-Code", "201"))
-	return &api_v3.LogoutResponse{}, nil
+	if e := grpc.SetHeader(ctx, metadata.Pairs("X-Http-Code", "201")); e != nil {
+		return nil, errors.InternalServerError("unable to send 'X-Http-Code' header: %v", e.Error())
+	}
+	return &api_v3.LogoutResponse{
+		Id: req.GetId(),
+	}, nil
 }
 
 // validate token: update isActive=true & return user
@@ -419,11 +425,7 @@ func (u *userServiceImpl) Validate(ctx context.Context, req *api_v3.ValidateRequ
 				return errorSrv.ErrConnectDB
 			}
 		}
-		// rsp.User = user.Transform2GRPC()
-		rsp.Id = claims.ID
-		rsp.Username = user.Username
-		rsp.Fullname = user.Fullname
-		rsp.Email = user.Email
+		rsp.User = user.Transform2GRPC()
 		return nil
 	})
 	if err != nil {

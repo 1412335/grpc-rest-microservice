@@ -7,8 +7,10 @@ import (
 	pb "account/api"
 	"account/client"
 
+	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
 	interceptor "github.com/1412335/grpc-rest-microservice/pkg/interceptor/server"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+
 	"go.uber.org/zap"
 
 	"google.golang.org/grpc"
@@ -66,7 +68,7 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string, re
 	a.Log().For(ctx).Info("authorize", zap.String("token", accessToken[0]))
 
 	// verify token
-	userID, err := a.userSrv.Validate(accessToken[0])
+	userID, userRole, err := a.userSrv.Validate(accessToken[0])
 	if err != nil {
 		return status.Errorf(codes.Unauthenticated, "verify failed: %v", err)
 	}
@@ -76,6 +78,10 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string, re
 	case *pb.CreateAccountRequest:
 		if msg.GetUserId() != userID {
 			return status.Errorf(codes.PermissionDenied, "no permission to access this method: %s with [userID:%s]", method, msg.GetUserId())
+		}
+	case *pb.ListAccountsRequest:
+		if userRole != api_v3.Role_ROOT.String() {
+			return status.Errorf(codes.PermissionDenied, "no permission to access this method: %s with [userID:%s, role:%s]", method, msg.GetUserId(), userRole)
 		}
 	}
 	// fetch custom-request-header

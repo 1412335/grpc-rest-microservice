@@ -218,6 +218,7 @@ message LogoutRequest {
 }
 
 message LogoutResponse {
+	string id = 1;
 }
 
 message ValidateRequest {
@@ -225,8 +226,5 @@ message ValidateRequest {
 }
 
 message ValidateResponse {
-	string id = 1;
-	string username = 2;
-	string fullname = 3;
-	string email = 4;
+	User user = 1;
 }

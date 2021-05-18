@@ -8,11 +8,11 @@ import (
 	math "math"
 	proto "github.com/gogo/protobuf/proto"
 	golang_proto "github.com/golang/protobuf/proto"
-	_ "github.com/gogo/protobuf/types"
 	_ "github.com/gogo/googleapis/google/api"
 	_ "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger/options"
 	_ "github.com/gogo/protobuf/gogoproto"
 	_ "github.com/mwitkow/go-proto-validators"
+	_ "github.com/gogo/protobuf/types"
 	time "time"
 	github_com_mwitkow_go_proto_validators "github.com/mwitkow/go-proto-validators"
 )
@@ -150,5 +150,10 @@ func (this *ValidateRequest) Validate() error {
 	return nil
 }
 func (this *ValidateResponse) Validate() error {
+	if this.User != nil {
+		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.User); err != nil {
+			return github_com_mwitkow_go_proto_validators.FieldError("User", err)
+		}
+	}
 	return nil
 }

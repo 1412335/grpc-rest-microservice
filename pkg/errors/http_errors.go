@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/1412335/grpc-rest-microservice/pkg/log"
+
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"go.uber.org/zap"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/status"
 )
@@ -47,6 +50,8 @@ func CustomHTTPError(ctx context.Context, _ *runtime.ServeMux, marshaler runtime
 
 	jErr := json.NewEncoder(w).Encode(errBd)
 	if jErr != nil {
-		w.Write([]byte(fallback))
+		if _, err := w.Write([]byte(fallback)); err != nil {
+			log.Error("write data HTTP failed", zap.Error(err))
+		}
 	}
 }

@@ -34,7 +34,9 @@ func V2Service() error {
 	// run grpc server
 	// return logError(zapLogger, server.Run())
 	go func() {
-		logError(logger, server.Run())
+		if err := server.Run(); err != nil {
+			logger.Bg().Error("Server running failed", zap.Error(err))
+		}
 	}()
 
 	// run grpc-gateway

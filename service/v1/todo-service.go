@@ -7,11 +7,12 @@ import (
 
 	api_v1 "github.com/1412335/grpc-rest-microservice/pkg/api/v1"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+
 	"go.uber.org/zap"
 
-	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // is implementation of api_v1.ToDoServiceServer proto
@@ -59,10 +60,7 @@ func (s *toDoServiceServer) Create(ctx context.Context, req *api_v1.CreateReques
 	}
 	defer c.Close()
 
-	reminder, err := ptypes.Timestamp(req.ToDo.Reminder)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "reminder field has invalid format:"+err.Error())
-	}
+	reminder := req.ToDo.Reminder.AsTime()
 
 	// insert todo entity data
 	res, err := c.ExecContext(ctx, "INSERT INTO ToDo(`Title`, `Description`, `Reminder`) VALUES (?, ?, ?)", req.ToDo.Title, req.ToDo.Description, reminder)
@@ -116,11 +114,7 @@ func (s *toDoServiceServer) Read(ctx context.Context, req *api_v1.ReadRequest) (
 	if err = rows.Scan(&td.Id, &td.Title, &td.Description, &reminder); err != nil {
 		return nil, status.Errorf(codes.Unknown, "failed to retrieve filed values from todo: %v", err.Error())
 	}
-	td.Reminder, err = ptypes.TimestampProto(reminder)
-	if err != nil {
-		return nil, status.Errorf(codes.Unknown, "reminder has invalid format: %v", err.Error())
-	}
-
+	td.Reminder = timestamppb.New(reminder)
 	if rows.Next() {
 		return nil, status.Errorf(codes.Unknown, "found multiple Todos with Id=%v:", req.Id)
 	}
@@ -194,10 +188,7 @@ func (s *toDoServiceServer) ReadAll(ctx context.Context, req *api_v1.ReadAllRequ
 		if err = rows.Scan(&td.Id, &td.Title, &td.Description, &reminder); err != nil {
 			return nil, status.Error(codes.Unknown, "failed to retrieve filed values from todo:"+err.Error())
 		}
-		td.Reminder, err = ptypes.TimestampProto(reminder)
-		if err != nil {
-			return nil, status.Error(codes.Unknown, "reminder has invalid format:"+err.Error())
-		}
+		td.Reminder = timestamppb.New(reminder)
 		list = append(list, td)
 	}
 

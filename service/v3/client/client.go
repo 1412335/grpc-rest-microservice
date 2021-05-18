@@ -9,6 +9,7 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 	interceptor "github.com/1412335/grpc-rest-microservice/pkg/interceptor/client"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"

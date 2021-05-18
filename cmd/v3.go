@@ -40,7 +40,9 @@ func V3Service() error {
 	// run grpc server
 	// return logError(zapLogger, server.Run())
 	go func() {
-		logError(zapLogger, server.Run())
+		if err := server.Run(); err != nil {
+			zapLogger.Bg().Error("Server running failed", zap.Error(err))
+		}
 	}()
 
 	go func() {

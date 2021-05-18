@@ -12,7 +12,9 @@ import (
 
 	api_v1 "github.com/1412335/grpc-rest-microservice/pkg/api/v1"
 	api_v2 "github.com/1412335/grpc-rest-microservice/pkg/api/v2/grpc-gateway/gen"
-	"github.com/golang/protobuf/ptypes"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -50,7 +52,7 @@ func testingAPIV1(ctx context.Context, client api_v1.ToDoServiceClient) {
 	log.Println("starting test api_v1....")
 
 	t := time.Now().In(time.UTC)
-	reminder, _ := ptypes.TimestampProto(t)
+	reminder := timestamppb.New(t)
 	pfx := t.Format(time.RFC3339Nano)
 
 	// create todo

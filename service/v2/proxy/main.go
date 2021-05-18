@@ -63,7 +63,6 @@ type proxyConfig struct {
 }
 
 func logFormatter(cfg proxyConfig) handlers.LogFormatter {
-
 	// Setup logrus
 	logrus.SetFormatter(&logrus.JSONFormatter{
 		FieldMap: logrus.FieldMap{
@@ -159,7 +158,7 @@ func sanitizeAPIPrefix(prefix string) string {
 }
 
 // isPermanentHTTPHeader checks whether hdr belongs to the list of
-// permenant request headers maintained by IANA.
+// Permanent request headers maintained by IANA.
 // http://www.iana.org/assignments/message-headers/message-headers.xml
 // From https://github.com/grpc-ecosystem/grpc-gateway/blob/7a2a43655ccd9a488d423ea41a3fc723af103eda/runtime/context.go#L157
 func isPermanentHTTPHeader(hdr string) bool {
@@ -235,7 +234,7 @@ func getResponseHeaders(cfg *viper.Viper) map[string]string {
 		if strings.HasPrefix(key, headersPrefix+ViperKeySepChar) {
 			value := cfg.GetString(key)
 			header := strings.TrimPrefix(key, headersPrefix+ViperKeySepChar)
-			// headers are case insensetive
+			// headers are case insensitive
 			m[header] = value
 		}
 	}
@@ -243,7 +242,6 @@ func getResponseHeaders(cfg *viper.Viper) map[string]string {
 }
 
 func SetupMux(ctx context.Context, cfg proxyConfig) *http.ServeMux {
-
 	formatter := logFormatter(cfg)
 
 	logrus.Infof("Creating grpc-gateway proxy with config: %v", cfg)
@@ -349,7 +347,6 @@ func SignalRunner(runner, stopper func()) {
 }
 
 func main() {
-
 	cfg := SetupViper()
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -382,6 +379,8 @@ func main() {
 		},
 		func() {
 			shutdown, _ := context.WithTimeout(ctx, 10*time.Second)
-			server.Shutdown(shutdown)
+			if err := server.Shutdown(shutdown); err != nil {
+				logrus.Fatalf("Could not shutdown http server: %v", err)
+			}
 		})
 }

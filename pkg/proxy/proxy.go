@@ -169,7 +169,9 @@ func (h *handler) initRouter(handler http.Handler) *gin.Engine {
 // serveOpenAPI serves an OpenAPI UI on /openapi-ui/
 // Adapted from https://github.com/philips/grpc-gateway-example/blob/a269bcb5931ca92be0ceae6130ac27ae89582ecc/cmd/serve.go#L63
 func serveOpenAPI(r *gin.Engine) error {
-	mime.AddExtensionType(".svg", "image/svg+xml")
+	if err := mime.AddExtensionType(".svg", "image/svg+xml"); err != nil {
+		return err
+	}
 	statikFS, err := fs.New()
 	if err != nil {
 		return err
@@ -225,7 +227,9 @@ func (h *handler) Run() error {
 		case sig := <-signals:
 			log.Println("Proxy gateway signal received:", sig)
 			shutdown, can := context.WithTimeout(ctx, 10*time.Second)
-			srv.Shutdown(shutdown)
+			if err := srv.Shutdown(shutdown); err != nil {
+				log.Println("Server shutdown failed", err.Error())
+			}
 			defer can()
 		}
 	}()
