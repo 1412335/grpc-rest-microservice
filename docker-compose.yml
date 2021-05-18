@@ -247,6 +247,33 @@ services:
       options:
         loki-url: 'http://localhost:3100/api/prom/push'
 
+  account:
+    image: grpc-rest/account:latest
+    container_name: account
+    restart: unless-stopped
+    build:
+      context: ./service/account
+      dockerfile: Dockerfile
+      args:
+        - SSH_PRIVATE_KEY
+    ports:
+      - '8083:9090' # gRPC server
+      - '8003:8000' # gRPC gateway
+    command: ["account"]
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+    volumes: 
+      - ~/.ssh:/root/.ssh/id_rsa
+    networks:
+      - grpc-rest
+    depends_on:
+      - postgres
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
+
   v3-client:
     image: grpc-rest/v3:client
     container_name: v3-client
