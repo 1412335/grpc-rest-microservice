@@ -17,28 +17,60 @@ type ServiceConfig struct {
 	ServiceName    string
 	GRPC           *GRPC
 	Proxy          *Proxy
+	ClientConfig   map[string]*ClientConfig
 	ManagerClient  *ManagerClient
 	JWT            *JWT
 	Database       *Database
 	Authentication *Authentication
+	// redis
+	Redis *Redis
 	// server using
-	AccessibleRoles map[string][]string
+	AccessibleRoles     map[string][]string
+	AuthRequiredMethods map[string]bool
 	// client using
 	AuthMethods map[string]bool
 	// opentracing
-	Tracing *Tracing
+	EnableTracing bool
+	Tracing       *Tracing
+	// insecure
+	EnableTLS bool
+	TLSCert   *TLSCert
+	// swaggers
+	Swagger []string
+	// log factory
+	Log *Log
+}
+
+type ClientConfig struct {
+	Version       string
+	ServiceName   string
+	GRPC          *GRPC
+	ManagerClient *ManagerClient
+	// opentracing
+	EnableTracing bool
+	Tracing       *Tracing
+	// insecure
+	EnableTLS bool
+	TLSCert   *TLSCert
 }
 
 // opentracing with jaeger
 type Tracing struct {
-	Flag    bool
 	Metrics string
+}
+
+type TLSCert struct {
+	CACert  string
+	CertPem string
+	KeyPem  string
 }
 
 // grpc-server
 type GRPC struct {
-	Host string
-	Port int
+	Host               string
+	Port               int
+	MaxCallRecvMsgSize int
+	MaxCallSendMsgSize int
 }
 
 // grpc-gateway proxy
@@ -48,18 +80,57 @@ type Proxy struct {
 
 // json web token
 type JWT struct {
-	SecretKey string
-	Duration  time.Duration
+	Issuer           string
+	SecretKey        string
+	Duration         time.Duration
+	InvalidateKey    string
+	InvalidateExpiry time.Duration
 }
+
+type Redis struct {
+	Nodes  []string
+	Prefix string
+}
+
+type Cache struct {
+	Size int
+}
+
+// db
+// type Database struct {
+// 	Name    string
+// 	MySQL   *MySQL
+// 	MongoDB *MongoDB
+// }
 
 // mysql
 type Database struct {
-	Host     string
-	Port     string
+	Host           string
+	Port           string
+	User           string
+	Password       string
+	Scheme         string
+	Debug          bool
+	MaxIdleConns   int
+	MaxOpenConns   int
+	ConnectTimeout time.Duration
+}
+
+// mongodb
+type MongoDB struct {
+	ConnectionURI   string
+	Database        string
+	Auth            *MongoDBAuthentication
+	PoolSize        uint64
+	MaxConnIdleTime time.Duration
+	ConnectTimeout  time.Duration
+	Debug           bool
+}
+
+type MongoDBAuthentication struct {
+	Source   string
 	User     string
 	Password string
-	Scheme   string
-	Debug    bool
 }
 
 // manager grpc-pool
@@ -77,6 +148,29 @@ type ManagerClient struct {
 type Authentication struct {
 	Username string
 	Password string
+}
+
+// ZPDLog config
+type Log struct {
+	Mode        string
+	Level       string
+	TraceLevel  string
+	IsLogFile   bool
+	PathLogFile string
+}
+
+// Consul config
+type Consul struct {
+	AddressConsul                  string
+	ID                             string
+	Name                           string
+	Tag                            string
+	GRPCPort                       int
+	GRPCHost                       string
+	Interval                       int
+	DeregisterCriticalServiceAfter int
+	SessionTimeout                 string
+	KeyLeader                      string
 }
 
 // type AccessibleRoles map[string][]string

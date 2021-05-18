@@ -1,16 +1,28 @@
-language: ruby
+language: go
+
+go:
+  - "1.14.x"
+  - "1.15.x"
+  - "tip"
 
 services:
   - docker
+
 env:
-  - DOCKER_COMPOSE_VERSION=1.21.2
+  - DOCKER_COMPOSE_VERSION=1.21.2 PROTOBUF_VERSION=3.7.1 GO111MODULE=on
+
 before_install:
   - sudo rm /usr/local/bin/docker-compose
   - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
   - chmod +x docker-compose
   - sudo mv docker-compose /usr/local/bin
   
+before_script:
+  - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.23.1
+
 script:
+  - echo 'testing'
+  - make test
   - echo 'building docker-compose'
   # - cd source/docker-compose
   - docker-compose build

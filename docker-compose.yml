@@ -3,6 +3,7 @@ version: '2'
 services:
   mysql:
     image: mysql:5.7.26
+    # image: mysql
     container_name: mysql
     restart: on-failure
     volumes:
@@ -10,29 +11,57 @@ services:
     environment:
       # - MYSQL_ROOT_HOST=${DB_HOST} 
       # GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'password' WITH GRANT OPTION;
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
       - MYSQL_USER=${DB_USER}
       - MYSQL_PASSWORD=${DB_PASSWORD}
-      - MYSQL_DATABASE=${DB_NAME}
-      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
     ports:
       - "3306:3306"
     networks:
       - grpc-rest
 
-  mytop:
-    image: srcoder/mytop
-    container_name: mytop
-    command: ["-h", "${DB_HOST}", "-p", "${DB_PORT}", "-u", "${DB_USER}", "-p", "${DB_PASSWORD}"]
+  postgres:
+    container_name: postgres
+    image: "postgres:alpine"
     restart: on-failure
+    ports:
+      - "5432:5432"
+    env_file: ./docker/postgres/.env
     volumes:
-      - ./docker/mytop/.mytop:/root/.mytop
-    depends_on:
-      - mysql
+      - postgres:/var/lib/postgresql/data
+      - ./docker/postgres:/docker-entrypoint-initdb.d
     networks:
       - grpc-rest
 
+  redis:
+    image: redis:alpine
+    container_name: redis
+    env_file: ./docker/redis/docker-compose.env
+    volumes:
+    - ./docker/redis/data:/data
+    - ./docker/redis/config:/usr/local/etc/redis/
+#    command: ["redis-server","/usr/local/etc/redis/redis.conf", "--appendonly", "yes"]
+#    command: ["sh", "-c", "redis-server", "--appendonly", "yes", "--requirepass", "$${REDIS_PASS}"]
+    entrypoint: ["sh", "-c", "redis-server --appendonly yes --requirepass $${REDIS_PASS}"]
+    ports:
+      - "6378:6379"
+    networks:
+      - grpc-rest
+
+  # mytop:
+  #   image: srcoder/mytop
+  #   container_name: mytop
+  #   command: ["-h", "${DB_HOST}", "-p", "${DB_PORT}", "-u", "${DB_USER}", "-p", "${DB_PASSWORD}"]
+  #   restart: on-failure
+  #   volumes:
+  #     - ./docker/mytop/.mytop:/root/.mytop
+  #   depends_on:
+  #     - mysql
+  #   networks:
+  #     - grpc-rest
+
   grafana:
-    image: grafana/grafana:7.1.4
+    image: grafana/grafana
     container_name: grafana
     restart: on-failure
     ports:
@@ -41,8 +70,8 @@ services:
       - ./docker/tracing/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
       - ./docker/tracing/grafana/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
       - ./docker/tracing/grafana/dashboards/hotrod_metrics_logs.json:/etc/grafana/provisioning/dashboards/hotrod_metrics_logs.json
-    # environment:
-      # - GF_SECURITY_ADMIN_PASSWORD=admin
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
       # - GF_USERS_ALLOW_SIGN_UP=false
       # - GF_SERVER_DOMAIN=myrul.com
       # - GF_SMTP_ENABLED=true
@@ -58,7 +87,7 @@ services:
         loki-url: 'http://localhost:3100/api/prom/push'
 
   prometheus:
-    image: prom/prometheus:v2.19.1
+    image: prom/prometheus
     container_name: prom
     restart: on-failure
     volumes:
@@ -113,10 +142,10 @@ services:
   v1:
     image: grpc-rest/v1:latest
     container_name: v1
-    restart: on-failure
+    restart: unless-stopped
     build:
       context: .
-      dockerfile: Dockerfile.tracing
+      dockerfile: Dockerfile
     ports:
       - '8080:9090' # gRPC server
       - '8000:8000' # gRPC gateway
@@ -136,17 +165,19 @@ services:
   v2:
     image: grpc-rest/v2:latest
     container_name: v2
-    restart: on-failure
+    restart: unless-stopped
     build:
       context: .
-      dockerfile: Dockerfile.tracing
+      dockerfile: Dockerfile
     ports:
       - '8081:9090' # gRPC server
       - '8001:8000' # gRPC gateway
-    # command: ["-t","-m","prometheus","v2"]
+    command: ["-v","v2","-t","-m","prometheus","v2"]
     environment:
       - JAEGER_AGENT_HOST=jaeger
       - JAEGER_AGENT_PORT=6831
+    # volumes:
+    #   - ./third_party/openui:/third_party/openui
     networks:
       - grpc-rest
     depends_on:
@@ -155,6 +186,130 @@ services:
       driver: loki
       options:
         loki-url: 'http://localhost:3100/api/prom/push'
+  
+  v2-client:
+    image: grpc-rest/v2:client
+    container_name: v2-client
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # ports:
+    #   - '8081:9090' # gRPC server
+    #   - '8001:8000' # gRPC gateway
+    command: ["-c","./cmd/client/config.yml","-t","-m","prometheus","client"]
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+    networks:
+      - grpc-rest
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
+  
+  # v2-gateway:
+  #   image: grpc-rest/v2-gw
+  #   container_name: v2-gw
+  #   build:
+  #     context: ./pkg/api/v2/gen/grpc-gateway
+  #     dockerfile: Dockerfile
+  #   # environment:
+  #   #   GRPC_HOST: "client-service:9090"
+  #   #   PROXY_PORT: 8000
+  #   ports:
+  #       - 8002:80
+  #   networks:
+  #     - grpc-rest
+  #   depends_on:
+  #     - v2
+
+  v3:
+    image: grpc-rest/v3:latest
+    container_name: v3
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '8082:9090' # gRPC server
+      - '8002:8000' # gRPC gateway
+    command: ["-c","./service/v3/config.yml","-v","v3","v3"]
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+    networks:
+      - grpc-rest
+    depends_on:
+      - postgres
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
+
+  account:
+    image: grpc-rest/account:latest
+    container_name: account
+    restart: unless-stopped
+    build:
+      context: ./service/account
+      dockerfile: Dockerfile
+      args:
+        - SSH_PRIVATE_KEY
+    ports:
+      - '8083:9090' # gRPC server
+      - '8003:8000' # gRPC gateway
+    command: ["account"]
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+    volumes: 
+      - ~/.ssh:/root/.ssh/id_rsa
+    networks:
+      - grpc-rest
+    depends_on:
+      - postgres
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
+
+  v3-client:
+    image: grpc-rest/v3:client
+    container_name: v3-client
+    # restart: on-failure
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["-c","./service/v3/client/config.yml","v3-client"]
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+    networks:
+      - grpc-rest
+    # depends_on:
+    #   - v3
+    logging:
+      driver: loki
+      options:
+        loki-url: 'http://localhost:3100/api/prom/push'
+
+  # grpc-web proxy
+  # envoy:
+  #   image: envoy-proxy
+  #   container_name: envoy-proxy
+  #   build:
+  #     context: ./pkg/api/v2/grpc-web/envoy
+  #   ports:
+  #       - 7070:8080
+  #       - 9901:9901
+  #   networks:
+  #     - grpc-rest
+  #   depends_on:
+  #     - v2
 
 networks:
   grpc-rest:
+
+volumes:
+  postgres:

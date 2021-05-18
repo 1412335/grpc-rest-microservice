@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 
@@ -45,13 +44,15 @@ func (dal *DataAccessLayer) Connect(ctx context.Context) (*gorm.DB, error) {
 	var err error
 	once.Do(func() {
 		// build connection string
-		dsn, err := dal.buildConnectionDSN()
-		if err != nil {
+		dsn, e := dal.buildConnectionDSN()
+		if e != nil {
+			err = e
 			return
 		}
 		// connect db
-		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-		if err != nil {
+		db, e := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		if e != nil {
+			err = e
 			return
 		}
 
@@ -59,19 +60,19 @@ func (dal *DataAccessLayer) Connect(ctx context.Context) (*gorm.DB, error) {
 			db = db.Debug()
 		}
 
-		sqlDB, err := db.DB()
-		if err != nil {
+		sqlDB, e := db.DB()
+		if e != nil {
+			err = e
 			return
 		}
-
 		// SetMaxIdleConns sets the maximum number of connections in the idle connection pool.
-		sqlDB.SetMaxIdleConns(10)
+		sqlDB.SetMaxIdleConns(dal.dbConfig.MaxIdleConns)
 
 		// SetMaxOpenConns sets the maximum number of open connections to the database.
-		sqlDB.SetMaxOpenConns(100)
+		sqlDB.SetMaxOpenConns(dal.dbConfig.MaxOpenConns)
 
 		// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
-		sqlDB.SetConnMaxLifetime(time.Hour)
+		sqlDB.SetConnMaxLifetime(dal.dbConfig.ConnectTimeout)
 
 		dal.dbInstance = db
 	})
@@ -88,4 +89,8 @@ func (dal *DataAccessLayer) Disconnect() error {
 
 func (dal *DataAccessLayer) GetDatabase() *gorm.DB {
 	return dal.dbInstance
+}
+
+func (dal *DataAccessLayer) Transaction(ctx context.Context, trans func(tx *gorm.DB) error) error {
+	return dal.dbInstance.WithContext(ctx).Transaction(trans)
 }

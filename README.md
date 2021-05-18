@@ -1,8 +1,10 @@
-# grpc-rest-microservice
+# GRPC Rest Microservice
 
-# Install
+## Install
 
 ```sh
+make install
+
 # protoc
 https://github.com/protocolbuffers/protobuf/releases
 
@@ -22,21 +24,24 @@ https://github.com/grpc/grpc-web/releases
 go mod vendor
 ```
 
-# grpc-gen-protoc
+## Gen proto
 
-## Using `protoc`
+### Using `protoc`
+
 ```sh
 make gen
 ```
 
-## Using `namely/gen-grpc-gateway`
+### Using `namely/gen-grpc-gateway`
 
-### On Linux/Mac
+#### On Linux/Mac
+
 ```sh
 make gen-gateway-unix
 ```
 
-### On Windows (with powershell)
+#### On Windows (with powershell)
+
 ```sh
 cd ./api/proto/v2
 
@@ -45,32 +50,39 @@ docker run --rm --name protoc-gen -v ${pwd}:/defs namely/gen-grpc-gateway \
     -o ..\..\..\pkg\api\v2\gen\grpc-gateway
 ```
 
-# Running
+## Gen OpenAPI with statik
 
-## Internal grpc
+```sh
+make gen-openapi
+```
+
+## Running
+
+### All
+
+```sh
+make grpc
+```
+
+### Internal grpc
+
 ```sh
 # start grpc service
-docker-compose up --build client-service
+docker-compose up -d --build v2
 
 # run grpc client
-docker-compose -f docker-compose.client.yml up --build client
+docker-compose up -d --build v2-client
 ```
 
-## grpc-gateway
+### grpc-gateway
+
 ```sh
-# with automatically generated server
-make grpc-gw-gen
-
-# or manually dev
-make grpc-gw-man
-
 # simple testing locally (only unary request)
-make proxy-test
-# or complex testing with streaming request & response
-make grpc-gw-client
+make v2curl
 ```
 
-## grpc-web
+### grpc-web
+
 ```sh
 # grpc service + envoy proxy
 make grpc-web
@@ -82,46 +94,65 @@ make grpc-web-client
 curl -X GET localhost:8081
 ```
 
-## Cli with evans
+### Cli with evans
+
 ```sh
-# https://github.com/ktr0731/evans
-evans -r repl --host localhost -p 8081
+# v1
+make cli
+# v2
+make v2cli
 ```
 
-## Jaeger UI
-http://127.0.0.1:16686
+### Jaeger UI
 
-# Note
+- Jaeger UI [http://127.0.0.1:16686](http://127.0.0.1:16686)
+- Grafana [http://127.0.0.1:3000](http://127.0.0.1:3000)
+
+### OpenAPI SwaggerUI
+
+- v2 [http://127.0.0.1:8001/openapi-ui](http://127.0.0.1:8001/openapi-ui)
+
+## Note
+
 - Copy & paste /include/google into protobuf folder (eg: ./api/proto/v2)
 
-# Docs
+## Docs
 
-## Overall
-- https://developers.google.com/protocol-buffers/docs/gotutorial
-- https://github.com/grpc/grpc-go
-- https://github.com/grpc/grpc-web
-- https://github.com/namely/docker-protoc
+### Overall
 
-## Official examples
-- https://github.com/grpc/grpc-go/blob/master/examples/route_guide
-- https://github.com/grpc-ecosystem/grpc-gateway/tree/master/examples/internal/proto/examplepb
-- https://github.com/grpc/grpc-web/tree/master/net/grpc/gateway/examples/helloworld
-- https://github.com/grpc/grpc-web/blob/master/net/grpc/gateway/examples/echo/tutorial.md
+- <https://developers.google.com/protocol-buffers/docs/gotutorial>
+- <https://github.com/grpc/grpc-go>
+- <https://github.com/grpc/grpc-web>
+- <https://github.com/namely/docker-protoc>
 
-## External examples
-- https://github.com/thinhdanggroup/benchmark-grpc-web-gateway/
-- https://medium.com/zalopay-engineering/buildingdocker-grpc-gateway-e2efbdcfe5c
-- https://zalopay-oss.github.io/go-advanced/ch3-rpc/ch3-05-grpc-ext.html
-- https://mycodesmells.com/post/pooling-grpc-connections
-- https://blog.gopheracademy.com/advent-2017/go-grpc-beyond-basics
-- https://medium.com/@shijuvar/writing-grpc-interceptors-in-go-bf3e7671fe48
-- https://dev.to/techschoolguru/use-grpc-interceptor-for-authorization-with-jwt-1c5h
-- https://github.com/grpc/grpc-go/blob/master/Documentation/server-reflection-tutorial.md#enable-server-reflection
-- https://dev.to/techschoolguru/grpc-reflection-and-evans-cli-3oia
-- https://github.com/golangci/golangci-lint-action
+### Gogo protobuf
 
-## Others
-- https://webpack.js.org/configuration/dev-server/
-- https://github.com/Colt/webpack-demo-app/
+- [ISSUES WITH GOGO](https://jbrandhorst.com/post/gogoproto/)
+- [ISSUES Patch feature grpc-gateway w gogo](https://github.com/gogo/grpc-example/issues/31)
 
+### Official examples
+
+- <https://github.com/grpc/grpc-go/blob/master/examples/route_guide>
+- <https://github.com/grpc-ecosystem/grpc-gateway/tree/master/examples/internal/proto/examplepb>
+- <https://github.com/grpc/grpc-web/tree/master/net/grpc/gateway/examples/helloworld>
+- <https://github.com/grpc/grpc-web/blob/master/net/grpc/gateway/examples/echo/tutorial.md>
+
+### External examples
+
+- <https://github.com/thinhdanggroup/benchmark-grpc-web-gateway/>
+- <https://medium.com/zalopay-engineering/buildingdocker-grpc-gateway-e2efbdcfe5c>
+- <https://zalopay-oss.github.io/go-advanced/ch3-rpc/ch3-05-grpc-ext.html>
+- <https://mycodesmells.com/post/pooling-grpc-connections>
+- <https://blog.gopheracademy.com/advent-2017/go-grpc-beyond-basics>
+- <https://medium.com/@shijuvar/writing-grpc-interceptors-in-go-bf3e7671fe48>
+- <https://dev.to/techschoolguru/use-grpc-interceptor-for-authorization-with-jwt-1c5h>
+- <https://github.com/grpc/grpc-go/blob/master/Documentation/server-reflection-tutorial.md#enable-server-reflection>
+- <https://dev.to/techschoolguru/grpc-reflection-and-evans-cli-3oia>
+- <https://github.com/golangci/golangci-lint-action>
+
+### Others
+
+- <https://webpack.js.org/configuration/dev-server/>
+- <https://github.com/Colt/webpack-demo-app/>
 - [grpc-gateway](https://grpc-ecosystem.github.io/)
+- <https://docs.github.com/en/github/managing-large-files/removing-files-from-a-repositorys-history>
