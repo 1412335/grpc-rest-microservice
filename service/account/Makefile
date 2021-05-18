@@ -1,7 +1,13 @@
+.PHONY: gen-openapi
+gen-openapi: ## statik gen openapi
+	@echo "====gen openapi===="
+	sh ./script/gen-openapi.sh
+
 .PHONY: gen
-gen: # gen grpc + gateway + openui w swagger
+gen: ## gen grpc + gateway + openui w swagger
 	@echo "====gen stubs===="
 	sh ./script/gen-gw-swagger.sh
+	make gen-openapi
 
 .PHONY: fmt
 fmt: ## go fmt

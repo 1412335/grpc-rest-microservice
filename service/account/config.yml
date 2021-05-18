@@ -11,22 +11,22 @@ tracing:
 proxy:
   port: 8000
 authRequiredMethods:
-  - "/api_v3.UserService/List": true
-  - "/api_v3.UserService/ListStream": true
-  - "/api_v3.UserService/Delete": true
-  - "/api_v3.UserService/Update": true
-  - "/api_v3.UserService/Logout": true
+  - "/account.AccountService/List": true
+  - "/account.AccountService/ListStream": true
+  - "/account.AccountService/Delete": true
+  - "/account.AccountService/Update": true
+  - "/account.AccountService/Create": true
 accessibleRoles:
-  - "/api_v3.UserService/List":
+  - "/account.AccountService/List":
     - admin
     - root
-  - "/api_v3.UserService/ListStream":
+  - "/account.AccountService/ListStream":
     - admin
     - root
-  - "/api_v3.UserService/Delete":
+  - "/account.AccountService/Delete":
     - admin
     - root
-  - "/api_v3.UserService/Update":
+  - "/account.AccountService/Update":
     - admin
     - root
 database:

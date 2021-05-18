@@ -6,14 +6,15 @@ require (
 	github.com/1412335/grpc-rest-microservice v0.0.0-20210518031118-75174e81efa3
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
-	github.com/gin-gonic/gin v1.7.1 // indirect
+	github.com/gin-gonic/gin v1.7.1
 	github.com/go-playground/validator/v10 v10.6.1 // indirect
 	github.com/go-redis/cache/v8 v8.4.1 // indirect
 	github.com/go-redis/redis/v8 v8.8.3 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
+	github.com/gogo/gateway v1.1.0
 	github.com/gogo/googleapis v1.4.1 // indirect
 	github.com/golang/protobuf v1.5.2
-	github.com/google/uuid v1.2.0 // indirect
+	github.com/google/uuid v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.3.0 // indirect
 	github.com/jackc/pgproto3/v2 v2.0.7 // indirect
@@ -34,7 +35,7 @@ require (
 	github.com/uber/jaeger-client-go v2.28.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/ugorji/go v1.2.6 // indirect
-	github.com/unrolled/secure v1.0.9 // indirect
+	github.com/unrolled/secure v1.0.9
 	github.com/vmihailenco/msgpack/v5 v5.3.2 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.16.0

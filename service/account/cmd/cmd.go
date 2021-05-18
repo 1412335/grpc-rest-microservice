@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	handlerSrv "account/handler"
 	serverSrv "account/server"
 	"os"
 
@@ -41,20 +42,16 @@ func RunService() error {
 	// set default logger
 	// log.DefaultLogger = zapLogger
 
-	// server
-	server := serverSrv.NewServer(
-		cfgs,
-	)
-
 	// run grpc server
-	if err := server.Run(); err != nil {
-		zapLogger.Bg().Error("server run failed", zap.Error(err))
-		return err
-	}
-	return nil
-	// go func() {
-	// 	logError(zapLogger, server.Run())
-	// }()
+	go func() {
+		// server
+		server := serverSrv.NewServer(
+			cfgs,
+		)
+		if err := server.Run(); err != nil {
+			zapLogger.Bg().Error("server run failed", zap.Error(err))
+		}
+	}()
 
 	// go func() {
 	// 	err := (func(cfgs *configs.ClientConfig) error {
@@ -82,11 +79,11 @@ func RunService() error {
 	// 	}
 	// }()
 
-	// // run grpc-gateway
-	// handler := handler.NewHandler(cfgs)
-	// err := handler.Run()
-	// if err != nil {
-	// 	zapLogger.Error("Starting gRPC-gateway error", zap.Error(err))
-	// }
-	// return err
+	// run grpc-gateway
+	handler := handlerSrv.NewHandler(cfgs)
+	err := handler.Run()
+	if err != nil {
+		zapLogger.Error("Starting gRPC-gateway error", zap.Error(err))
+	}
+	return err
 }

@@ -13,7 +13,7 @@ option go_package = "./;account";
 option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
     info: {
 		title: "Account service";
-		version: "3";
+		version: "v1";
 	};
     schemes: HTTP;
     schemes: HTTPS;
@@ -22,29 +22,29 @@ option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
 service AccountService {
     rpc Create(CreateAccountRequest) returns (CreateAccountResponse) {
         option (google.api.http) = {
-            post: "/api/v3/accounts"
+            post: "/api/v1/accounts"
             body: "*"
         };
     };
 	rpc Delete(DeleteAccountRequest) returns (DeleteAccountResponse) {
         option (google.api.http) = {
-            delete: "/api/v3/accounts/{id}"
+            delete: "/api/v1/accounts/{id}"
         };
     };
     rpc Update(UpdateAccountRequest) returns (UpdateAccountResponse) {
 		option (google.api.http) = {
-            patch: "/api/v3/accounts/{account.id}"
+            patch: "/api/v1/accounts/{account.id}"
             body: "*"
         };
 	}
 	rpc List(ListAccountsRequest) returns (ListAccountsResponse) {
         option (google.api.http) = {
-            get: "/api/v3/accounts"
+            get: "/api/v1/accounts"
         };
     };
     rpc ListStream(ListAccountsRequest) returns (stream Account) {
         option (google.api.http) = {
-            get: "/api/v3/accounts/stream"
+            get: "/api/v1/accounts/stream"
         };
     };
 }

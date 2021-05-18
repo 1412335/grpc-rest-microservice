@@ -29,7 +29,7 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.Option) *Server {
 		return nil
 	}
 	// migrate db
-	if err := dal.GetDatabase().AutoMigrate(
+	if err = dal.GetDatabase().AutoMigrate(
 		&model.User{},
 	); err != nil {
 		log.Error("migrate db failed", zap.Error(err))

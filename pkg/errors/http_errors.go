@@ -39,6 +39,9 @@ func CustomHTTPError(ctx context.Context, _ *runtime.ServeMux, marshaler runtime
 			for _, violation := range t.GetViolations() {
 				errBd.Data[violation.GetType()+" "+violation.GetSubject()] = violation.GetDescription()
 			}
+		case *errdetails.ErrorInfo:
+			errBd.Data = make(map[string]string, 1)
+			errBd.Data[t.GetDomain()] = t.GetReason()
 		}
 	}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	pb "account/api"
+	"account/client"
 	"account/model"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/cache"
@@ -17,8 +18,9 @@ import (
 )
 
 type Server struct {
-	server *server.Server
-	dal    *postgres.DataAccessLayer
+	server  *server.Server
+	dal     *postgres.DataAccessLayer
+	userSrv client.UserClient
 }
 
 func NewServer(srvConfig *configs.ServiceConfig, opt ...server.Option) *Server {
@@ -53,16 +55,31 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.Option) *Server {
 		dal: dal,
 	}
 
-	// // auth server interceptor
-	// authInterceptor := NewAuthServerInterceptor(srv.tokenSrv, srvConfig.AuthRequiredMethods, srvConfig.AccessibleRoles)
+	// user service client
+	if userSrvConfig, ok := srvConfig.ClientConfig["user"]; ok {
+		if userSrv, err := client.NewUserServiceClient(userSrvConfig); err != nil {
+			log.Error("init user service client failed", zap.Error(err))
+		} else {
+			srv.userSrv = userSrv
+		}
+	} else {
+		log.Error("not found config user service client", zap.Any("clientConfig", srvConfig.ClientConfig))
+	}
 
-	// // append server options with logger + auth token interceptor
-	// opt = append(opt,
-	// 	server.WithInterceptors(
-	// 		// interceptor.NewSimpleServerInterceptor(),
-	// 		authInterceptor,
-	// 	),
-	// )
+	if srv.userSrv == nil {
+		return nil
+	}
+
+	// auth server interceptor
+	authInterceptor := NewAuthServerInterceptor(srv.userSrv, srvConfig.AuthRequiredMethods, srvConfig.AccessibleRoles)
+
+	// append server options with logger + auth token interceptor
+	opt = append(opt,
+		server.WithInterceptors(
+			// interceptor.NewSimpleServerInterceptor(),
+			authInterceptor,
+		),
+	)
 
 	// grpc server
 	s := server.NewServer(srvConfig, opt...)
