@@ -1,0 +1,29 @@
+version: '3.9'
+
+services:
+  account:
+    image: grpc-rest/account:latest
+    container_name: account
+    restart: unless-stopped
+    build:
+      context: ./
+      args:
+        - SSH_PRIVATE_KEY
+    ports:
+      - ${GRPC_PORT}:9090 # gRPC server
+      - ${PROXY_PORT}:8000 # gRPC gateway
+    command: ["account"]
+    # environment:
+    #   - JAEGER_AGENT_HOST=jaeger
+    #   - JAEGER_AGENT_PORT=6831
+    # networks:
+    #   - grpc-rest-microservice_grpc-rest
+    logging:
+      driver: loki
+      options:
+        loki-url: '${LOKI_URL}'
+
+networks:
+  default:
+    external: true
+    name: grpc-rest-microservice_grpc-rest

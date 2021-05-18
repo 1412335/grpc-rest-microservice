@@ -1,4 +1,4 @@
-package account
+package server
 
 import (
 	"context"
@@ -40,7 +40,6 @@ func (u *accountServiceImpl) Update(context.Context, *pb.UpdateAccountRequest) (
 // ListAccounts
 func (u *accountServiceImpl) List(ctx context.Context, req *pb.ListAccountsRequest) (*pb.ListAccountsResponse, error) {
 	return nil, nil
-
 }
 
 func (u *accountServiceImpl) ListStream(*pb.ListAccountsRequest, pb.AccountService_ListStreamServer) error {

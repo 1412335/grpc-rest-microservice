@@ -1,4 +1,4 @@
-package account
+package server
 
 import (
 	"context"
@@ -6,12 +6,12 @@ import (
 	pb "account/api"
 	"account/model"
 
+	"github.com/1412335/grpc-rest-microservice/pkg/cache"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/postgres"
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/redis"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/server"
-	"github.com/1412335/grpc-rest-microservice/v3/pkg/cache"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -29,7 +29,7 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.Option) *Server {
 		return nil
 	}
 	// migrate db
-	if err := dal.GetDatabase().AutoMigrate(
+	if err = dal.GetDatabase().AutoMigrate(
 		&model.Account{},
 	); err != nil {
 		log.Error("migrate db failed", zap.Error(err))
@@ -83,6 +83,8 @@ func (s *Server) Run() error {
 		return nil
 	}, func() {
 		// close db connection
-		defer s.dal.Disconnect()
+		if err := s.dal.Disconnect(); err != nil {
+			log.Error("close db failed", zap.Error(err))
+		}
 	})
 }

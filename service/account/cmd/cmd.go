@@ -1,6 +1,9 @@
-package account
+package cmd
 
 import (
+	serverSrv "account/server"
+	"os"
+
 	"github.com/1412335/grpc-rest-microservice/cmd"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 
@@ -22,6 +25,13 @@ func init() {
 	cmd.AddCommand(command)
 }
 
+func Execute() {
+	if err := command.Execute(); err != nil {
+		log.Fatal("Execute cmd failed", zap.Error(err))
+		os.Exit(-1)
+	}
+}
+
 func RunService() error {
 	// load service configs
 	cfgs := cmd.LoadConfig()
@@ -32,13 +42,13 @@ func RunService() error {
 	// log.DefaultLogger = zapLogger
 
 	// server
-	server := NewServer(
+	server := serverSrv.NewServer(
 		cfgs,
 	)
 
 	// run grpc server
 	if err := server.Run(); err != nil {
-		zapLogger.Bg().Error(err)
+		zapLogger.Bg().Error("server run failed", zap.Error(err))
 		return err
 	}
 	return nil

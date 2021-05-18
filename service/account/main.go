@@ -1,7 +1,9 @@
-package account
+package main
 
-import "github.com/1412335/grpc-rest-microservice/cmd"
+import (
+	cmdSrv "account/cmd"
+)
 
 func main() {
-	cmd.Execute()
+	cmdSrv.Execute()
 }
