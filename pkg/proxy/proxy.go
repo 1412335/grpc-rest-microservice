@@ -38,7 +38,7 @@ func NewHandler(config *configs.ServiceConfig) *handler {
 }
 
 // isPermanentHTTPHeader checks whether hdr belongs to the list of
-// permenant request headers maintained by IANA.
+// permanent request headers maintained by IANA.
 // http://www.iana.org/assignments/message-headers/message-headers.xml
 // From https://github.com/grpc-ecosystem/grpc-gateway/blob/7a2a43655ccd9a488d423ea41a3fc723af103eda/runtime/context.go#L157
 func (h *handler) isPermanentHTTPHeader(hdr string) bool {

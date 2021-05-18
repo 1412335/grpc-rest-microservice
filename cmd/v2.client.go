@@ -16,7 +16,7 @@ import (
 )
 
 var clientCmd = &cobra.Command{
-	Use:   "client",
+	Use:   "v2-client",
 	Short: "Start grpc client for api v2",
 	Long:  `Start grpc client for api v2`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -37,7 +37,7 @@ func ClientService() error {
 	//
 	managerClient := bridge.NewManagerClientWithConfigs(cfgs.ManagerClient)
 	if managerClient == nil {
-		return logError(zapLogger, errors.New("Create new manager client failed"))
+		return logError(zapLogger, errors.New("create new manager client failed"))
 	}
 
 	addr := net.JoinHostPort(cfgs.GRPC.Host, strconv.Itoa(cfgs.GRPC.Port))

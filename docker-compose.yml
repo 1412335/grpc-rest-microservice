@@ -197,7 +197,7 @@ services:
     # ports:
     #   - '8081:9090' # gRPC server
     #   - '8001:8000' # gRPC gateway
-    command: ["-c","./cmd/client/config.yml","-t","-m","prometheus","client"]
+    command: ["-c","./cmd/client/config.yml","-t","-m","prometheus","v2-client"]
     environment:
       - JAEGER_AGENT_HOST=jaeger
       - JAEGER_AGENT_PORT=6831
