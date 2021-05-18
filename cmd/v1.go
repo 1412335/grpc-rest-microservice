@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
-	v1 "github.com/1412335/grpc-rest-microservice/pkg/service/v1"
+	v1 "github.com/1412335/grpc-rest-microservice/service/v1"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -18,19 +18,17 @@ var v1Cmd = &cobra.Command{
 }
 
 func init() {
-	logger.Info("v1.Init")
+	log.Info("v1.Init")
 	rootCmd.AddCommand(v1Cmd)
 }
 
 func V1Service() error {
 	// create log factory
-	zapLogger := logger.With(zap.String("service", cfgs.ServiceName), zap.String("version", cfgs.Version))
-	logger := log.NewFactory(zapLogger)
+	logger := log.With(zap.String("service", cfgs.ServiceName), zap.String("version", cfgs.Version))
 	// server
 	server := v1.NewServer(
 		cfgs,
-		v1.WithMetricsFactory(metricsFactory),
 		v1.WithLoggerFactory(logger),
 	)
-	return logError(zapLogger, server.Run())
+	return logError(logger, server.Run())
 }

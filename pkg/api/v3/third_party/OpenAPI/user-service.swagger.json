@@ -1,9 +1,13 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "user-service.proto",
-    "version": "version not set"
+    "title": "User service",
+    "version": "3"
   },
+  "schemes": [
+    "http",
+    "https"
+  ],
   "consumes": [
     "application/json"
   ],
@@ -13,21 +17,13 @@
   "paths": {
     "/api/v3/users": {
       "get": {
-        "operationId": "UserService_ListUsers",
+        "summary": "NOTE: grpc-gateway patch feature not work w gogo\r\nhttps://github.com/gogo/grpc-example/issues/31\r\nrpc Update(UpdateUserRequest) returns (UpdateUserResponse) {\r\n\toption (google.api.http) = {\r\n        put: \"/api/v3/users/{user.id}\"\r\n\t\tbody: \"user\"\r\n\t\tadditional_bindings: [\r\n\t\t\t{\r\n\t\t\t\tpatch: \"/api/v3/users/{user.id}\"\r\n\t\t\t\tbody: \"user\"\r\n\t\t\t},\r\n\t\t\t{\r\n\t\t\t\tpatch: \"/api/v3/users/{user.id}\"\r\n\t\t\t\tbody: \"*\"\r\n\t\t\t}\r\n\t\t]\r\n\t};\r\n}",
+        "operationId": "UserService_List",
         "responses": {
           "200": {
-            "description": "A successful response.(streaming responses)",
+            "description": "A successful response.",
             "schema": {
-              "type": "object",
-              "properties": {
-                "result": {
-                  "$ref": "#/definitions/api_v3User"
-                },
-                "error": {
-                  "$ref": "#/definitions/runtimeStreamError"
-                }
-              },
-              "title": "Stream result of api_v3User"
+              "$ref": "#/definitions/api_v3ListUsersResponse"
             }
           },
           "default": {
@@ -38,6 +34,12 @@
           }
         },
         "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
           {
             "name": "created_since",
             "description": "list users created after timestamp.",
@@ -52,6 +54,52 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "id",
+            "description": "id. user id",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "username",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "fullname",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "email",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "role",
+            "description": "NOTE: gogo not supported: optional\r\ndown proto v2 to use [(gogoproto.nullable)=false].",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "GUEST",
+              "USER",
+              "ADMIN",
+              "ROOT"
+            ],
+            "default": "GUEST"
           }
         ],
         "tags": [
@@ -59,12 +107,12 @@
         ]
       },
       "post": {
-        "operationId": "UserService_AddUser",
+        "operationId": "UserService_Create",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "properties": {}
+              "$ref": "#/definitions/api_v3CreateUserResponse"
             }
           },
           "default": {
@@ -80,7 +128,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/api_v3User"
+              "$ref": "#/definitions/api_v3CreateUserRequest"
             }
           }
         ],
@@ -89,9 +137,80 @@
         ]
       }
     },
-    "/api/v3/users/role": {
+    "/api/v3/users/login": {
+      "post": {
+        "summary": "auth",
+        "operationId": "UserService_Login",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/api_v3LoginResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/api_v3LoginRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v3/users/logout": {
+      "post": {
+        "operationId": "UserService_Logout",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/api_v3LogoutResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/api_v3LogoutRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v3/users/stream": {
       "get": {
-        "operationId": "UserService_ListUsersByRole",
+        "operationId": "UserService_ListStream",
         "responses": {
           "200": {
             "description": "A successful response.(streaming responses)",
@@ -117,14 +236,69 @@
         },
         "parameters": [
           {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "created_since",
+            "description": "list users created after timestamp.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "older_then",
+            "description": "list users in duration from created_since.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "description": "id. user id",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "username",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "fullname",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "email",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
             "name": "role",
+            "description": "NOTE: gogo not supported: optional\r\ndown proto v2 to use [(gogoproto.nullable)=false].",
             "in": "query",
             "required": false,
             "type": "string",
             "enum": [
               "GUEST",
-              "MEMBER",
-              "ADMIN"
+              "USER",
+              "ADMIN",
+              "ROOT"
             ],
             "default": "GUEST"
           }
@@ -134,14 +308,82 @@
         ]
       }
     },
-    "/api/v3/users/{user.id}": {
-      "patch": {
-        "operationId": "UserService_UpdateUser",
+    "/api/v3/users/validate": {
+      "post": {
+        "operationId": "UserService_Validate",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/api_v3User"
+              "$ref": "#/definitions/api_v3ValidateResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/api_v3ValidateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v3/users/{id}": {
+      "delete": {
+        "operationId": "UserService_Delete",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/api_v3DeleteUserResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/api/v3/users/{user.id}": {
+      "patch": {
+        "operationId": "UserService_Update",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/api_v3UpdateUserResponse"
             }
           },
           "default": {
@@ -156,8 +398,7 @@
             "name": "user.id",
             "in": "path",
             "required": true,
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           {
             "name": "body",
@@ -166,6 +407,12 @@
             "schema": {
               "$ref": "#/definitions/api_v3UpdateUserRequest"
             }
+          },
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
           }
         ],
         "tags": [
@@ -175,12 +422,97 @@
     }
   },
   "definitions": {
+    "api_v3CreateUserRequest": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "fullname": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string"
+        }
+      }
+    },
+    "api_v3CreateUserResponse": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "#/definitions/api_v3User"
+        },
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "api_v3DeleteUserResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "api_v3ListUsersResponse": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/api_v3User"
+          }
+        }
+      }
+    },
+    "api_v3LoginRequest": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      },
+      "title": "auth"
+    },
+    "api_v3LoginResponse": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "#/definitions/api_v3User"
+        },
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "api_v3LogoutRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "api_v3LogoutResponse": {
+      "type": "object"
+    },
     "api_v3Role": {
       "type": "string",
       "enum": [
         "GUEST",
-        "MEMBER",
-        "ADMIN"
+        "USER",
+        "ADMIN",
+        "ROOT"
       ],
       "default": "GUEST"
     },
@@ -196,19 +528,76 @@
         }
       }
     },
+    "api_v3UpdateUserResponse": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "#/definitions/api_v3User"
+        }
+      }
+    },
     "api_v3User": {
       "type": "object",
       "properties": {
         "id": {
-          "type": "integer",
-          "format": "int64"
+          "type": "string"
         },
         "role": {
           "$ref": "#/definitions/api_v3Role"
         },
+        "username": {
+          "type": "string"
+        },
+        "fullname": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "password": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
         "created_at": {
           "type": "string",
           "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "verify_token": {
+          "type": "string"
+        }
+      }
+    },
+    "api_v3ValidateRequest": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "api_v3ValidateResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "fullname": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
         }
       }
     },
@@ -216,13 +605,16 @@
       "type": "object",
       "properties": {
         "type_url": {
-          "type": "string"
+          "type": "string",
+          "description": "A URL/resource name that uniquely identifies the type of the serialized\nprotocol buffer message. This string must contain at least\none \"/\" character. The last segment of the URL's path must represent\nthe fully qualified name of the type (as in\n`path/google.protobuf.Duration`). The name should be in a canonical form\n(e.g., leading \".\" is not accepted).\n\nIn practice, teams usually precompile into the binary all types that they\nexpect it to use in the context of Any. However, for URLs which use the\nscheme `http`, `https`, or no scheme, one can optionally set up a type\nserver that maps type URLs to message definitions as follows:\n\n* If no scheme is provided, `https` is assumed.\n* An HTTP GET on the URL must yield a [google.protobuf.Type][]\n  value in binary format, or produce an error.\n* Applications are allowed to cache lookup results based on the\n  URL, or have them precompiled into a binary to avoid any\n  lookup. Therefore, binary compatibility needs to be preserved\n  on changes to types. (Use versioned type names to manage\n  breaking changes.)\n\nNote: this functionality is not currently available in the official\nprotobuf release, and it is not used for type URLs beginning with\ntype.googleapis.com.\n\nSchemes other than `http`, `https` (or the empty scheme) might be\nused with implementation specific semantics."
         },
         "value": {
           "type": "string",
-          "format": "byte"
+          "format": "byte",
+          "description": "Must be a valid serialized protocol buffer of the above specified type."
         }
-      }
+      },
+      "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n\n Example 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\n Example 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\n\nJSON\n====\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
     },
     "protobufFieldMask": {
       "type": "object",
@@ -284,5 +676,9 @@
         }
       }
     }
+  },
+  "externalDocs": {
+    "description": "gRPC example",
+    "url": "https://github.com/gogo/grpc-example"
   }
 }

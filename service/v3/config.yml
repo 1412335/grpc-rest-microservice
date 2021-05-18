@@ -1,0 +1,74 @@
+serviceName: "grpc-gateway"
+version: "v3"
+grpc:
+  host: "v3"
+  port: 9090
+  max-call-recv-msg-size: 0
+  max-call-send-msg-size: 0
+enableTracing: false
+tracing:
+  metrics: "prometheus"
+proxy:
+  port: 8000
+jwt:
+  secretKey: "lu"
+  duration: "1200s" # 20 min
+  issuer: "lu"
+  invalidateKey: "invalidate-token"
+  invalidateExpiry: "3600s" # 1 h
+authRequiredMethods:
+  - "/api_v3.UserService/List": true
+  - "/api_v3.UserService/ListStream": true
+  - "/api_v3.UserService/Delete": true
+  - "/api_v3.UserService/Update": true
+  - "/api_v3.UserService/Logout": true
+accessibleRoles:
+  - "/api_v3.UserService/List":
+    - admin
+    - root
+  - "/api_v3.UserService/ListStream":
+    - admin
+    - root
+  - "/api_v3.UserService/Delete":
+    - admin
+    - root
+  - "/api_v3.UserService/Update":
+    - admin
+    - root
+database:
+  host: "postgres"
+  port: 5432
+  user:  "root"
+  password: "root"
+  scheme: "users"
+  maxIdleConns: 10
+  maxOpenConns: 100
+  connectTimeout: "1h"
+  debug: true
+enableTLS: false
+TLSCert:
+  CACert : "./cert/ca-cert.pem"
+  CertPem: "./cert/server-cert.pem"
+  KeyPem : "./cert/server-key.pem"
+log:
+  #PANNIC, FATAL, ERROR, WARN, INFO, DEBUG
+  mode: "dev"
+  level: "DEBUG"
+  traceLevel: "ERROR"
+  isLogFile: false
+  pathLogFile: "./logFile.log"
+clientConfig:
+  user:
+    version: "v3"
+    serviceName: "localhost:9090"
+    grpc: 
+      host: "localhost"
+      port: 9090
+    enableTLS: false
+    TLSCert:
+      CACert : "./cert/ca-cert.pem"
+redis:
+  nodes:
+    - "host.docker.internal:6379"
+    # - "redis:6379"
+  prefix: ""

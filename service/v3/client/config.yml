@@ -1,0 +1,23 @@
+serviceName: "grpc-client"
+version: "v3"
+enableTracing: true
+tracing:
+  metrics: "prometheus"
+clientConfig:
+  user:
+    version: "v3"
+    serviceName: "srvs.user.v3"
+    enableTracing: true
+    grpc: 
+      host: "v3"
+      port: 9090
+    enableTLS: true
+    TLSCert:
+      CACert : "./cert/ca-cert.pem"
+# log:
+#   #PANNIC, FATAL, ERROR, WARN, INFO, DEBUG
+#   mode: "dev"
+#   level: "DEBUG"
+#   # levelTrace: "FATAL"
+#   isLogFile: false
+#   pathLogFile: "./logFile.log"

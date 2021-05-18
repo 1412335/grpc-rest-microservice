@@ -2,8 +2,9 @@ package tracing
 
 import (
 	"fmt"
-	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"time"
+
+	"github.com/1412335/grpc-rest-microservice/pkg/log"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/uber/jaeger-client-go/config"

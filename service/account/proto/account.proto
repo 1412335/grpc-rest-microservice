@@ -1,0 +1,105 @@
+syntax="proto3";
+
+package account;
+
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/field_mask.proto";
+import "google/api/annotations.proto";
+import "protoc-gen-swagger/options/annotations.proto";
+
+option go_package = "./;account";
+
+option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
+    info: {
+		title: "Account service";
+		version: "3";
+	};
+    schemes: HTTP;
+    schemes: HTTPS;
+};
+
+service AccountService {
+    rpc Create(CreateAccountRequest) returns (CreateAccountResponse) {
+        option (google.api.http) = {
+            post: "/api/v3/accounts"
+            body: "*"
+        };
+    };
+	rpc Delete(DeleteAccountRequest) returns (DeleteAccountResponse) {
+        option (google.api.http) = {
+            delete: "/api/v3/accounts/{id}"
+        };
+    };
+    rpc Update(UpdateAccountRequest) returns (UpdateAccountResponse) {
+		option (google.api.http) = {
+            patch: "/api/v3/accounts/{account.id}"
+            body: "*"
+        };
+	}
+	rpc List(ListAccountsRequest) returns (ListAccountsResponse) {
+        option (google.api.http) = {
+            get: "/api/v3/accounts"
+        };
+    };
+    rpc ListStream(ListAccountsRequest) returns (stream Account) {
+        option (google.api.http) = {
+            get: "/api/v3/accounts/stream"
+        };
+    };
+}
+
+enum Bank {
+    VCB = 0;
+    ACB = 1;
+    VIB = 2;
+}
+
+message Account {
+    string id = 1;
+    string name = 2;
+    Bank bank = 3;
+    string user_id = 4;
+    double balance = 5;
+    google.protobuf.Timestamp created_at = 10;
+    google.protobuf.Timestamp updated_at = 11;
+}
+
+message CreateAccountRequest {
+    string user_id = 1;
+	string name = 2;
+    Bank bank = 3;
+    double balance = 4;
+}
+
+message CreateAccountResponse {
+	Account account = 1;
+}
+
+message ListAccountsRequest {
+    google.protobuf.StringValue user_id = 1;
+	google.protobuf.StringValue name = 2;
+    google.protobuf.DoubleValue balance = 3;
+    google.protobuf.StringValue id = 4;
+}
+
+message ListAccountsResponse {
+	repeated Account accounts = 1;
+}
+
+message UpdateAccountRequest {
+    Account account = 1;
+    google.protobuf.FieldMask update_mask = 2;
+}
+
+message UpdateAccountResponse {
+	Account account = 1;
+}
+
+message DeleteAccountRequest {
+	string id = 1;
+}
+
+message DeleteAccountResponse {
+	string id = 1;
+}

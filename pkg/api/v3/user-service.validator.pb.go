@@ -5,22 +5,48 @@ package api_v3
 
 import (
 	fmt "fmt"
-	_ "github.com/gogo/googleapis/google/api"
-	proto "github.com/gogo/protobuf/proto"
-	_ "github.com/gogo/protobuf/types"
-	github_com_mwitkow_go_proto_validators "github.com/mwitkow/go-proto-validators"
 	math "math"
+	proto "github.com/gogo/protobuf/proto"
+	golang_proto "github.com/golang/protobuf/proto"
+	_ "github.com/gogo/protobuf/types"
+	_ "github.com/gogo/googleapis/google/api"
+	_ "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger/options"
+	_ "github.com/gogo/protobuf/gogoproto"
+	_ "github.com/mwitkow/go-proto-validators"
+	time "time"
+	github_com_mwitkow_go_proto_validators "github.com/mwitkow/go-proto-validators"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = golang_proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+var _ = time.Kitchen
 
 func (this *User) Validate() error {
+	if _, ok := Role_name[int32(this.Role)]; !ok {
+		return github_com_mwitkow_go_proto_validators.FieldError("Role", fmt.Errorf(`value '%v' must be a valid Role field`, this.Role))
+	}
 	if this.CreatedAt != nil {
 		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.CreatedAt); err != nil {
 			return github_com_mwitkow_go_proto_validators.FieldError("CreatedAt", err)
+		}
+	}
+	if this.UpdatedAt != nil {
+		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.UpdatedAt); err != nil {
+			return github_com_mwitkow_go_proto_validators.FieldError("UpdatedAt", err)
+		}
+	}
+	return nil
+}
+func (this *CreateUserRequest) Validate() error {
+	return nil
+}
+func (this *CreateUserResponse) Validate() error {
+	if this.User != nil {
+		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.User); err != nil {
+			return github_com_mwitkow_go_proto_validators.FieldError("User", err)
 		}
 	}
 	return nil
@@ -39,6 +65,41 @@ func (this *ListUsersRequest) Validate() error {
 			return github_com_mwitkow_go_proto_validators.FieldError("OlderThen", err)
 		}
 	}
+	if this.Id != nil {
+		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.Id); err != nil {
+			return github_com_mwitkow_go_proto_validators.FieldError("Id", err)
+		}
+	}
+	if this.Username != nil {
+		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.Username); err != nil {
+			return github_com_mwitkow_go_proto_validators.FieldError("Username", err)
+		}
+	}
+	if this.Fullname != nil {
+		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.Fullname); err != nil {
+			return github_com_mwitkow_go_proto_validators.FieldError("Fullname", err)
+		}
+	}
+	if this.Email != nil {
+		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.Email); err != nil {
+			return github_com_mwitkow_go_proto_validators.FieldError("Email", err)
+		}
+	}
+	if this.Active != nil {
+		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.Active); err != nil {
+			return github_com_mwitkow_go_proto_validators.FieldError("Active", err)
+		}
+	}
+	return nil
+}
+func (this *ListUsersResponse) Validate() error {
+	for _, item := range this.Users {
+		if item != nil {
+			if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(item); err != nil {
+				return github_com_mwitkow_go_proto_validators.FieldError("Users", err)
+			}
+		}
+	}
 	return nil
 }
 func (this *UpdateUserRequest) Validate() error {
@@ -52,5 +113,42 @@ func (this *UpdateUserRequest) Validate() error {
 			return github_com_mwitkow_go_proto_validators.FieldError("UpdateMask", err)
 		}
 	}
+	return nil
+}
+func (this *UpdateUserResponse) Validate() error {
+	if this.User != nil {
+		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.User); err != nil {
+			return github_com_mwitkow_go_proto_validators.FieldError("User", err)
+		}
+	}
+	return nil
+}
+func (this *DeleteUserRequest) Validate() error {
+	return nil
+}
+func (this *DeleteUserResponse) Validate() error {
+	return nil
+}
+func (this *LoginRequest) Validate() error {
+	return nil
+}
+func (this *LoginResponse) Validate() error {
+	if this.User != nil {
+		if err := github_com_mwitkow_go_proto_validators.CallValidatorIfExists(this.User); err != nil {
+			return github_com_mwitkow_go_proto_validators.FieldError("User", err)
+		}
+	}
+	return nil
+}
+func (this *LogoutRequest) Validate() error {
+	return nil
+}
+func (this *LogoutResponse) Validate() error {
+	return nil
+}
+func (this *ValidateRequest) Validate() error {
+	return nil
+}
+func (this *ValidateResponse) Validate() error {
 	return nil
 }
