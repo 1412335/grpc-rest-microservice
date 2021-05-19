@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+	"github.com/1412335/grpc-rest-microservice/vendor/github.com/uber/jaeger-lib/metrics/expvar"
 	"github.com/uber/jaeger-lib/metrics/prometheus"
 
 	"github.com/opentracing/opentracing-go"
@@ -16,12 +17,12 @@ import (
 
 var (
 	defaultServiceName    string             = "default"
-	defaultMetricsFactory metrics.Factory    = prometheus.New().Namespace(metrics.NSOptions{Name: "tracing", Tags: nil})
+	defaultMetricsFactory string             = "prometheus"
 	DefaultTracer         opentracing.Tracer = Init(defaultServiceName, defaultMetricsFactory, log.DefaultLogger)
 )
 
 // Init creates a new instance of Jaeger tracer.
-func Init(serviceName string, metricsFactory metrics.Factory, logger log.Factory) opentracing.Tracer {
+func Init(serviceName string, tracingMetrics string, logger log.Factory) opentracing.Tracer {
 	cfg, err := config.FromEnv()
 	if err != nil {
 		logger.Bg().Fatal("cannot parse Jaeger env vars", zap.Error(err))
@@ -31,6 +32,16 @@ func Init(serviceName string, metricsFactory metrics.Factory, logger log.Factory
 	cfg.Sampler.Param = 1
 
 	logger.Bg().Info("jaeger config", zap.Any("config", cfg))
+
+	// init metricsFactory
+	var metricsFactory metrics.Factory
+	if tracingMetrics == "expvar" {
+		metricsFactory = expvar.NewFactory(10) // 10 buckets for histograms
+		log.Info("[Tracing] Using expvar as metrics backend")
+	} else {
+		metricsFactory = prometheus.New().Namespace(metrics.NSOptions{Name: "tracing", Tags: nil})
+		log.Info("[Tracing] Using prometheus as metrics backend")
+	}
 
 	// TODO(ys) a quick hack to ensure random generators get different seeds, which are based on current time.
 	time.Sleep(100 * time.Millisecond)

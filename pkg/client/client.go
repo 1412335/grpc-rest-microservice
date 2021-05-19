@@ -12,9 +12,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 
 	otgrpc "github.com/opentracing-contrib/go-grpc"
-	"github.com/uber/jaeger-lib/metrics"
-	"github.com/uber/jaeger-lib/metrics/expvar"
-	"github.com/uber/jaeger-lib/metrics/prometheus"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -138,18 +135,12 @@ func (c *Client) loadClientTLSCredentials() (credentials.TransportCredentials, e
 func (c *Client) tracingInterceptor() (grpc.UnaryClientInterceptor, grpc.StreamClientInterceptor) {
 	// metrics
 	if tracing.DefaultTracer == nil {
-		var metricsFactory metrics.Factory
-		if c.config.EnableTracing {
-			if c.config.Tracing != nil && c.config.Tracing.Metrics == "expvar" {
-				metricsFactory = expvar.NewFactory(10) // 10 buckets for histograms
-				c.logger.Info("[Tracing] Using expvar as metrics backend")
-			} else {
-				metricsFactory = prometheus.New().Namespace(metrics.NSOptions{Name: "tracing", Tags: nil})
-				c.logger.Info("[Tracing] Using prometheus as metrics backend")
-			}
+		var metrics string
+		if c.config.Tracing != nil {
+			metrics = c.config.Tracing.Metrics
 		}
 		// create tracer
-		tracing.DefaultTracer = tracing.Init(c.config.ServiceName, metricsFactory, c.logger)
+		tracing.DefaultTracer = tracing.Init(c.config.ServiceName, metrics, c.logger)
 		c.tracer = tracing.DefaultTracer
 	}
 	// tracing interceptor

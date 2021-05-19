@@ -68,11 +68,11 @@ func init() {
 	if err := viper.BindPFlag("version", rootCmd.PersistentFlags().Lookup("version")); err != nil {
 		log.Error("Bind pflag version error", zap.Error(err))
 	}
+	if err := viper.BindPFlag("enableTracing", rootCmd.PersistentFlags().Lookup("tracing")); err != nil {
+		log.Error("Bind pflag enableTracing error", zap.Error(err))
+	}
 	if err := viper.BindPFlag("tracing.metrics", rootCmd.PersistentFlags().Lookup("metrics")); err != nil {
 		log.Error("Bind pflag tracing.metrics error", zap.Error(err))
-	}
-	if err := viper.BindPFlag("tracing.flag", rootCmd.PersistentFlags().Lookup("tracing")); err != nil {
-		log.Error("Bind pflag tracing.flag error", zap.Error(err))
 	}
 
 	// set logger

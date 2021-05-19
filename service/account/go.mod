@@ -3,7 +3,7 @@ module account
 go 1.15
 
 require (
-	github.com/1412335/grpc-rest-microservice v0.0.0-20210519055831-01f0984d18f3
+	github.com/1412335/grpc-rest-microservice v0.0.0-20210519084356-cacb947d76cf
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-gonic/gin v1.7.1

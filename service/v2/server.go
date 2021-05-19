@@ -63,7 +63,7 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...ServerOption) *Server {
 	var streamInterceptors []grpc.StreamServerInterceptor
 	if srvConfig.EnableTracing {
 		// create tracer
-		tracer := tracing.Init(srvConfig.ServiceName, srv.metricsFactory, srv.logger)
+		tracer := tracing.Init(srvConfig.ServiceName, srvConfig.Tracing.Metrics, srv.logger)
 		// tracing interceptor
 		unaryInterceptors = append(unaryInterceptors, otgrpc.OpenTracingServerInterceptor(tracer))
 		streamInterceptors = append(streamInterceptors, otgrpc.OpenTracingStreamServerInterceptor(tracer))

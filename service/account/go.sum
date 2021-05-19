@@ -43,6 +43,8 @@ github.com/1412335/grpc-rest-microservice v0.0.0-20210518153542-1b252697a2b9 h1:
 github.com/1412335/grpc-rest-microservice v0.0.0-20210518153542-1b252697a2b9/go.mod h1:1FBmXBPLmesHBMPX18RrqBkcwDcLQpaT7sbYOfRjIQY=
 github.com/1412335/grpc-rest-microservice v0.0.0-20210519055831-01f0984d18f3 h1:sF/YK7ikiXwkTwUoL6hjvdnRz3/v0D23c3lpcHz2Oj8=
 github.com/1412335/grpc-rest-microservice v0.0.0-20210519055831-01f0984d18f3/go.mod h1:1FBmXBPLmesHBMPX18RrqBkcwDcLQpaT7sbYOfRjIQY=
+github.com/1412335/grpc-rest-microservice v0.0.0-20210519084356-cacb947d76cf h1:oZJL+NdMwJm7MaFpLRU8GCyIdfrFYnv/uaIhLUXMGfs=
+github.com/1412335/grpc-rest-microservice v0.0.0-20210519084356-cacb947d76cf/go.mod h1:1FBmXBPLmesHBMPX18RrqBkcwDcLQpaT7sbYOfRjIQY=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=

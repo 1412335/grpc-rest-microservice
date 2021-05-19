@@ -13,6 +13,7 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/redis"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/server"
+	"github.com/1412335/grpc-rest-microservice/pkg/tracing"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -51,9 +52,33 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.Option) *Server {
 		}
 	}
 
+	// tracing
+	if srvConfig.EnableTracing {
+		var metrics string
+		if srvConfig.Tracing != nil {
+			metrics = srvConfig.Tracing.Metrics
+		}
+		// set default tracer
+		tracing.DefaultTracer = tracing.Init(srvConfig.ServiceName, metrics, log.With(zap.String("metrics", metrics)))
+	}
+
 	// create server
 	srv := &Server{
 		dal: dal,
+	}
+
+	// user service client
+	if userSrvConfig, ok := srvConfig.ClientConfig["user"]; ok {
+		if userSrv, err := client.NewUserServiceClient(userSrvConfig); err != nil {
+			log.Error("init user service client failed", zap.Error(err))
+		} else {
+			srv.userSrv = userSrv
+		}
+	} else {
+		log.Error("not found config user service client", zap.Any("clientConfig", srvConfig.ClientConfig))
+	}
+	if srv.userSrv == nil {
+		return nil
 	}
 
 	// auth server interceptor
@@ -70,20 +95,6 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.Option) *Server {
 	// grpc server
 	s := server.NewServer(srvConfig, opt...)
 	srv.server = s
-
-	// user service client
-	if userSrvConfig, ok := srvConfig.ClientConfig["user"]; ok {
-		if userSrv, err := client.NewUserServiceClient(userSrvConfig); err != nil {
-			log.Error("init user service client failed", zap.Error(err))
-		} else {
-			srv.userSrv = userSrv
-		}
-	} else {
-		log.Error("not found config user service client", zap.Any("clientConfig", srvConfig.ClientConfig))
-	}
-	if srv.userSrv == nil {
-		return nil
-	}
 
 	return srv
 }
