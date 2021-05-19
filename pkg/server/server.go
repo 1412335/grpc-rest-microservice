@@ -13,7 +13,6 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/tracing"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
-	"github.com/opentracing/opentracing-go"
 
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"go.uber.org/zap"
@@ -38,18 +37,10 @@ func WithInterceptors(interceptor ...interceptor.ServerInterceptor) Option {
 	}
 }
 
-func WithTracer(tracer opentracing.Tracer) Option {
-	return func(s *Server) error {
-		s.tracer = tracer
-		return nil
-	}
-}
-
 type Server struct {
 	config       *configs.ServiceConfig
 	grpcServer   *grpc.Server
 	logger       log.Factory
-	tracer       opentracing.Tracer
 	interceptors []interceptor.ServerInterceptor
 }
 
@@ -57,7 +48,6 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...Option) *Server {
 	// create server
 	srv := &Server{
 		config: srvConfig,
-		tracer: tracing.DefaultTracer,
 	}
 	srv.setLogger()
 
@@ -129,7 +119,6 @@ func (s *Server) tracingInterceptor() (grpc.UnaryServerInterceptor, grpc.StreamS
 		}
 		// create tracer
 		tracing.DefaultTracer = tracing.Init(s.config.ServiceName, metrics, s.logger)
-		s.tracer = tracing.DefaultTracer
 	}
 	// tracing interceptor
 	return otgrpc.OpenTracingServerInterceptor(tracing.DefaultTracer), otgrpc.OpenTracingStreamServerInterceptor(tracing.DefaultTracer)

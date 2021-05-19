@@ -9,7 +9,6 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/tracing"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
-	"github.com/opentracing/opentracing-go"
 
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"go.uber.org/zap"
@@ -33,18 +32,10 @@ func WithInterceptors(interceptor ...interceptor.ClientInterceptor) Option {
 	}
 }
 
-func WithTracer(tracer opentracing.Tracer) Option {
-	return func(c *Client) error {
-		c.tracer = tracer
-		return nil
-	}
-}
-
 type Client struct {
 	config       *configs.ClientConfig
 	ClientConn   *grpc.ClientConn
 	logger       log.Factory
-	tracer       opentracing.Tracer
 	interceptors []interceptor.ClientInterceptor
 }
 
@@ -52,7 +43,6 @@ func New(cfgs *configs.ClientConfig, opt ...Option) (*Client, error) {
 	// create client
 	client := &Client{
 		config: cfgs,
-		tracer: tracing.DefaultTracer,
 	}
 
 	// set log w client service name + version
@@ -141,7 +131,6 @@ func (c *Client) tracingInterceptor() (grpc.UnaryClientInterceptor, grpc.StreamC
 		}
 		// create tracer
 		tracing.DefaultTracer = tracing.Init(c.config.ServiceName, metrics, c.logger)
-		c.tracer = tracing.DefaultTracer
 	}
 	// tracing interceptor
 	return otgrpc.OpenTracingClientInterceptor(tracing.DefaultTracer), otgrpc.OpenTracingStreamClientInterceptor(tracing.DefaultTracer)

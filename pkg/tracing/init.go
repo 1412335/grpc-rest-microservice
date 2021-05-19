@@ -16,9 +16,9 @@ import (
 )
 
 var (
-	defaultServiceName    string             = "default"
-	defaultMetricsFactory string             = "prometheus"
-	DefaultTracer         opentracing.Tracer = Init(defaultServiceName, defaultMetricsFactory, log.DefaultLogger)
+	defaultServiceName    = "default"
+	defaultMetricsFactory = "prometheus"
+	DefaultTracer         opentracing.Tracer
 )
 
 // Init creates a new instance of Jaeger tracer.
@@ -26,6 +26,9 @@ func Init(serviceName string, tracingMetrics string, logger log.Factory) opentra
 	cfg, err := config.FromEnv()
 	if err != nil {
 		logger.Bg().Fatal("cannot parse Jaeger env vars", zap.Error(err))
+	}
+	if serviceName == "" {
+		serviceName = defaultServiceName
 	}
 	cfg.ServiceName = serviceName
 	cfg.Sampler.Type = "const"
