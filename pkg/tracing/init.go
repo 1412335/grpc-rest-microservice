@@ -5,12 +5,19 @@ import (
 	"time"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+	"github.com/uber/jaeger-lib/metrics/prometheus"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/uber/jaeger-client-go/config"
 	"github.com/uber/jaeger-client-go/rpcmetrics"
 	"github.com/uber/jaeger-lib/metrics"
 	"go.uber.org/zap"
+)
+
+var (
+	defaultServiceName    string             = "default"
+	defaultMetricsFactory metrics.Factory    = prometheus.New().Namespace(metrics.NSOptions{Name: "tracing", Tags: nil})
+	DefaultTracer         opentracing.Tracer = Init(defaultServiceName, defaultMetricsFactory, log.DefaultLogger)
 )
 
 // Init creates a new instance of Jaeger tracer.

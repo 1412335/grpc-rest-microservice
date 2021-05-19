@@ -3,7 +3,7 @@ module account
 go 1.15
 
 require (
-	github.com/1412335/grpc-rest-microservice v0.0.0-20210518153542-1b252697a2b9
+	github.com/1412335/grpc-rest-microservice v0.0.0-20210519055831-01f0984d18f3
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-gonic/gin v1.7.1
@@ -25,7 +25,7 @@ require (
 	github.com/orcaman/concurrent-map v0.0.0-20210501183033-44dafcb38ecc // indirect
 	github.com/pelletier/go-toml v1.9.1 // indirect
 	github.com/prometheus/client_golang v1.10.0 // indirect
-	github.com/prometheus/common v0.24.0 // indirect
+	github.com/prometheus/common v0.25.0 // indirect
 	github.com/rakyll/statik v0.1.7
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
@@ -43,7 +43,7 @@ require (
 	golang.org/x/net v0.0.0-20210510120150-4163338589ed // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20210514084401-e8d321eab015 // indirect
-	google.golang.org/genproto v0.0.0-20210517163617-5e0236093d7a
+	google.golang.org/genproto v0.0.0-20210518161634-ec7691c0a37d
 	google.golang.org/grpc v1.37.1
 	google.golang.org/protobuf v1.26.0
 	gopkg.in/ini.v1 v1.62.0 // indirect

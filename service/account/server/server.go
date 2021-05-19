@@ -56,21 +56,6 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.Option) *Server {
 		dal: dal,
 	}
 
-	// user service client
-	if userSrvConfig, ok := srvConfig.ClientConfig["user"]; ok {
-		if userSrv, err := client.NewUserServiceClient(userSrvConfig); err != nil {
-			log.Error("init user service client failed", zap.Error(err))
-		} else {
-			srv.userSrv = userSrv
-		}
-	} else {
-		log.Error("not found config user service client", zap.Any("clientConfig", srvConfig.ClientConfig))
-	}
-
-	if srv.userSrv == nil {
-		return nil
-	}
-
 	// auth server interceptor
 	authInterceptor := NewAuthServerInterceptor(srv.userSrv, srvConfig.AuthRequiredMethods, srvConfig.AccessibleRoles)
 
@@ -84,8 +69,22 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.Option) *Server {
 
 	// grpc server
 	s := server.NewServer(srvConfig, opt...)
-
 	srv.server = s
+
+	// user service client
+	if userSrvConfig, ok := srvConfig.ClientConfig["user"]; ok {
+		if userSrv, err := client.NewUserServiceClient(userSrvConfig); err != nil {
+			log.Error("init user service client failed", zap.Error(err))
+		} else {
+			srv.userSrv = userSrv
+		}
+	} else {
+		log.Error("not found config user service client", zap.Any("clientConfig", srvConfig.ClientConfig))
+	}
+	if srv.userSrv == nil {
+		return nil
+	}
+
 	return srv
 }
 

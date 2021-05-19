@@ -13,6 +13,7 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/tracing"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
+	"github.com/opentracing/opentracing-go"
 
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/uber/jaeger-lib/metrics"
@@ -40,10 +41,18 @@ func WithInterceptors(interceptor ...interceptor.ServerInterceptor) Option {
 	}
 }
 
+func WithTracer(tracer opentracing.Tracer) Option {
+	return func(s *Server) error {
+		s.tracer = tracer
+		return nil
+	}
+}
+
 type Server struct {
 	config       *configs.ServiceConfig
 	grpcServer   *grpc.Server
 	logger       log.Factory
+	tracer       opentracing.Tracer
 	interceptors []interceptor.ServerInterceptor
 }
 
@@ -51,6 +60,7 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...Option) *Server {
 	// create server
 	srv := &Server{
 		config: srvConfig,
+		tracer: tracing.DefaultTracer,
 	}
 	srv.setLogger()
 
@@ -115,21 +125,24 @@ func (s *Server) insecureServer() grpc.ServerOption {
 }
 
 func (s *Server) tracingInterceptor() (grpc.UnaryServerInterceptor, grpc.StreamServerInterceptor) {
-	// metrics
-	var metricsFactory metrics.Factory
-	if s.config.EnableTracing {
-		if s.config.Tracing != nil && s.config.Tracing.Metrics == "expvar" {
-			metricsFactory = expvar.NewFactory(10) // 10 buckets for histograms
-			s.logger.Info("[Tracing] Using expvar as metrics backend")
-		} else {
-			metricsFactory = prometheus.New().Namespace(metrics.NSOptions{Name: "tracing", Tags: nil})
-			s.logger.Info("[Tracing] Using prometheus as metrics backend")
+	if tracing.DefaultTracer == nil {
+		// metrics
+		var metricsFactory metrics.Factory
+		if s.config.EnableTracing {
+			if s.config.Tracing != nil && s.config.Tracing.Metrics == "expvar" {
+				metricsFactory = expvar.NewFactory(10) // 10 buckets for histograms
+				s.logger.Info("[Tracing] Using expvar as metrics backend")
+			} else {
+				metricsFactory = prometheus.New().Namespace(metrics.NSOptions{Name: "tracing", Tags: nil})
+				s.logger.Info("[Tracing] Using prometheus as metrics backend")
+			}
 		}
+		// create tracer
+		tracing.DefaultTracer = tracing.Init(s.config.ServiceName, metricsFactory, s.logger)
+		s.tracer = tracing.DefaultTracer
 	}
-	// create tracer
-	tracer := tracing.Init(s.config.ServiceName, metricsFactory, s.logger)
 	// tracing interceptor
-	return otgrpc.OpenTracingServerInterceptor(tracer), otgrpc.OpenTracingStreamServerInterceptor(tracer)
+	return otgrpc.OpenTracingServerInterceptor(tracing.DefaultTracer), otgrpc.OpenTracingStreamServerInterceptor(tracing.DefaultTracer)
 }
 
 func (s *Server) buildServerInterceptors() []grpc.ServerOption {

@@ -9,6 +9,7 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/tracing"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
+	"github.com/opentracing/opentracing-go"
 
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/uber/jaeger-lib/metrics"
@@ -35,10 +36,18 @@ func WithInterceptors(interceptor ...interceptor.ClientInterceptor) Option {
 	}
 }
 
+func WithTracer(tracer opentracing.Tracer) Option {
+	return func(c *Client) error {
+		c.tracer = tracer
+		return nil
+	}
+}
+
 type Client struct {
 	config       *configs.ClientConfig
 	ClientConn   *grpc.ClientConn
 	logger       log.Factory
+	tracer       opentracing.Tracer
 	interceptors []interceptor.ClientInterceptor
 }
 
@@ -46,6 +55,7 @@ func New(cfgs *configs.ClientConfig, opt ...Option) (*Client, error) {
 	// create client
 	client := &Client{
 		config: cfgs,
+		tracer: tracing.DefaultTracer,
 	}
 
 	// set log w client service name + version
@@ -127,20 +137,23 @@ func (c *Client) loadClientTLSCredentials() (credentials.TransportCredentials, e
 
 func (c *Client) tracingInterceptor() (grpc.UnaryClientInterceptor, grpc.StreamClientInterceptor) {
 	// metrics
-	var metricsFactory metrics.Factory
-	if c.config.EnableTracing {
-		if c.config.Tracing != nil && c.config.Tracing.Metrics == "expvar" {
-			metricsFactory = expvar.NewFactory(10) // 10 buckets for histograms
-			c.logger.Info("[Tracing] Using expvar as metrics backend")
-		} else {
-			metricsFactory = prometheus.New().Namespace(metrics.NSOptions{Name: "tracing", Tags: nil})
-			c.logger.Info("[Tracing] Using prometheus as metrics backend")
+	if tracing.DefaultTracer == nil {
+		var metricsFactory metrics.Factory
+		if c.config.EnableTracing {
+			if c.config.Tracing != nil && c.config.Tracing.Metrics == "expvar" {
+				metricsFactory = expvar.NewFactory(10) // 10 buckets for histograms
+				c.logger.Info("[Tracing] Using expvar as metrics backend")
+			} else {
+				metricsFactory = prometheus.New().Namespace(metrics.NSOptions{Name: "tracing", Tags: nil})
+				c.logger.Info("[Tracing] Using prometheus as metrics backend")
+			}
 		}
+		// create tracer
+		tracing.DefaultTracer = tracing.Init(c.config.ServiceName, metricsFactory, c.logger)
+		c.tracer = tracing.DefaultTracer
 	}
-	// create tracer
-	tracer := tracing.Init(c.config.ServiceName, metricsFactory, c.logger)
 	// tracing interceptor
-	return otgrpc.OpenTracingClientInterceptor(tracer), otgrpc.OpenTracingStreamClientInterceptor(tracer)
+	return otgrpc.OpenTracingClientInterceptor(tracing.DefaultTracer), otgrpc.OpenTracingStreamClientInterceptor(tracing.DefaultTracer)
 }
 
 func (c *Client) buildInterceptors() []grpc.DialOption {

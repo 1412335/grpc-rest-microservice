@@ -5,17 +5,11 @@ grpc:
   port: 9090
   max-call-recv-msg-size: 0
   max-call-send-msg-size: 0
-enableTracing: false
+enableTracing: true
 tracing:
   metrics: "prometheus"
 proxy:
   port: 8000
-authRequiredMethods:
-  - "/account.AccountService/List": true
-  - "/account.AccountService/ListStream": true
-  - "/account.AccountService/Delete": true
-  - "/account.AccountService/Update": true
-  - "/account.AccountService/Create": true
 accessibleRoles:
   - "/account.AccountService/List":
     - admin
@@ -53,11 +47,16 @@ log:
   pathLogFile: "./logFile.log"
 clientConfig:
   user:
-    version: "v3"
     serviceName: "user"
+    version: "v3"
     grpc: 
       host: "v3"
       port: 9090
+      max-call-recv-msg-size: 0
+      max-call-send-msg-size: 0
+    enableTracing: true
+    tracing:
+      metrics: "prometheus"
     enableTLS: false
     TLSCert:
       CACert : "./cert/ca-cert.pem"
@@ -65,4 +64,4 @@ redis:
   nodes:
     - "host.docker.internal:6379"
     # - "redis:6379"
-  prefix: ""
+  prefix: "account"

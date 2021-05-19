@@ -12,6 +12,7 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/errors"
 	interceptor "github.com/1412335/grpc-rest-microservice/pkg/interceptor/server"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+	"github.com/google/uuid"
 
 	"go.uber.org/zap"
 
@@ -53,9 +54,15 @@ func (a *AuthServerInterceptor) Stream() grpc.StreamServerInterceptor {
 }
 
 func (a *AuthServerInterceptor) authorize(ctx context.Context, method string) (*client.User, error) {
-	authReq, ok := a.authRequiredMethods[method]
-	if !authReq || !ok {
-		return nil, nil
+	// authorize required methods
+	if a.authRequiredMethods != nil {
+		if _, ok := a.authRequiredMethods[method]; !ok {
+			// dummy user
+			return &client.User{
+				ID:   uuid.New().String(),
+				Role: api_v3.Role_GUEST.String(),
+			}, nil
+		}
 	}
 
 	// fetch authorization header
@@ -74,10 +81,8 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string) (*
 	// verify token
 	user, err := a.userSrv.Validate(accessToken[0])
 	if err != nil || user == nil {
-		if st, ok := status.FromError(err); ok {
-			return nil, st.Err()
-		}
-		return nil, errors.Unauthenticated("verify failed", "token", err.Error())
+		st := status.Convert(err)
+		return nil, errors.Unauthenticated("verify failed", "token", st.Message())
 	}
 
 	// fetch custom-request-header
@@ -89,10 +94,12 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string) (*
 func (a *AuthServerInterceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 	start := time.Now()
 	defer func() {
-		a.Log().For(ctx).Info("unary req", zap.String("method", info.FullMethod), zap.Duration("duration", time.Since(start)))
+		logger := a.Log().For(ctx).With(zap.String("method", info.FullMethod), zap.Duration("duration", time.Since(start)))
 		if r := recover(); r != nil {
-			a.Log().For(ctx).Error("unary req", zap.Any("panic", r))
+			logger.Error("unary req", zap.Any("panic", r))
 			err = status.Error(codes.Unknown, "Internal server error")
+		} else {
+			logger.Info("unary req")
 		}
 	}()
 
@@ -144,13 +151,16 @@ func (a *AuthServerInterceptor) UnaryInterceptor(ctx context.Context, req interf
 
 // stream request interceptor
 func (a *AuthServerInterceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
+	start := time.Now()
 	defer func() {
+		logger := a.Log().For(ss.Context()).With(zap.String("method", info.FullMethod), zap.Any("serverStream", info.IsServerStream), zap.Duration("duration", time.Since(start)))
 		if r := recover(); r != nil {
-			a.Log().For(ss.Context()).Error("stream req", zap.Any("panic", r))
+			logger.Error("stream req", zap.Any("panic", r))
 			err = status.Error(codes.Unknown, "Internal server error")
+		} else {
+			logger.Info("stream req")
 		}
 	}()
-	a.Log().For(ss.Context()).Info("stream req", zap.String("method", info.FullMethod), zap.Any("serverStream", info.IsServerStream))
 
 	_, err = a.authorize(ss.Context(), info.FullMethod)
 	if err != nil {
