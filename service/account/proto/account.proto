@@ -4,6 +4,7 @@ package account;
 
 import "google/protobuf/wrappers.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
 import "google/protobuf/field_mask.proto";
 import "google/api/annotations.proto";
 import "protoc-gen-swagger/options/annotations.proto";
@@ -77,10 +78,31 @@ message CreateAccountResponse {
 }
 
 message ListAccountsRequest {
-    google.protobuf.StringValue user_id = 1;
+    google.protobuf.StringValue user_id = 1 [
+        (grpc.gateway.protoc_gen_swagger.options.openapiv2_field) = {
+            pattern: "^[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$",
+            title: "user_id",
+            description: "user id",
+            format: "uuid",
+            example: "\"2438ac3c-37eb-4902-adef-ed16b4431030\""
+        }
+    ];
 	google.protobuf.StringValue name = 2;
-    google.protobuf.DoubleValue balance = 3;
-    google.protobuf.StringValue id = 4;
+    google.protobuf.StringValue id = 3 [
+        (grpc.gateway.protoc_gen_swagger.options.openapiv2_field) = {
+            pattern: "^[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$",
+            title: "id",
+            description: "account id",
+            format: "uuid",
+            example: "\"2438ac3c-37eb-4902-adef-ed16b4431030\""
+        }
+    ];
+    google.protobuf.DoubleValue balance_min = 4;
+    google.protobuf.DoubleValue balance_max = 5;
+    // list users created after timestamp
+    google.protobuf.Timestamp created_since = 6;
+    // list users in duration from created_since
+    google.protobuf.Duration older_then = 7;
 }
 
 message ListAccountsResponse {
@@ -97,7 +119,8 @@ message UpdateAccountResponse {
 }
 
 message DeleteAccountRequest {
-	string id = 1;
+    string id = 1;
+    string user_id = 2;
 }
 
 message DeleteAccountResponse {

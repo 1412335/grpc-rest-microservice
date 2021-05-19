@@ -40,11 +40,14 @@ func CustomHTTPError(ctx context.Context, _ *runtime.ServeMux, marshaler runtime
 		case *errdetails.PreconditionFailure:
 			errBd.Data = make(map[string]string, len(t.GetViolations()))
 			for _, violation := range t.GetViolations() {
-				errBd.Data[violation.GetType()+" "+violation.GetSubject()] = violation.GetDescription()
+				errBd.Data["type"] = violation.GetType()
+				errBd.Data["subject"] = violation.GetSubject()
+				errBd.Data["msg"] = violation.GetDescription()
 			}
 		case *errdetails.ErrorInfo:
 			errBd.Data = make(map[string]string, 1)
-			errBd.Data[t.GetDomain()] = t.GetReason()
+			errBd.Data["domain"] = t.GetDomain()
+			errBd.Data["msg"] = t.GetReason()
 		}
 	}
 

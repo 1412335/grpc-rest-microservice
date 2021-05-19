@@ -93,7 +93,7 @@ linters:
     - misspell
     - nakedret
     - noctx
-    - nolintlint
+    # - nolintlint
     - rowserrcheck
     - scopelint
     - staticcheck

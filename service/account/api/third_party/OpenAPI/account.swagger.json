@@ -34,10 +34,18 @@
         },
         "parameters": [
           {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
+           {
             "name": "user_id",
+            "description": "user_id. user id",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           {
             "name": "name",
@@ -46,14 +54,38 @@
             "type": "string"
           },
           {
-            "name": "balance",
+            "name": "id",
+            "description": "id. account id",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "balance_min",
             "in": "query",
             "required": false,
             "type": "number",
             "format": "double"
           },
           {
-            "name": "id",
+            "name": "balance_max",
+            "in": "query",
+            "required": false,
+            "type": "number",
+            "format": "double"
+          },
+          {
+            "name": "created_since",
+            "description": "list users created after timestamp.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "older_then",
+            "description": "list users in duration from created_since.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -128,10 +160,17 @@
         },
         "parameters": [
           {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },{
             "name": "user_id",
+            "description": "user_id. user id",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           {
             "name": "name",
@@ -140,14 +179,38 @@
             "type": "string"
           },
           {
-            "name": "balance",
+            "name": "id",
+            "description": "id. account id",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "name": "balance_min",
             "in": "query",
             "required": false,
             "type": "number",
             "format": "double"
           },
           {
-            "name": "id",
+            "name": "balance_max",
+            "in": "query",
+            "required": false,
+            "type": "number",
+            "format": "double"
+          },
+          {
+            "name": "created_since",
+            "description": "list users created after timestamp.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "older_then",
+            "description": "list users in duration from created_since.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -177,6 +240,11 @@
         },
         "parameters": [
           {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },{
             "name": "account.id",
             "in": "path",
             "required": true,
@@ -215,9 +283,21 @@
         },
         "parameters": [
           {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "type": "string"
+          },
+          {
             "name": "id",
             "in": "path",
             "required": true,
+            "type": "string"
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
             "type": "string"
           }
         ],

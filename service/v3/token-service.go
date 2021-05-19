@@ -54,7 +54,6 @@ func (t *TokenService) Generate(user *model.User) (string, error) {
 func (t *TokenService) Verify(accessToken string) (*UserClaims, error) {
 	claims, err := t.jwtManager.Verify(accessToken, &UserClaims{})
 	if err != nil {
-		t.logger.Bg().Error("verify token failed", zap.Error(err))
 		return nil, err
 	}
 	uc, ok := claims.(*UserClaims)
