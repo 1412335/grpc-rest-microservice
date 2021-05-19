@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
-	"github.com/1412335/grpc-rest-microservice/vendor/github.com/uber/jaeger-lib/metrics/expvar"
+	"github.com/uber/jaeger-lib/metrics/expvar"
 	"github.com/uber/jaeger-lib/metrics/prometheus"
 
 	"github.com/opentracing/opentracing-go"
