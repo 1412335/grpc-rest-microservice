@@ -234,10 +234,16 @@ services:
     ports:
       - '8082:9090' # gRPC server
       - '8002:8000' # gRPC gateway
+    # command: ["-c","./service/v3/config.yml","-v","v1","--SERVICE_NAME","vvvvvv","v3"]
     command: ["-c","./service/v3/config.yml","-v","v3","v3"]
     environment:
       - JAEGER_AGENT_HOST=jaeger
       - JAEGER_AGENT_PORT=6831
+      - SERVICE_NAME=v3
+      - SERVICE_VERSION=v1
+      # - SERVICE_CONFIG_FILE=./service/v3/config.yml
+      # - SERVICE_TRACING=false
+      # - SERVICE_TRACING_METRICS=prometheus
     networks:
       - grpc-rest
     depends_on:

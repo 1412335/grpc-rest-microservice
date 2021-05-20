@@ -53,11 +53,18 @@ func V3Service() error {
 	// }()
 
 	// run grpc-gateway
-	handler := handler.NewHandler(cfgs)
+	// handler := handler.NewHandler(cfgs)
+	// err := handler.Run()
+	// if err != nil {
+	// 	zapLogger.Error("Starting gRPC-gateway error", zap.Error(err))
+	// }
+
+	handler := handler.NewProxy(cfgs)
 	err := handler.Run()
 	if err != nil {
 		zapLogger.Error("Starting gRPC-gateway error", zap.Error(err))
 	}
+
 	return err
 }
 

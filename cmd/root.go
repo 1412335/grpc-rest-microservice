@@ -12,15 +12,16 @@ import (
 )
 
 var (
+	envPrefix         = "SERVICE_"
+	envConfigFile     = envPrefix + "CONFIG_FILE"
+	envServiceName    = envPrefix + "NAME"
+	envVersion        = envPrefix + "VERSION"
+	envEnableTracing  = envPrefix + "TRACING"
+	envTracingMetrics = envPrefix + "TRACING_METRICS"
 	// Used for flags.
-	cfgFile        string
-	version        string
-	tracing        bool
-	metricsBackend string
+	cfgFile string
 	// service config
 	cfgs *configs.ServiceConfig
-	// log
-	// logger log.Logger
 	// cmd
 	rootCmd = &cobra.Command{
 		Use:   "grpc-gateway",
@@ -56,22 +57,37 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	// cobra cmd bind args
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default $HOME/config.yml)")
-	rootCmd.PersistentFlags().StringVarP(&version, "version", "v", "v1", "version")
-	rootCmd.PersistentFlags().BoolVarP(&tracing, "tracing", "t", true, "using tracing with jaeger")
-	rootCmd.PersistentFlags().StringVarP(&metricsBackend, "metrics", "m", "prometheus", "metrics backend expvar|prometheus")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, envConfigFile, "c", os.Getenv(envConfigFile), "config file (default $HOME/config.yml)")
+	rootCmd.PersistentFlags().StringP(envServiceName, "s", "default", "service name")
+	rootCmd.PersistentFlags().StringP(envVersion, "v", "v1", "version")
+	rootCmd.PersistentFlags().BoolP(envEnableTracing, "t", true, "using tracing with jaeger")
+	rootCmd.PersistentFlags().StringP(envTracingMetrics, "m", "prometheus", "metrics backend expvar|prometheus")
+
+	// bind env to viper
+	if err := viper.BindEnv("serviceName", envServiceName); err != nil {
+		log.Error("Bind env serviceName error", zap.Error(err))
+	}
+	if err := viper.BindEnv("version", envVersion); err != nil {
+		log.Error("Bind env serviceName error", zap.Error(err))
+	}
+	if err := viper.BindEnv("enableTracing", envEnableTracing); err != nil {
+		log.Error("Bind env serviceName error", zap.Error(err))
+	}
+	if err := viper.BindEnv("tracing.metrics", envTracingMetrics); err != nil {
+		log.Error("Bind env serviceName error", zap.Error(err))
+	}
 
 	// bind from cobra cmd to viper
-	// set from cmd args
-	// cfgs.Tracing.Flag = tracing
-	// cfgs.Tracing.Metrics = metricsBackend
-	if err := viper.BindPFlag("version", rootCmd.PersistentFlags().Lookup("version")); err != nil {
+	if err := viper.BindPFlag("serviceName", rootCmd.PersistentFlags().Lookup(envServiceName)); err != nil {
+		log.Error("Bind pflag serviceName error", zap.Error(err))
+	}
+	if err := viper.BindPFlag("version", rootCmd.PersistentFlags().Lookup(envVersion)); err != nil {
 		log.Error("Bind pflag version error", zap.Error(err))
 	}
-	if err := viper.BindPFlag("enableTracing", rootCmd.PersistentFlags().Lookup("tracing")); err != nil {
+	if err := viper.BindPFlag("enableTracing", rootCmd.PersistentFlags().Lookup(envEnableTracing)); err != nil {
 		log.Error("Bind pflag enableTracing error", zap.Error(err))
 	}
-	if err := viper.BindPFlag("tracing.metrics", rootCmd.PersistentFlags().Lookup("metrics")); err != nil {
+	if err := viper.BindPFlag("tracing.metrics", rootCmd.PersistentFlags().Lookup(envTracingMetrics)); err != nil {
 		log.Error("Bind pflag tracing.metrics error", zap.Error(err))
 	}
 
