@@ -5,7 +5,6 @@
 PROTO_DIR=./proto
 OUT_DIR=./api
 OPENAPI_DIR=$OUT_DIR/third_party/OpenAPI
-NAMESPACE=account
 
 mkdir -m 777 -p $OPENAPI_DIR
 

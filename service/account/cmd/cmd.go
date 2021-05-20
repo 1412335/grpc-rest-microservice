@@ -3,7 +3,6 @@ package cmd
 import (
 	handlerSrv "account/handler"
 	serverSrv "account/server"
-	"os"
 
 	"github.com/1412335/grpc-rest-microservice/cmd"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
@@ -13,9 +12,9 @@ import (
 )
 
 var command = &cobra.Command{
-	Use:   "account",
-	Short: "Start Account Service",
-	Long:  `Start Account Service`,
+	Use:   "start-service",
+	Short: "Start Service",
+	Long:  `Start Service`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return RunService()
 	},
@@ -27,10 +26,7 @@ func init() {
 }
 
 func Execute() {
-	if err := command.Execute(); err != nil {
-		log.Fatal("Execute cmd failed", zap.Error(err))
-		os.Exit(-1)
-	}
+	cmd.Execute()
 }
 
 func RunService() error {

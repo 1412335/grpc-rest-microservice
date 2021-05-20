@@ -12,10 +12,15 @@ services:
     ports:
       - ${GRPC_PORT}:9090 # gRPC server
       - ${PROXY_PORT}:8000 # gRPC gateway
-    command: ["account"]
+    command: ["start-service"]
     environment:
       - JAEGER_AGENT_HOST=${JAEGER_AGENT_HOST}
       - JAEGER_AGENT_PORT=${JAEGER_AGENT_PORT}
+      - SERVICE_NAME=${SERVICE_NAME}
+      - SERVICE_VERSION=${SERVICE_VERSION}
+      # - SERVICE_CONFIG_FILE=./config.yml
+      # - SERVICE_TRACING=true
+      # - SERVICE_TRACING_METRICS=prometheus
     # networks:
     #   - grpc-rest-microservice_grpc-rest
     logging:
