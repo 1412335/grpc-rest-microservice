@@ -59,7 +59,7 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.Option) *Server {
 			metrics = srvConfig.Tracing.Metrics
 		}
 		// set default tracer
-		tracing.DefaultTracer = tracing.Init(srvConfig.ServiceName, metrics, log.With(zap.String("metrics", metrics)))
+		tracing.Init(srvConfig.ServiceName, metrics, log.With())
 	}
 
 	// create server

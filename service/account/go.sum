@@ -45,6 +45,16 @@ github.com/1412335/grpc-rest-microservice v0.0.0-20210519055831-01f0984d18f3 h1:
 github.com/1412335/grpc-rest-microservice v0.0.0-20210519055831-01f0984d18f3/go.mod h1:1FBmXBPLmesHBMPX18RrqBkcwDcLQpaT7sbYOfRjIQY=
 github.com/1412335/grpc-rest-microservice v0.0.0-20210519084356-cacb947d76cf h1:oZJL+NdMwJm7MaFpLRU8GCyIdfrFYnv/uaIhLUXMGfs=
 github.com/1412335/grpc-rest-microservice v0.0.0-20210519084356-cacb947d76cf/go.mod h1:1FBmXBPLmesHBMPX18RrqBkcwDcLQpaT7sbYOfRjIQY=
+github.com/1412335/grpc-rest-microservice v0.0.0-20210519091209-1be9c29a4667 h1:ZRXRdNbjCkDEixp58MDyNLiP5MAUGfrbU60OCHHsTtg=
+github.com/1412335/grpc-rest-microservice v0.0.0-20210519091209-1be9c29a4667/go.mod h1:1FBmXBPLmesHBMPX18RrqBkcwDcLQpaT7sbYOfRjIQY=
+github.com/1412335/grpc-rest-microservice v0.0.0-20210519091447-36bf5f4deca7 h1:xABM69Zz0OA+DxjxhS0KRrn11lfJXa3wMszpKu1PsYQ=
+github.com/1412335/grpc-rest-microservice v0.0.0-20210519091447-36bf5f4deca7/go.mod h1:1FBmXBPLmesHBMPX18RrqBkcwDcLQpaT7sbYOfRjIQY=
+github.com/1412335/grpc-rest-microservice v0.0.0-20210519094726-93349c22b1e1 h1:GSgDd+qRaZUeYaH37JWcpUdA6w3dxC3j0N1IC79VvYA=
+github.com/1412335/grpc-rest-microservice v0.0.0-20210519094726-93349c22b1e1/go.mod h1:1FBmXBPLmesHBMPX18RrqBkcwDcLQpaT7sbYOfRjIQY=
+github.com/1412335/grpc-rest-microservice v0.0.0-20210520023753-45687b131628 h1:+/urqTWMzjhc69/rAJzgLFSF9bikAwI+9D1iKPKbyq0=
+github.com/1412335/grpc-rest-microservice v0.0.0-20210520023753-45687b131628/go.mod h1:1FBmXBPLmesHBMPX18RrqBkcwDcLQpaT7sbYOfRjIQY=
+github.com/1412335/grpc-rest-microservice v0.0.0-20210520031834-ba4cc1eacab7 h1:Qw6MSMZ8BtqjQuSipsuUrbcJ37kD7RKWnesn2+tP2Ro=
+github.com/1412335/grpc-rest-microservice v0.0.0-20210520031834-ba4cc1eacab7/go.mod h1:1FBmXBPLmesHBMPX18RrqBkcwDcLQpaT7sbYOfRjIQY=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
@@ -1190,6 +1200,8 @@ google.golang.org/grpc v1.36.0/go.mod h1:qjiiYl8FncCW8feJPdyg3v6XW24KsRHe+dy9BAG
 google.golang.org/grpc v1.36.1/go.mod h1:qjiiYl8FncCW8feJPdyg3v6XW24KsRHe+dy9BAGRRjU=
 google.golang.org/grpc v1.37.1 h1:ARnQJNWxGyYJpdf/JXscNlQr/uv607ZPU9Z7ogHi+iI=
 google.golang.org/grpc v1.37.1/go.mod h1:NREThFqKR1f3iQ6oBuvc5LadQuXVGo9rkm5ZGrQdJfM=
+google.golang.org/grpc v1.38.0 h1:/9BgsAsa5nWe26HqOlvlgJnqBuktYOLCgjCPqsa56W0=
+google.golang.org/grpc v1.38.0/go.mod h1:NREThFqKR1f3iQ6oBuvc5LadQuXVGo9rkm5ZGrQdJfM=
 google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.0.0/go.mod h1:6Kw0yEErY5E/yWrBtf03jp27GLLJujG4z/JK95pnjjw=
 google.golang.org/protobuf v0.0.0-20200109180630-ec00e32a8dfd/go.mod h1:DFci5gLYBciE7Vtevhsrf46CRTquxDuWsQurQQe4oz8=
 google.golang.org/protobuf v0.0.0-20200221191635-4d8936d0db64/go.mod h1:kwYJMbMJ01Woi6D6+Kah6886xMZcty6N08ah7+eCXa0=

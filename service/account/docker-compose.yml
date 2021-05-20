@@ -13,9 +13,9 @@ services:
       - ${GRPC_PORT}:9090 # gRPC server
       - ${PROXY_PORT}:8000 # gRPC gateway
     command: ["account"]
-    # environment:
-    #   - JAEGER_AGENT_HOST=jaeger
-    #   - JAEGER_AGENT_PORT=6831
+    environment:
+      - JAEGER_AGENT_HOST=${JAEGER_AGENT_HOST}
+      - JAEGER_AGENT_PORT=${JAEGER_AGENT_PORT}
     # networks:
     #   - grpc-rest-microservice_grpc-rest
     logging:

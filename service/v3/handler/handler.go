@@ -28,6 +28,7 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 	"github.com/1412335/grpc-rest-microservice/pkg/errors"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+	"github.com/1412335/grpc-rest-microservice/pkg/tracing"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 
 	// Static files
@@ -193,8 +194,12 @@ func (h *Handler) initRouter(handler http.Handler) *gin.Engine {
 	// 	c.String(http.StatusOK, "Have nice day")
 	// })
 
+	// tracing middleware
+	tracingMux := tracing.NewTracerServerMux()
+
+	// api routes
 	api := r.Group("/api/v3")
-	api.Any("/*any", gin.WrapH(handler))
+	api.Any("/*any", gin.WrapH(tracingMux.Middleware(handler)))
 
 	return r
 }
@@ -249,6 +254,7 @@ func (h *Handler) Run() error {
 		runtime.WithIncomingHeaderMatcher(h.incomingHeaderMatcher),
 		runtime.WithOutgoingHeaderMatcher(h.outgoingHeaderMatcher),
 		runtime.WithForwardResponseOption(h.httpResponseModifier),
+		runtime.WithMetadata(tracing.WithMetadata),
 		// runtime.WithMarshalerOption(runtime.MIMEWildcard, &gateway.JSONPb{
 		// 	OrigName:     true,
 		// 	EmitDefaults: false,

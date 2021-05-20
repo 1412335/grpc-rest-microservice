@@ -3,7 +3,7 @@ module account
 go 1.15
 
 require (
-	github.com/1412335/grpc-rest-microservice v0.0.0-20210519084356-cacb947d76cf
+	github.com/1412335/grpc-rest-microservice v0.0.0-20210520031834-ba4cc1eacab7
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-gonic/gin v1.7.1
@@ -44,7 +44,7 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20210514084401-e8d321eab015 // indirect
 	google.golang.org/genproto v0.0.0-20210518161634-ec7691c0a37d
-	google.golang.org/grpc v1.37.1
+	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.26.0
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/validator.v2 v2.0.0-20210331031555-b37d688a7fb0

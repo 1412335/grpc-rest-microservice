@@ -22,13 +22,12 @@ type User struct {
 }
 
 type UserClient interface {
-	Login(email, password string) (token string, err error)
-	Validate(token string) (user *User, err error)
+	Login(ctx context.Context, email, password string) (token string, err error)
+	Validate(ctx context.Context, token string) (user *User, err error)
 	Close() error
 }
 
 type userClientImpl struct {
-	ctx           context.Context
 	logger        log.Factory
 	client        *grpcClient.Client
 	userSrvClient api_v3.UserServiceClient
@@ -43,9 +42,7 @@ func NewUserServiceClient(cfgs *configs.ClientConfig, opt ...grpcClient.Option) 
 		return nil, err
 	}
 
-	ctx := context.Background()
 	return &userClientImpl{
-		ctx:           ctx,
 		logger:        client.GetLogger(),
 		client:        client,
 		userSrvClient: api_v3.NewUserServiceClient(client.ClientConn),
@@ -56,16 +53,19 @@ func (c *userClientImpl) Close() error {
 	return c.client.Close()
 }
 
-func (c *userClientImpl) setHeader(m map[string]string) context.Context {
+func (c *userClientImpl) setHeader(ctx context.Context, m map[string]string) context.Context {
 	md := metadata.New(m)
-	ctx := metadata.NewOutgoingContext(c.ctx, md)
-	return ctx
+	return metadata.NewOutgoingContext(ctx, md)
+}
+
+func (c *userClientImpl) timeoutContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, 5*time.Second)
 }
 
 // login & get token
-func (c *userClientImpl) Login(email, password string) (string, error) {
-	ctx := c.setHeader(map[string]string{"custom-req-header": "login"})
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+func (c *userClientImpl) Login(ctx context.Context, email, password string) (string, error) {
+	ctx = c.setHeader(ctx, map[string]string{"custom-req-header": "login"})
+	ctx, cancel := c.timeoutContext(ctx)
 	defer cancel()
 	// prepare request
 	msg := &api_v3.LoginRequest{
@@ -90,8 +90,8 @@ func (c *userClientImpl) Login(email, password string) (string, error) {
 }
 
 // validate token
-func (c *userClientImpl) Validate(token string) (*User, error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+func (c *userClientImpl) Validate(ctx context.Context, token string) (*User, error) {
+	ctx, cancel := c.timeoutContext(ctx)
 	defer cancel()
 	// prepare request
 	msg := &api_v3.ValidateRequest{

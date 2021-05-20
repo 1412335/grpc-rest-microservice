@@ -79,7 +79,7 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string) (*
 	}
 
 	// verify token
-	user, err := a.userSrv.Validate(accessToken[0])
+	user, err := a.userSrv.Validate(ctx, accessToken[0])
 	if err != nil || user == nil {
 		st := status.Convert(err)
 		return nil, errors.Unauthenticated("verify failed", "token", st.Message())
@@ -92,16 +92,13 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string) (*
 
 // unary request to grpc server
 func (a *AuthServerInterceptor) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	start := time.Now()
 	defer func() {
-		logger := a.Log().For(ctx).With(zap.String("method", info.FullMethod), zap.Duration("duration", time.Since(start)))
 		if r := recover(); r != nil {
-			logger.Error("unary req", zap.Any("panic", r))
+			a.Log().For(ctx).Error("unary req", zap.String("method", info.FullMethod), zap.Any("panic", r))
 			err = status.Error(codes.Unknown, "Internal server error")
-		} else {
-			logger.Info("unary req")
 		}
 	}()
+	a.Log().For(ctx).Info("unary req", zap.String("method", info.FullMethod))
 
 	// authorize request
 	user, err := a.authorize(ctx, info.FullMethod)
@@ -146,14 +143,20 @@ func (a *AuthServerInterceptor) UnaryInterceptor(ctx context.Context, req interf
 		return nil, status.Error(codes.DeadlineExceeded, "deadline is exceeded")
 	}
 
-	return handler(ctx, req)
+	resp, err = handler(ctx, req)
+	// if err != nil {
+	// 	a.Log().For(ctx).Error("unary resp", zap.String("method", info.FullMethod), zap.Error(err))
+	// } else {
+	// 	a.Log().For(ctx).Info("unary resp", zap.String("method", info.FullMethod), zap.Any("resp", resp))
+	// }
+	return resp, err
 }
 
 // stream request interceptor
 func (a *AuthServerInterceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
 	start := time.Now()
 	defer func() {
-		logger := a.Log().For(ss.Context()).With(zap.String("method", info.FullMethod), zap.Any("serverStream", info.IsServerStream), zap.Duration("duration", time.Since(start)))
+		logger := a.Log().With(zap.String("method", info.FullMethod), zap.Any("serverStream", info.IsServerStream), zap.Duration("duration", time.Since(start))).For(ss.Context())
 		if r := recover(); r != nil {
 			logger.Error("stream req", zap.Any("panic", r))
 			err = status.Error(codes.Unknown, "Internal server error")

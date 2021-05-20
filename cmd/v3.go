@@ -45,12 +45,12 @@ func V3Service() error {
 		}
 	}()
 
-	go func() {
-		err := testGrpcClient(cfgs.ClientConfig["user"])
-		if err != nil {
-			logError(zapLogger, err)
-		}
-	}()
+	// go func() {
+	// 	err := testGrpcClient(cfgs.ClientConfig["user"])
+	// 	if err != nil {
+	// 		logError(zapLogger, err)
+	// 	}
+	// }()
 
 	// run grpc-gateway
 	handler := handler.NewHandler(cfgs)
@@ -61,6 +61,7 @@ func V3Service() error {
 	return err
 }
 
+//nolint:unused
 func testGrpcClient(cfgs *configs.ClientConfig) error {
 	var opts []grpcClient.Option
 	c, err := client.New(
