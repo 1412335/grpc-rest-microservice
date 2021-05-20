@@ -112,16 +112,17 @@ func (s *Server) insecureServer() grpc.ServerOption {
 }
 
 func (s *Server) tracingInterceptor() (grpc.UnaryServerInterceptor, grpc.StreamServerInterceptor) {
-	if tracing.DefaultTracer == nil {
+	tracer := tracing.GlobalTracer()
+	if tracer == nil {
 		var metrics string
 		if s.config.Tracing != nil {
 			metrics = s.config.Tracing.Metrics
 		}
 		// create tracer
-		tracing.DefaultTracer = tracing.Init(s.config.ServiceName, metrics, s.logger)
+		tracer = tracing.Init(s.config.ServiceName, metrics, s.logger)
 	}
 	// tracing interceptor
-	return otgrpc.OpenTracingServerInterceptor(tracing.DefaultTracer), otgrpc.OpenTracingStreamServerInterceptor(tracing.DefaultTracer)
+	return otgrpc.OpenTracingServerInterceptor(tracer), otgrpc.OpenTracingStreamServerInterceptor(tracer)
 }
 
 func (s *Server) buildServerInterceptors() []grpc.ServerOption {

@@ -123,17 +123,17 @@ func (c *Client) loadClientTLSCredentials() (credentials.TransportCredentials, e
 }
 
 func (c *Client) tracingInterceptor() (grpc.UnaryClientInterceptor, grpc.StreamClientInterceptor) {
-	// metrics
-	if tracing.DefaultTracer == nil {
+	tracer := tracing.GlobalTracer()
+	if tracer == nil {
 		var metrics string
 		if c.config.Tracing != nil {
 			metrics = c.config.Tracing.Metrics
 		}
 		// create tracer
-		tracing.DefaultTracer = tracing.Init(c.config.ServiceName, metrics, c.logger)
+		tracer = tracing.Init(c.config.ServiceName, metrics, c.logger)
 	}
 	// tracing interceptor
-	return otgrpc.OpenTracingClientInterceptor(tracing.DefaultTracer), otgrpc.OpenTracingStreamClientInterceptor(tracing.DefaultTracer)
+	return otgrpc.OpenTracingClientInterceptor(tracer), otgrpc.OpenTracingStreamClientInterceptor(tracer)
 }
 
 func (c *Client) buildInterceptors() []grpc.DialOption {

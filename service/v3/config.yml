@@ -64,6 +64,7 @@ clientConfig:
     grpc: 
       host: "localhost"
       port: 9090
+    enableTracing: false
     enableTLS: false
     TLSCert:
       CACert : "./cert/ca-cert.pem"

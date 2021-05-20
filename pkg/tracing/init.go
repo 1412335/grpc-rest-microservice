@@ -18,11 +18,13 @@ import (
 var (
 	defaultServiceName    = "default"
 	defaultMetricsFactory = "prometheus"
-	DefaultTracer         opentracing.Tracer
 )
 
 // Init creates a new instance of Jaeger tracer.
 func Init(serviceName string, tracingMetrics string, logger log.Factory) opentracing.Tracer {
+	if tracer := opentracing.GlobalTracer(); opentracing.IsGlobalTracerRegistered() && tracer != nil {
+		return tracer
+	}
 	cfg, err := config.FromEnv()
 	if err != nil {
 		logger.Bg().Fatal("cannot parse Jaeger env vars", zap.Error(err))
@@ -38,6 +40,9 @@ func Init(serviceName string, tracingMetrics string, logger log.Factory) opentra
 
 	// init metricsFactory
 	var metricsFactory metrics.Factory
+	if tracingMetrics == "" {
+		tracingMetrics = defaultMetricsFactory
+	}
 	if tracingMetrics == "expvar" {
 		metricsFactory = expvar.NewFactory(10) // 10 buckets for histograms
 		log.Info("[Tracing] Using expvar as metrics backend")
@@ -59,7 +64,15 @@ func Init(serviceName string, tracingMetrics string, logger log.Factory) opentra
 	if err != nil {
 		logger.Bg().Fatal("cannot initialize Jaeger Tracer", zap.Error(err))
 	}
+	opentracing.SetGlobalTracer(tracer)
 	return tracer
+}
+
+func GlobalTracer() opentracing.Tracer {
+	if !opentracing.IsGlobalTracerRegistered() {
+		return nil
+	}
+	return opentracing.GlobalTracer()
 }
 
 type jaegerLoggerAdapter struct {
