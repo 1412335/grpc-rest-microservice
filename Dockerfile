@@ -33,7 +33,6 @@ COPY --from=builder /etc/passwd /etc/passwd
 WORKDIR /root/
 # Copy our static executable.
 COPY --from=builder /go/bin/myapp .
-COPY --from=builder /myapp/config.yml .
 COPY --from=builder /myapp/cmd/client/config.yml ./cmd/client/config.yml
 COPY --from=builder /myapp/service/v3/config.yml ./service/v3/config.yml
 COPY --from=builder /myapp/service/v3/client/config.yml ./service/v3/client/config.yml

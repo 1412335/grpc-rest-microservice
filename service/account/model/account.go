@@ -48,9 +48,13 @@ func (a *Account) UpdateFromGRPC(acc *pb.Account) {
 	a.Bank = acc.GetBank().String()
 }
 
+func (a *Account) genCacheKey() string {
+	return a.UserID + "_" + a.ID
+}
+
 func (a *Account) GetCache() error {
 	var bytes []byte
-	if err := cache.Get(a.ID, &bytes); err == cache.ErrCacheNotAvailable {
+	if err := cache.Get(a.genCacheKey(), &bytes); err == cache.ErrCacheNotAvailable {
 		return nil
 	} else if err != nil {
 		return err
@@ -64,7 +68,7 @@ func (a *Account) GetCache() error {
 func (a *Account) Cache() error {
 	if bytes, err := json.Marshal(a); err != nil {
 		return err
-	} else if err := cache.Set(a.ID, string(bytes)); err == cache.ErrCacheNotAvailable {
+	} else if err := cache.Set(a.genCacheKey(), string(bytes)); err == cache.ErrCacheNotAvailable {
 		return nil
 	} else if err != nil {
 		return err
@@ -73,7 +77,7 @@ func (a *Account) Cache() error {
 }
 
 func (a *Account) DelCache() error {
-	if err := cache.Delete(a.ID); err == cache.ErrCacheNotAvailable {
+	if err := cache.Delete(a.genCacheKey()); err == cache.ErrCacheNotAvailable {
 		return nil
 	} else if err != nil {
 		return err

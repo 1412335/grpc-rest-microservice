@@ -32,9 +32,6 @@ import (
 	// requirement for using error details and want to marshal them correctly to JSON.
 	// https://jbrandhorst.com/post/grpc-errors/
 	_ "google.golang.org/genproto/googleapis/rpc/errdetails"
-
-	// Static files
-	_ "github.com/1412335/grpc-rest-microservice/pkg/api/v3/statik"
 )
 
 type Handler struct {

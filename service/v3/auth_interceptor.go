@@ -7,6 +7,7 @@ import (
 	api_v3 "github.com/1412335/grpc-rest-microservice/pkg/api/v3"
 	interceptor "github.com/1412335/grpc-rest-microservice/pkg/interceptor/server"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 
 	"go.uber.org/zap"
 
@@ -105,7 +106,12 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string, re
 	}
 
 	// fetch custom-request-header
-	// customHeader = md.Get("custom-req-header")
+	xreqid := md.Get("x-request-id")
+	a.Log().For(ctx).Info("request", zap.String("x-request-id", xreqid[0]))
+
+	ctx = utils.SetContextValue(ctx, "userClaims.ID", userClaims.ID)
+	userID, ok := utils.GetContextValue(ctx, "userClaims.ID")
+	a.Log().Info("ctx token", zap.String("userID", userID), zap.Bool("ok", ok))
 
 	// validate request
 	// log.Println("[gRPC server] validate req")

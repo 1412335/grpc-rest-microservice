@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"strings"
-	"time"
 
 	pb "account/api"
 	"account/client"
@@ -84,9 +83,6 @@ func (a *AuthServerInterceptor) authorize(ctx context.Context, method string) (*
 		st := status.Convert(err)
 		return nil, errors.Unauthenticated("verify failed", "token", st.Message())
 	}
-
-	// fetch custom-request-header
-	// customHeader = md.Get("custom-req-header")
 	return user, nil
 }
 
@@ -126,14 +122,24 @@ func (a *AuthServerInterceptor) UnaryInterceptor(ctx context.Context, req interf
 		}
 	}
 
-	// NOT WORK: because server service does NOT using context to send anything
-	ctx = metadata.AppendToOutgoingContext(ctx, []string{"x-response-id", "a"}...)
+	// fetch headers req
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, status.Errorf(codes.DataLoss, "failed to get metadata")
+	}
+	xrid := md.Get("x-request-id")
+	if len(xrid) > 0 {
+		// send x-response-id header
+		header := metadata.New(map[string]string{"x-response-id": xrid[0]})
+		if e := grpc.SetHeader(ctx, header); e != nil {
+			return nil, errors.InternalServerError("unable to send 'x-response-id' header", e.Error())
+		}
+		// NOT WORK: because server service does NOT using context to send anything
+		// ctx = metadata.AppendToOutgoingContext(ctx, []string{"x-response-id", xrid[0]}...)
+	}
 
-	// add serviceName into response
-	// if msg, ok := req.(*api_v3.UpdateUserRequest); ok {
-	// 	msg. = info.FullMethod
-	// 	return msg, nil
-	// }
+	// ctx = utils.SetContextValue(ctx, "userID", user.ID)
+	// userID, ok := utils.GetContextValue(ctx, "userID")
 
 	// check request timeout or canceled by the client
 	if ctx.Err() == context.Canceled {
@@ -144,26 +150,18 @@ func (a *AuthServerInterceptor) UnaryInterceptor(ctx context.Context, req interf
 	}
 
 	resp, err = handler(ctx, req)
-	// if err != nil {
-	// 	a.Log().For(ctx).Error("unary resp", zap.String("method", info.FullMethod), zap.Error(err))
-	// } else {
-	// 	a.Log().For(ctx).Info("unary resp", zap.String("method", info.FullMethod), zap.Any("resp", resp))
-	// }
 	return resp, err
 }
 
 // stream request interceptor
 func (a *AuthServerInterceptor) StreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) (err error) {
-	start := time.Now()
 	defer func() {
-		logger := a.Log().With(zap.String("method", info.FullMethod), zap.Any("serverStream", info.IsServerStream), zap.Duration("duration", time.Since(start))).For(ss.Context())
 		if r := recover(); r != nil {
-			logger.Error("stream req", zap.Any("panic", r))
+			a.Log().For(ss.Context()).Error("stream req", zap.String("method", info.FullMethod), zap.Any("panic", r))
 			err = status.Error(codes.Unknown, "Internal server error")
-		} else {
-			logger.Info("stream req")
 		}
 	}()
+	a.Log().For(ss.Context()).Info("stream req", zap.String("method", info.FullMethod), zap.Any("serverStream", info.IsServerStream))
 
 	_, err = a.authorize(ss.Context(), info.FullMethod)
 	if err != nil {

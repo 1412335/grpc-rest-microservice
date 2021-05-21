@@ -2,6 +2,7 @@ package utils
 
 import "golang.org/x/crypto/bcrypt"
 
+// nolint:unused
 func contains(s []int, e int) bool {
 	for _, a := range s {
 		if a == e {

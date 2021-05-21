@@ -3,13 +3,13 @@ package mongodb
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
+	"github.com/1412335/grpc-rest-microservice/pkg/dal/errors"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -23,17 +23,12 @@ import (
 //Used to execute client creation procedure only once.
 var mongoOnce sync.Once
 
-// errors
-var (
-	ErrConnectDB = errors.New("Connecting db failed")
-)
-
 type DataAccessLayer struct {
 	dbConfig *configs.MongoDB
 	/* Used to create a singleton object of MongoDB client.
 	   Initialized and exposed through  GetMongoClient().*/
 	clientInstance *mongo.Client
-	//Used during creation of singleton client object in GetMongoClient().
+	// Used during creation of singleton client object in GetMongoClient().
 	dbInstance *mongo.Database
 }
 
@@ -54,7 +49,7 @@ func (dal *DataAccessLayer) buildConnectionURI() (string, error) {
 
 //GetClient - Return mongodb connection to work with
 func (dal *DataAccessLayer) GetClient(ctx context.Context) (interface{}, error) {
-	//Perform connection creation operation only once.
+	// Perform connection creation operation only once.
 	var err error
 	mongoOnce.Do(func() {
 		// get uri
@@ -99,7 +94,7 @@ func (dal *DataAccessLayer) Disconnect(ctx context.Context) error {
 func (dal *DataAccessLayer) GetDatabase() error {
 	// Get MongoDB connection using connectionhelper.
 	if dal.clientInstance == nil {
-		return ErrConnectDB
+		return errors.ErrConnectDB
 	}
 	dal.dbInstance = dal.clientInstance.Database(dal.dbConfig.Database)
 	return nil

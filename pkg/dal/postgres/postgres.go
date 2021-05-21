@@ -11,20 +11,18 @@ import (
 	"gorm.io/gorm"
 )
 
-//Used to execute client creation procedure only once.
-var once sync.Once
-
-// errors
-
 type DataAccessLayer struct {
 	dbConfig *configs.Database
-	//Used during creation of singleton client object in GetMongoClient().
+	// Used during creation of singleton client object in GetMongoClient().
 	dbInstance *gorm.DB
+	// Used to execute client creation procedure only once.
+	once sync.Once
 }
 
 func NewDataAccessLayer(ctx context.Context, cfg *configs.Database) (*DataAccessLayer, error) {
 	dal := &DataAccessLayer{
 		dbConfig: cfg,
+		once:     sync.Once{},
 	}
 	if _, err := dal.Connect(ctx); err != nil {
 		return nil, err
@@ -33,22 +31,18 @@ func NewDataAccessLayer(ctx context.Context, cfg *configs.Database) (*DataAccess
 }
 
 // Build connection string
-func (dal *DataAccessLayer) buildConnectionDSN() (string, error) {
+func (dal *DataAccessLayer) buildConnectionDSN() string {
 	cfg := dal.dbConfig
-	return fmt.Sprintf("host=%s port=%v user=%s dbname=%s sslmode=disable password=%s", cfg.Host, cfg.Port, cfg.User, cfg.Scheme, cfg.Password), nil
+	return fmt.Sprintf("host=%s port=%v user=%s dbname=%s sslmode=disable password=%s", cfg.Host, cfg.Port, cfg.User, cfg.Scheme, cfg.Password)
 }
 
 // Connect
 func (dal *DataAccessLayer) Connect(ctx context.Context) (*gorm.DB, error) {
-	//Perform connection creation operation only once.
+	// Perform connection creation operation only once.
 	var err error
-	once.Do(func() {
+	dal.once.Do(func() {
 		// build connection string
-		dsn, e := dal.buildConnectionDSN()
-		if e != nil {
-			err = e
-			return
-		}
+		dsn := dal.buildConnectionDSN()
 		// connect db
 		db, e := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 		if e != nil {
@@ -56,6 +50,7 @@ func (dal *DataAccessLayer) Connect(ctx context.Context) (*gorm.DB, error) {
 			return
 		}
 
+		// debug
 		if dal.dbConfig.Debug {
 			db = db.Debug()
 		}

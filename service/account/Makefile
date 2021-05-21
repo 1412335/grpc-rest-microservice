@@ -13,18 +13,22 @@ gen: gen-api gen-openapi ## gen grpc + gateway + openui w swagger
 
 .PHONY: fmt
 fmt: ## go fmt
-	go fmt -mod=mod $(go list ./... | grep -v /api/)
+	go fmt -mod=mod $(go list ./... | grep -v /api)
 
 .PHONY: lint
 lint: fmt ## gofmt && golangci-lint
-	golangci-lint run $(go list ./... | grep -v /vendor/)
+	golangci-lint run $(go list ./... | grep -v /api)
 
-update-pkg-cache:
-    GOPROXY=https://proxy.golang.org GO111MODULE=on \
-    go get github.com/$(USER)/$(PACKAGE)@v$(VERSION)
+.PHONY: test
+test: lint ## gofmt & golangci-lint & go test
+	go test -v -short -race -coverprofile=coverage.out -covermode=atomic ./...
+
+.PHONY: cover
+cover: test  ## Run unit tests and open the coverage report
+	go tool cover -html=coverage.out
 
 # export SSH_PRIVATE_KEY=$(cat ~/.ssh/id_ed25519)
-run: clean lint ## clean && lint && build & run service
+run: clean test ## clean && lint && test && build & run service
 	docker-compose up -d --build account
 	docker-compose logs -f account
 

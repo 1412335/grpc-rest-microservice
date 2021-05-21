@@ -33,18 +33,17 @@ func NewAccountService(dal *postgres.DataAccessLayer) pb.AccountServiceServer {
 }
 
 // get user by id from redis & db
-func (u *accountServiceImpl) getAccountByID(ctx context.Context, id string) (*model.Account, error) {
-	account := &model.Account{ID: id}
-	logger := u.logger.For(ctx).With(zap.String("id", id))
+func (u *accountServiceImpl) getAccountByID(ctx context.Context, account *model.Account) error {
+	logger := u.logger.With(zap.String("id", account.ID), zap.String("userId", account.UserID)).For(ctx)
 	// get from cache
 	if e := account.GetCache(); e != nil {
 		logger.Error("Get account cache", zap.Error(e))
 	} else {
-		return account, nil
+		return nil
 	}
-	err := u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// find user by id
-		if e := tx.Where(&model.Account{ID: id}).First(account).Error; e == gorm.ErrRecordNotFound {
+		if e := tx.First(account).Error; e == gorm.ErrRecordNotFound {
 			return errorSrv.ErrAccountNotFound
 		} else if e != nil {
 			logger.Error("Lookup account", zap.Error(e))
@@ -56,10 +55,6 @@ func (u *accountServiceImpl) getAccountByID(ctx context.Context, id string) (*mo
 		}
 		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
-	return account, err
 }
 
 // build query statement & get list users
@@ -196,11 +191,14 @@ func (u *accountServiceImpl) Update(ctx context.Context, req *pb.UpdateAccountRe
 	if req.GetAccount().GetId() == "" {
 		return nil, errorSrv.ErrMissingAccountID
 	}
+	account := &model.Account{
+		UserID: req.GetAccount().GetUserId(),
+		ID:     req.GetAccount().GetId(),
+	}
 	rsp := &pb.UpdateAccountResponse{}
 	err := u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// find user by id
-		account, e := u.getAccountByID(tx.Statement.Context, req.GetAccount().GetId())
-		if e != nil {
+		if e := u.getAccountByID(tx.Statement.Context, account); e != nil {
 			return e
 		}
 		u.logger.For(ctx).Info("mask", zap.Strings("path", req.GetUpdateMask().GetPaths()))

@@ -51,23 +51,33 @@ gen-gateway-unix:
 	docker run --rm --name protoc-gen -v `pwd`:/defs namely/gen-grpc-gateway -f . -s ServiceA -o ..\..\..\pkg\api\v2\gen\grpc-gateway
 # docker run --rm --name protoc-gen -v `pwd`:/defs namely/protoc-all -d . -l go --with-gateway
 
-# gen openapi
 .PHONY: gen-openapi
-gen-openapi:
+gen-openapi: ## gen statik openapi
 	@echo "====gen openapi===="
 	sh ./script/gen-openapi.sh
 
-.PHONY: grpc
-grpc: clean
-	@echo "====Run grpc server with docker===="
-	# docker-compose up -d mysql
-	# sleep 20s
-	docker-compose up -d --build
+.PHONY: run
+run: clean run-tracing ## Setup env && Run service v3
+	@echo "====Running postgres===="
+	docker-compose up -d postgres
+	sleep 10s
+	@echo "====Running v3===="
+	docker-compose up -d --build v3
+	docker-compose logs -f v3
 
-# https://github.com/ktr0731/evans
-# Evans cli: calling grpc service (reflection.Register(server))
+.PHONY: build
+build: ## Build service v3
+	@echo "====Build v3===="
+	docker-compose up --build v3
+
+.PHONY: run-tracing
+run-tracing: ## Running tracing containers
+	# docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions
+	# docker plugin ls
+	docker-compose up -d grafana prometheus loki jaeger
+
 .PHONY: cli
-cli:
+cli: ## Evans cli: calling grpc service (reflection.Register(server)) https://github.com/ktr0731/evans
 	evans -r repl -p 8080
 
 v2cli:
@@ -86,23 +96,6 @@ v2curl:
 	@echo ""
 	curl -H "x-request-id:1" -X POST localhost:8001/v2/extra/post -d '{"timestamp": 7000}'
 
-# run grpc using docker
-.PHONY: service-build-run
-service-build-run:
-	@echo "===build grpc service image==="
-	docker build --build-arg GRPC_PORT=9090 -t grpc:service -f Dockerfile.service .
-	@echo ""
-	@echo "===run grpc service container==="
-	docker run --rm --name grpc-service -p 9090:9090 grpc:service
-
-.PHONY: gateway-build-run
-gateway-build-run:
-	@echo "===build grpc gateway image==="
-	docker build --build-arg GRPC_HOST=localhost:9090 --build-arg PROXY_PORT=8080 -t grpc-gateway:gw -f Dockerfile .
-	@echo ""
-	@echo "===run grpc gateway container==="
-	docker run --rm --name grpc-gw -p 8080:8080 grpc-gateway:gw
-
 # grpc-web with envoy & node client
 .PHONY: grpc-web
 grpc-web:
@@ -114,23 +107,24 @@ grpc-web:
 grpc-web-client:
 	docker-compose -f docker-compose.client.yml up --build client-web
 
-# gofmt
 .PHONY: fmt
-fmt:
+fmt: ## gofmt
 	go fmt -mod=mod $(go list ./... | grep -v /pkg/api/)
 
-# go-lint
 .PHONY: lint
-lint: fmt
+lint: fmt ## gofmt & golangci-lint
 	golangci-lint run $(go list ./... | grep -v /vendor/)
 
 .PHONY: test
-test: lint
+test: lint ## gofmt & golangci-lint & go test
 	go test -v -short -race -coverprofile=coverage.out -covermode=atomic $(go list ./... | grep -v /vendor/)
 
-# cleaning
+.PHONY: cover
+cover: test  ## Run unit tests and open the coverage report
+	go tool cover -html=coverage.out
+
 .PHONY: clean
-clean:
+clean: ## stop containers & clean go test result
 	@echo "====cleaning env==="
 	docker-compose down -v --remove-orphans
 	rm -rf ./docker/mysql/data
@@ -138,10 +132,6 @@ clean:
 	# docker rm $(docker ps -aq -f "status=exited")
 	go clean -testcache
 	rm -f coverage.out
-
-.PHONY: cover
-cover: test  ## Run unit tests and open the coverage report
-	go tool cover -html=coverage.out
 
 .PHONY: help
 help:  ## Print usage information
