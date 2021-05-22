@@ -54,9 +54,7 @@ func (a *Account) genCacheKey() string {
 
 func (a *Account) GetCache() error {
 	var bytes []byte
-	if err := cache.Get(a.genCacheKey(), &bytes); err == cache.ErrCacheNotAvailable {
-		return nil
-	} else if err != nil {
+	if err := cache.Get(a.genCacheKey(), &bytes); err != nil {
 		return err
 	}
 	if err := json.Unmarshal(bytes, a); err != nil {
@@ -113,6 +111,9 @@ func (a *Account) BeforeCreate(tx *gorm.DB) error {
 	if a.Name == "" {
 		a.Name = fmt.Sprintf("%s.%s", a.UserID, a.Bank)
 	}
+	// go (nano) vs postgres (milli)
+	a.CreatedAt = time.Now().Round(time.Millisecond)
+	a.UpdatedAt = a.CreatedAt
 	return nil
 }
 
@@ -128,6 +129,8 @@ func (a *Account) BeforeUpdate(tx *gorm.DB) error {
 	if a.Name == "" {
 		a.Name = fmt.Sprintf("%s.%s", a.UserID, a.Bank)
 	}
+	// go (nano) vs postgres (milli)
+	a.UpdatedAt = time.Now().Round(time.Millisecond)
 	return nil
 }
 

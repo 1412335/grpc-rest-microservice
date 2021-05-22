@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"time"
 
 	pb "account/api"
 	errorSrv "account/error"
@@ -69,7 +70,7 @@ func (u *accountServiceImpl) getAccounts(ctx context.Context, req *pb.ListAccoun
 		psql = psql.Where("id = ?", req.GetId().Value)
 	}
 	if req.GetName() != nil {
-		psql = psql.Where("name LIKE '%?%'", req.GetName().Value)
+		psql = psql.Where("name LIKE ?", fmt.Sprintf("%%%s%%", req.GetName().Value))
 	}
 	if req.GetBalanceMin() != nil {
 		psql = psql.Where("balance >= ?", req.GetBalanceMin().Value)
@@ -78,10 +79,10 @@ func (u *accountServiceImpl) getAccounts(ctx context.Context, req *pb.ListAccoun
 		psql = psql.Where("balance <= ?", req.GetBalanceMax().Value)
 	}
 	if req.GetCreatedSince() != nil {
-		psql = psql.Where("created_at >= ?", req.GetCreatedSince())
+		psql = psql.Where("created_at >= ?", req.GetCreatedSince().AsTime())
 	}
 	if req.GetOlderThen() != nil {
-		psql = psql.Where("created_at >= CURRENT_TIMESTAMP - INTERVAL (?)", req.GetOlderThen())
+		psql = psql.Where("created_at >= ?", time.Now().Add(req.GetOlderThen().AsDuration()))
 	}
 	// exec
 	if err := psql.Order("created_at desc").Find(&accounts).Error; err != nil {
@@ -171,10 +172,8 @@ func (u *accountServiceImpl) Delete(ctx context.Context, req *pb.DeleteAccountRe
 		return nil, errorSrv.ErrMissingAccountID
 	}
 	err := u.dal.GetDatabase().Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where(req.GetId()).Delete(&model.Account{}).Error; err == gorm.ErrRecordNotFound {
-			return errorSrv.ErrAccountNotFound
-		} else if err != nil {
-			u.logger.For(ctx).Error("Connecting db", zap.Error(err))
+		if err := tx.Delete(&model.Account{ID: req.GetId()}).Error; err != nil {
+			u.logger.For(ctx).Error("Delete account", zap.Error(err))
 			return errorSrv.ErrConnectDB
 		}
 		return nil

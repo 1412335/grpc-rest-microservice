@@ -134,6 +134,8 @@ issues:
         - gomnd
         - dupl
         - scopelint
+        - gosec
+        - nolintlint
 
     # https://github.com/go-critic/go-critic/issues/926
     - linters:

@@ -25,10 +25,10 @@ test: lint ## gofmt & golangci-lint & go test
 
 .PHONY: cover
 cover: test  ## Run unit tests and open the coverage report
-	go tool cover -html=coverage.out
+	go tool cover -html=coverage.out -o coverage.html
 
 # export SSH_PRIVATE_KEY=$(cat ~/.ssh/id_ed25519)
-run: clean test ## clean && lint && test && build & run service
+run: clean cover ## clean && lint && test && build & run service
 	docker-compose up -d --build account
 	docker-compose logs -f account
 
@@ -41,7 +41,7 @@ clean: ## cleaning
 	@echo "====cleaning env==="
 	docker-compose down -v --remove-orphans
 	go clean -testcache
-	rm -f coverage.out
+	rm -f coverage.*
 
 .PHONY: help
 help:  ## Print usage information

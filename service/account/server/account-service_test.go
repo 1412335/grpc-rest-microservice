@@ -5,50 +5,58 @@ import (
 	errorSrv "account/error"
 	"account/model"
 	"context"
-	"fmt"
+	"math/rand"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/postgres"
+	"github.com/1412335/grpc-rest-microservice/pkg/errors"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func newServiceError(t *testing.T) pb.AccountServiceServer {
-	config := configs.ServiceConfig{
-		Database: &configs.Database{
-			Host: "abc",
-			Port: "1000",
-		},
-	}
-	dal, err := postgres.NewDataAccessLayer(context.Background(), config.Database)
-	require.Error(t, err)
-	require.Nil(t, dal)
-	return nil
+func init() {
+	rand.Seed(time.Now().UnixNano())
 }
 
-func newService(t *testing.T) pb.AccountServiceServer {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	// service configs
-	config := configs.ServiceConfig{
-		Database: &configs.Database{
-			Host:           "postgres",
-			Port:           "5432",
-			User:           "root",
-			Password:       "root",
-			Scheme:         "users",
-			MaxIdleConns:   10,
-			MaxOpenConns:   100,
-			ConnectTimeout: 1 * time.Hour,
-		},
-	}
+var letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-	// init postgres
-	dal, err := postgres.NewDataAccessLayer(ctx, config.Database)
-	fmt.Printf("err: %v", err)
+func randSeq(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
+}
+
+func connectDBError(t *testing.T) *postgres.DataAccessLayer {
+	dal, err := postgres.NewDataAccessLayer(context.Background(), &configs.Database{
+		Host: "abc",
+		Port: "1000",
+	})
+	require.Error(t, err)
+	require.Nil(t, dal)
+	return dal
+}
+
+func connectDB(t *testing.T) *postgres.DataAccessLayer {
+	dal, err := postgres.NewDataAccessLayer(context.Background(), &configs.Database{
+		Host:           "localhost",
+		Port:           "5432",
+		User:           "root",
+		Password:       "root",
+		Scheme:         "users",
+		MaxIdleConns:   10,
+		MaxOpenConns:   100,
+		ConnectTimeout: 1 * time.Hour,
+		Debug:          true,
+	})
 	require.NoError(t, err)
 	require.NotNil(t, dal)
 	require.NotNil(t, dal.GetDatabase())
@@ -64,61 +72,102 @@ func newService(t *testing.T) pb.AccountServiceServer {
 	require.NoError(t, err)
 
 	// create server
-	return NewAccountService(dal)
+	return dal
+}
+
+func newImplService(t *testing.T) *accountServiceImpl {
+	// create service
+	return &accountServiceImpl{
+		dal:    connectDB(t),
+		logger: log.NewFactory(log.WithLevel("DEBUG")),
+	}
 }
 
 func TestNewAccountService(t *testing.T) {
 	tests := []struct {
 		name    string
-		caller  func(t *testing.T) pb.AccountServiceServer
+		caller  func(t *testing.T) *postgres.DataAccessLayer
 		wantErr bool
 	}{
 		{
 			name:    "ConnectDBFailed",
-			caller:  newServiceError,
+			caller:  connectDBError,
 			wantErr: true,
 		},
 		{
 			name:    "Success",
-			caller:  newService,
+			caller:  connectDB,
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			srv := tt.caller(t)
+			dal := tt.caller(t)
 			if !tt.wantErr {
-				require.NotNil(t, srv)
+				require.NotNil(t, dal)
+				u := NewAccountService(dal)
+				require.NotNil(t, u)
+			} else {
+				require.Nil(t, dal)
 			}
 		})
 	}
 }
 
 func Test_accountServiceImpl_getAccountByID(t *testing.T) {
-	type fields struct {
-		dal    *postgres.DataAccessLayer
-		logger log.Factory
+	// create service
+	srv := newImplService(t)
+	// create account
+	account := &pb.CreateAccountRequest{
+		UserId:  "4a40f3c8-b699-4716-9334-3ec1330c9aee",
+		Name:    "test",
+		Bank:    pb.Bank_ACB,
+		Balance: 10000,
 	}
-	type args struct {
-		ctx     context.Context
-		account *model.Account
-	}
+	accountRsp, err := srv.Create(context.TODO(), account)
+	require.NoError(t, err)
+	require.NotNil(t, accountRsp)
+
 	tests := []struct {
 		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		ctx     context.Context
+		account *model.Account
+		err     error
 	}{
-		// TODO: Add test cases.
+		{
+			name: "ErrAccountNotFound",
+			ctx:  context.TODO(),
+			account: &model.Account{
+				ID: "1",
+			},
+			err: errorSrv.ErrAccountNotFound,
+		},
+		{
+			name: "Success",
+			ctx:  context.TODO(),
+			account: &model.Account{
+				ID:     accountRsp.Account.Id,
+				UserID: accountRsp.Account.UserId,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := &accountServiceImpl{
-				dal:    tt.fields.dal,
-				logger: tt.fields.logger,
-			}
-			if err := u.getAccountByID(tt.args.ctx, tt.args.account); (err != nil) != tt.wantErr {
-				t.Errorf("accountServiceImpl.getAccountByID() error = %v, wantErr %v", err, tt.wantErr)
+			err := srv.getAccountByID(tt.ctx, tt.account)
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+				require.NotNil(t, tt.account)
+				require.Empty(t, tt.account.Name)
+				require.Empty(t, tt.account.Bank)
+				require.Empty(t, tt.account.Balance)
+				require.Empty(t, tt.account.CreatedAt)
+				require.Empty(t, tt.account.UpdatedAt)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, tt.account)
+				if !reflect.DeepEqual(tt.account.Transform2GRPC(), accountRsp.Account) {
+					t.Errorf("accountServiceImpl.getAccountByID() = %v, want %v", tt.account.Transform2GRPC(), accountRsp.Account)
+				}
 			}
 		})
 	}
@@ -198,7 +247,10 @@ func Test_accountServiceImpl_getAccountsByUserID(t *testing.T) {
 
 func Test_accountServiceImpl_Create(t *testing.T) {
 	// create service
-	srv := newService(t)
+	srv := &accountServiceImpl{
+		dal:    connectDB(t),
+		logger: log.NewFactory(log.WithLevel("DEBUG")),
+	}
 
 	tests := []struct {
 		name string
@@ -222,10 +274,32 @@ func Test_accountServiceImpl_Create(t *testing.T) {
 			err: errorSrv.ErrInvalidAccountBalance,
 		},
 		{
-			name: "Success",
+			name: "ErrValidateNameMaxLen100",
 			ctx:  context.TODO(),
 			req: &pb.CreateAccountRequest{
 				UserId:  "1",
+				Balance: 10000,
+				Name:    randSeq(101),
+				Bank:    pb.Bank_ACB,
+			},
+			err: errors.BadRequest("validate failed", map[string]string{"Name": "greater than max"}),
+		},
+		{
+			// default: Bank_VCB
+			name: "SuccessWithDefaultBank",
+			ctx:  context.TODO(),
+			req: &pb.CreateAccountRequest{
+				UserId:  "4a40f3c8-b699-4716-9334-3ec1330c9aee",
+				Balance: 100000,
+				Name:    randSeq(100),
+			},
+			// err: errors.BadRequest("validate failed", map[string]string{}),
+		},
+		{
+			name: "Success",
+			ctx:  context.TODO(),
+			req: &pb.CreateAccountRequest{
+				UserId:  "4a40f3c8-b699-4716-9334-3ec1330c9aee",
 				Name:    "test",
 				Bank:    pb.Bank_ACB,
 				Balance: 10000,
@@ -253,36 +327,59 @@ func Test_accountServiceImpl_Create(t *testing.T) {
 }
 
 func Test_accountServiceImpl_Delete(t *testing.T) {
-	type fields struct {
-		dal    *postgres.DataAccessLayer
-		logger log.Factory
+	// create service
+	srv := newImplService(t)
+	// create account
+	account := &pb.CreateAccountRequest{
+		UserId:  "4a40f3c8-b699-4716-9334-3ec1330c9aee",
+		Name:    "test",
+		Bank:    pb.Bank_ACB,
+		Balance: 10000,
 	}
-	type args struct {
-		ctx context.Context
-		req *pb.DeleteAccountRequest
-	}
+	accountRsp, err := srv.Create(context.TODO(), account)
+	require.NoError(t, err)
+	require.NotNil(t, accountRsp)
+
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    *pb.DeleteAccountResponse
-		wantErr bool
+		name string
+		ctx  context.Context
+		req  *pb.DeleteAccountRequest
+		err  error
 	}{
-		// TODO: Add test cases.
+		{
+			name: "ErrMissingAccountID",
+			ctx:  context.TODO(),
+			req:  &pb.DeleteAccountRequest{},
+			err:  errorSrv.ErrMissingAccountID,
+		},
+		// {
+		// 	name: "ErrAccountNotFound",
+		// 	ctx:  context.TODO(),
+		// 	req: &pb.DeleteAccountRequest{
+		// 		Id: "1",
+		// 	},
+		// 	err: errorSrv.ErrAccountNotFound,
+		// },
+		{
+			name: "Success",
+			ctx:  context.TODO(),
+			req: &pb.DeleteAccountRequest{
+				Id: accountRsp.Account.Id,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := &accountServiceImpl{
-				dal:    tt.fields.dal,
-				logger: tt.fields.logger,
-			}
-			got, err := u.Delete(tt.args.ctx, tt.args.req)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("accountServiceImpl.Delete() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("accountServiceImpl.Delete() = %v, want %v", got, tt.want)
+			got, err := srv.Delete(tt.ctx, tt.req)
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+				require.Nil(t, got)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, got)
+				require.Equal(t, tt.req.Id, got.Id)
+				err := srv.getAccountByID(tt.ctx, &model.Account{UserID: accountRsp.Account.UserId, ID: accountRsp.Account.Id})
+				require.ErrorIs(t, err, errorSrv.ErrAccountNotFound)
 			}
 		})
 	}
@@ -325,66 +422,116 @@ func Test_accountServiceImpl_Update(t *testing.T) {
 }
 
 func Test_accountServiceImpl_List(t *testing.T) {
-	type fields struct {
-		dal    *postgres.DataAccessLayer
-		logger log.Factory
-	}
-	type args struct {
-		ctx context.Context
-		req *pb.ListAccountsRequest
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    *pb.ListAccountsResponse
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			u := &accountServiceImpl{
-				dal:    tt.fields.dal,
-				logger: tt.fields.logger,
-			}
-			got, err := u.List(tt.args.ctx, tt.args.req)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("accountServiceImpl.List() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("accountServiceImpl.List() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
+	// create service
+	srv := newImplService(t)
 
-func Test_accountServiceImpl_ListStream(t *testing.T) {
-	type fields struct {
-		dal    *postgres.DataAccessLayer
-		logger log.Factory
+	// create accounts
+	reqAccs := []*pb.CreateAccountRequest{
+		{
+			UserId:  "4a40f3c8-b699-4716-9334-3ec1330c9aee",
+			Name:    "test-1",
+			Bank:    pb.Bank_ACB,
+			Balance: 10000,
+		},
+		{
+			UserId:  "4a40f3c8-b699-4716-9334-3ec1330c9aee",
+			Name:    "test-2",
+			Bank:    pb.Bank_VCB,
+			Balance: 20000,
+		},
 	}
-	type args struct {
-		req       *pb.ListAccountsRequest
-		streamSrv pb.AccountService_ListStreamServer
+	rspAccCreated := make([]*pb.Account, len(reqAccs))
+	for i, acc := range reqAccs {
+		rsp, err := srv.Create(context.TODO(), acc)
+		require.NoError(t, err)
+		require.NotNil(t, rsp.Account)
+		require.Equal(t, acc.UserId, rsp.Account.UserId)
+		require.Equal(t, acc.Name, rsp.Account.Name)
+		require.Equal(t, acc.Bank, rsp.Account.Bank)
+		require.Equal(t, acc.Balance, rsp.Account.Balance)
+		rspAccCreated[i] = rsp.Account
+		<-time.After(1 * time.Second)
 	}
+	sort.Slice(rspAccCreated, func(i, j int) bool {
+		return rspAccCreated[i].CreatedAt.AsTime().After(rspAccCreated[j].CreatedAt.AsTime())
+	})
+
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
+		name string
+		req  *pb.ListAccountsRequest
+		want []*pb.Account
+		err  error
 	}{
-		// TODO: Add test cases.
+		{
+			name: "ErrAccountNotFound",
+			req: &pb.ListAccountsRequest{
+				Id: wrapperspb.String("1"),
+			},
+			err: errorSrv.ErrAccountNotFound,
+		},
+		{
+			name: "SuccessWithID",
+			req: &pb.ListAccountsRequest{
+				Id: wrapperspb.String(rspAccCreated[0].Id),
+			},
+			want: rspAccCreated[:1],
+		},
+		{
+			name: "SuccessWithUserID",
+			req: &pb.ListAccountsRequest{
+				UserId: wrapperspb.String(rspAccCreated[0].UserId),
+			},
+			want: rspAccCreated,
+		},
+		{
+			name: "SuccessWithBalanceMin",
+			req: &pb.ListAccountsRequest{
+				BalanceMin: wrapperspb.Double(15000),
+			},
+			want: rspAccCreated[:1],
+		},
+		{
+			name: "SuccessWithBalanceMax",
+			req: &pb.ListAccountsRequest{
+				BalanceMax: wrapperspb.Double(5000),
+			},
+			err: errorSrv.ErrAccountNotFound,
+		},
+		{
+			name: "SuccessWithName",
+			req: &pb.ListAccountsRequest{
+				Name: wrapperspb.String("test"),
+			},
+			want: rspAccCreated,
+		},
+		{
+			name: "SuccessWithCreatedSinceLastMinute",
+			req: &pb.ListAccountsRequest{
+				CreatedSince: timestamppb.New(time.Now().Add(-1 * time.Minute)),
+			},
+			want: rspAccCreated,
+		},
+		{
+			name: "SuccessWithCreatedFromLastMinute",
+			req: &pb.ListAccountsRequest{
+				OlderThen: durationpb.New(-1 * time.Minute),
+			},
+			want: rspAccCreated,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := &accountServiceImpl{
-				dal:    tt.fields.dal,
-				logger: tt.fields.logger,
-			}
-			if err := u.ListStream(tt.args.req, tt.args.streamSrv); (err != nil) != tt.wantErr {
-				t.Errorf("accountServiceImpl.ListStream() error = %v, wantErr %v", err, tt.wantErr)
+			rsp, err := srv.List(context.TODO(), tt.req)
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+				require.Nil(t, rsp)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, rsp.Accounts)
+				require.Len(t, rsp.Accounts, len(tt.want))
+				if !reflect.DeepEqual(rsp.Accounts, tt.want) {
+					t.Errorf("accountServiceImpl.List() = %v, want %v", rsp.Accounts, tt.want)
+				}
 			}
 		})
 	}

@@ -3,7 +3,7 @@ module account
 go 1.15
 
 require (
-	github.com/1412335/grpc-rest-microservice v0.0.0-20210520085526-90de441cce43
+	github.com/1412335/grpc-rest-microservice v0.0.0-20210521082415-f63016809216
 	github.com/gin-gonic/gin v1.7.1 // indirect
 	github.com/go-playground/validator/v10 v10.6.1 // indirect
 	github.com/go-redis/cache/v8 v8.4.1 // indirect
@@ -28,7 +28,7 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/stretchr/testify v1.7.0
-	github.com/uber/jaeger-client-go v2.28.0+incompatible // indirect
+	github.com/uber/jaeger-client-go v2.29.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/ugorji/go v1.2.6 // indirect
 	github.com/unrolled/secure v1.0.9 // indirect
@@ -36,8 +36,9 @@ require (
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a // indirect
 	golang.org/x/exp v0.0.0-20210514180818-737f94c0881e // indirect
+	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	google.golang.org/genproto v0.0.0-20210518161634-ec7691c0a37d
+	google.golang.org/genproto v0.0.0-20210520160233-290a1ae68a05
 	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.26.0
 	gopkg.in/ini.v1 v1.62.0 // indirect

@@ -1,6 +1,8 @@
 package utils
 
-import "golang.org/x/crypto/bcrypt"
+import (
+	"golang.org/x/crypto/bcrypt"
+)
 
 // nolint:unused
 func contains(s []int, e int) bool {
