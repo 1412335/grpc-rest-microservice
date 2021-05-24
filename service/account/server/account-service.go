@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
 )
 
@@ -109,11 +110,12 @@ func (u *accountServiceImpl) getAccountsByUserID(ctx context.Context, userID str
 	}
 	var accounts []model.Account
 	// lookup user by id
-	if e := u.dal.GetDatabase().Where(&model.Account{UserID: userID}).Find(&accounts).Error; e == gorm.ErrRecordNotFound {
-		return nil, errorSrv.ErrUserNotFound
-	} else if e != nil {
+	if e := u.dal.GetDatabase().Where(&model.Account{UserID: userID}).Order("created_at desc").Find(&accounts).Error; e != nil {
 		u.logger.For(ctx).Error("Lookup accounts", zap.String("userID", userID), zap.Error(e))
 		return nil, errorSrv.ErrConnectDB
+	}
+	if len(accounts) == 0 {
+		return nil, errorSrv.ErrAccountNotFound
 	}
 	// fetch accounts belong to the user
 	rsp := make([]*pb.Account, len(accounts))
@@ -209,11 +211,17 @@ func (u *accountServiceImpl) Update(ctx context.Context, req *pb.UpdateAccountRe
 				switch path {
 				case "id":
 					return errorSrv.ErrUpdateAccountID
+				case "user_id":
+					return errorSrv.ErrUpdateAccountUserID
+				case "bank":
+					return errorSrv.ErrUpdateAccountBank
 				case "name":
 					account.Name = req.GetAccount().GetName()
+				case "balance":
+					account.Balance = req.GetAccount().GetBalance()
 				default:
 					return errors.BadRequest("invalid field specified", map[string]string{
-						"update_mask": fmt.Sprintf("The user message type does not have a field called %q", path),
+						"update_mask": fmt.Sprintf("account does not have field %q", path),
 					})
 				}
 			}
@@ -224,6 +232,7 @@ func (u *accountServiceImpl) Update(ctx context.Context, req *pb.UpdateAccountRe
 		}
 		// response
 		rsp.Account = account.Transform2GRPC()
+		rsp.Account.UpdatedAt = timestamppb.New(account.UpdatedAt)
 		return nil
 	})
 	if err != nil {

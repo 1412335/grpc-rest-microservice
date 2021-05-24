@@ -22,7 +22,7 @@ type Account struct {
 	UserID    string    `json:"user_id" validate:"nonzero"`
 	Name      string    `json:"name" validate:"max=100"`
 	Bank      string    `json:"bank" validate:"nonzero"`
-	Balance   float64   `json:"balance"`
+	Balance   float64   `json:"balance" validate:"min=0"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -45,7 +45,8 @@ func (a *Account) Transform2GRPC() *pb.Account {
 func (a *Account) UpdateFromGRPC(acc *pb.Account) {
 	a.UserID = acc.GetUserId()
 	a.Name = acc.GetName()
-	a.Bank = acc.GetBank().String()
+	// a.Bank = acc.GetBank().String()
+	a.Balance = acc.GetBalance()
 }
 
 func (a *Account) genCacheKey() string {

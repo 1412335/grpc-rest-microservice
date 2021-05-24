@@ -20,4 +20,6 @@ var (
 	ErrInvalidAccountBalance = errors.BadRequest("Invalid account balance (>=0)", map[string]string{"balance": "greater than zero"})
 	ErrAccountNotFound       = errors.NotFound("Not found user account", map[string]string{"account": "Account not found"})
 	ErrUpdateAccountID       = errors.BadRequest("cannot update id", map[string]string{"update_mask": "cannot update id field"})
+	ErrUpdateAccountUserID   = errors.BadRequest("cannot update user_id", map[string]string{"update_mask": "cannot update user_id field"})
+	ErrUpdateAccountBank     = errors.BadRequest("cannot update bank", map[string]string{"update_mask": "cannot update bank field"})
 )

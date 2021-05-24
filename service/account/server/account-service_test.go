@@ -17,6 +17,7 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -174,72 +175,205 @@ func Test_accountServiceImpl_getAccountByID(t *testing.T) {
 }
 
 func Test_accountServiceImpl_getAccounts(t *testing.T) {
-	type fields struct {
-		dal    *postgres.DataAccessLayer
-		logger log.Factory
+	// create service
+	srv := newImplService(t)
+
+	// create accounts
+	reqAccs := []*pb.CreateAccountRequest{
+		{
+			UserId:  "4a40f3c8-b699-4716-9334-3ec1330c9aee",
+			Name:    "test-1",
+			Bank:    pb.Bank_ACB,
+			Balance: 10000,
+		},
+		{
+			UserId:  "4a40f3c8-b699-4716-9334-3ec1330c9aee",
+			Name:    "test-2",
+			Bank:    pb.Bank_VCB,
+			Balance: 20000,
+		},
 	}
-	type args struct {
-		ctx context.Context
-		req *pb.ListAccountsRequest
+	rspAccCreated := make([]*pb.Account, len(reqAccs))
+	for i, acc := range reqAccs {
+		rsp, err := srv.Create(context.TODO(), acc)
+		require.NoError(t, err)
+		require.NotNil(t, rsp.Account)
+		require.Equal(t, acc.UserId, rsp.Account.UserId)
+		require.Equal(t, acc.Name, rsp.Account.Name)
+		require.Equal(t, acc.Bank, rsp.Account.Bank)
+		require.Equal(t, acc.Balance, rsp.Account.Balance)
+		rspAccCreated[i] = rsp.Account
+		<-time.After(1 * time.Second)
 	}
+	sort.Slice(rspAccCreated, func(i, j int) bool {
+		return rspAccCreated[i].CreatedAt.AsTime().After(rspAccCreated[j].CreatedAt.AsTime())
+	})
+
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []*pb.Account
-		wantErr bool
+		name string
+		ctx  context.Context
+		req  *pb.ListAccountsRequest
+		want []*pb.Account
+		err  error
 	}{
-		// TODO: Add test cases.
+		{
+			name: "ErrAccountNotFound",
+			req: &pb.ListAccountsRequest{
+				Id: wrapperspb.String("1"),
+			},
+			err: errorSrv.ErrAccountNotFound,
+		},
+		{
+			name: "SuccessWithID",
+			req: &pb.ListAccountsRequest{
+				Id: wrapperspb.String(rspAccCreated[0].Id),
+			},
+			want: rspAccCreated[:1],
+		},
+		{
+			name: "SuccessWithUserID",
+			req: &pb.ListAccountsRequest{
+				UserId: wrapperspb.String(rspAccCreated[0].UserId),
+			},
+			want: rspAccCreated,
+		},
+		{
+			name: "SuccessWithBalanceMin",
+			req: &pb.ListAccountsRequest{
+				BalanceMin: wrapperspb.Double(15000),
+			},
+			want: rspAccCreated[:1],
+		},
+		{
+			name: "SuccessWithBalanceMax",
+			req: &pb.ListAccountsRequest{
+				BalanceMax: wrapperspb.Double(5000),
+			},
+			err: errorSrv.ErrAccountNotFound,
+		},
+		{
+			name: "SuccessWithName",
+			req: &pb.ListAccountsRequest{
+				Name: wrapperspb.String("test"),
+			},
+			want: rspAccCreated,
+		},
+		{
+			name: "SuccessWithCreatedSinceLastMinute",
+			req: &pb.ListAccountsRequest{
+				CreatedSince: timestamppb.New(time.Now().Add(-1 * time.Minute)),
+			},
+			want: rspAccCreated,
+		},
+		{
+			name: "SuccessWithCreatedFromLastMinute",
+			req: &pb.ListAccountsRequest{
+				OlderThen: durationpb.New(-1 * time.Minute),
+			},
+			want: rspAccCreated,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := &accountServiceImpl{
-				dal:    tt.fields.dal,
-				logger: tt.fields.logger,
-			}
-			got, err := u.getAccounts(tt.args.ctx, tt.args.req)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("accountServiceImpl.getAccounts() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("accountServiceImpl.getAccounts() = %v, want %v", got, tt.want)
+			rsp, err := srv.getAccounts(tt.ctx, tt.req)
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+				require.Nil(t, rsp)
+			} else {
+				require.NoError(t, err)
+				require.Len(t, rsp, len(tt.want))
+				if !reflect.DeepEqual(rsp, tt.want) {
+					t.Errorf("accountServiceImpl.getAccounts() = %v, want %v", rsp, tt.want)
+				}
 			}
 		})
 	}
 }
 
 func Test_accountServiceImpl_getAccountsByUserID(t *testing.T) {
-	type fields struct {
-		dal    *postgres.DataAccessLayer
-		logger log.Factory
+	// create service
+	srv := newImplService(t)
+
+	// create accounts
+	reqAccs := []*pb.CreateAccountRequest{
+		{
+			UserId:  "1",
+			Name:    "test-1",
+			Bank:    pb.Bank_ACB,
+			Balance: 10000,
+		},
+		{
+			UserId:  "2",
+			Name:    "test-2.1",
+			Bank:    pb.Bank_VCB,
+			Balance: 20000,
+		},
+		{
+			UserId:  "2",
+			Name:    "test-2.2",
+			Bank:    pb.Bank_VIB,
+			Balance: 5000,
+		},
 	}
-	type args struct {
+	rspAccCreated := make([]*pb.Account, len(reqAccs))
+	for i, acc := range reqAccs {
+		rsp, err := srv.Create(context.TODO(), acc)
+		require.NoError(t, err)
+		require.NotNil(t, rsp.Account)
+		require.Equal(t, acc.UserId, rsp.Account.UserId)
+		require.Equal(t, acc.Name, rsp.Account.Name)
+		require.Equal(t, acc.Bank, rsp.Account.Bank)
+		require.Equal(t, acc.Balance, rsp.Account.Balance)
+		rspAccCreated[i] = rsp.Account
+		<-time.After(1 * time.Second)
+	}
+	sort.Slice(rspAccCreated, func(i, j int) bool {
+		return rspAccCreated[i].CreatedAt.AsTime().After(rspAccCreated[j].CreatedAt.AsTime())
+	})
+
+	tests := []struct {
+		name   string
 		ctx    context.Context
 		userID string
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    []*pb.Account
-		wantErr bool
+		want   []*pb.Account
+		err    error
 	}{
-		// TODO: Add test cases.
+		{
+			name: "ErrMissingUserID",
+			ctx:  context.TODO(),
+			err:  errorSrv.ErrMissingUserID,
+		},
+		{
+			name:   "ErrAccountNotFound",
+			ctx:    context.TODO(),
+			userID: "3",
+			err:    errorSrv.ErrAccountNotFound,
+		},
+		{
+			name:   "Success",
+			ctx:    context.TODO(),
+			userID: "1",
+			want:   rspAccCreated[2:],
+		},
+		{
+			name:   "SuccessMulti",
+			ctx:    context.TODO(),
+			userID: "2",
+			want:   rspAccCreated[:2],
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := &accountServiceImpl{
-				dal:    tt.fields.dal,
-				logger: tt.fields.logger,
-			}
-			got, err := u.getAccountsByUserID(tt.args.ctx, tt.args.userID)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("accountServiceImpl.getAccountsByUserID() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("accountServiceImpl.getAccountsByUserID() = %v, want %v", got, tt.want)
+			rsp, err := srv.getAccountsByUserID(tt.ctx, tt.userID)
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+				require.Nil(t, rsp)
+			} else {
+				require.NoError(t, err)
+				require.Len(t, rsp, len(tt.want))
+				if !reflect.DeepEqual(rsp, tt.want) {
+					t.Errorf("accountServiceImpl.getAccounts() = %v, want %v", rsp, tt.want)
+				}
 			}
 		})
 	}
@@ -320,7 +454,7 @@ func Test_accountServiceImpl_Create(t *testing.T) {
 				require.Equal(t, tt.req.Name, got.Account.Name)
 				require.Equal(t, tt.req.Bank, got.Account.Bank)
 				require.Equal(t, tt.req.Balance, got.Account.Balance)
-				require.LessOrEqual(t, timeCreated.UTC().Unix(), got.Account.CreatedAt.Seconds)
+				require.LessOrEqual(t, timeCreated.UTC().Second(), got.Account.CreatedAt.AsTime().Second())
 			}
 		})
 	}
@@ -386,36 +520,208 @@ func Test_accountServiceImpl_Delete(t *testing.T) {
 }
 
 func Test_accountServiceImpl_Update(t *testing.T) {
-	type fields struct {
-		dal    *postgres.DataAccessLayer
-		logger log.Factory
+	// create service
+	srv := newImplService(t)
+	// create account
+	account := &pb.CreateAccountRequest{
+		UserId:  "4a40f3c8-b699-4716-9334-3ec1330c9aee",
+		Name:    "test",
+		Bank:    pb.Bank_ACB,
+		Balance: 10000,
 	}
-	type args struct {
-		ctx context.Context
-		req *pb.UpdateAccountRequest
-	}
+	accountRsp, err := srv.Create(context.TODO(), account)
+	require.NoError(t, err)
+	require.NotNil(t, accountRsp)
+	require.NotNil(t, accountRsp.Account)
+	require.Equal(t, account.UserId, accountRsp.Account.UserId)
+	require.Equal(t, account.Name, accountRsp.Account.Name)
+	require.Equal(t, account.Bank, accountRsp.Account.Bank)
+	require.Equal(t, account.Balance, accountRsp.Account.Balance)
+
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    *pb.UpdateAccountResponse
-		wantErr bool
+		name string
+		ctx  context.Context
+		req  *pb.UpdateAccountRequest
+		err  error
 	}{
-		// TODO: Add test cases.
+		{
+			name: "ErrMissingAccountID",
+			ctx:  context.TODO(),
+			req: &pb.UpdateAccountRequest{
+				Account: &pb.Account{
+					Id: "",
+				},
+			},
+			err: errorSrv.ErrMissingAccountID,
+		},
+		{
+			name: "ErrAccountNotFound",
+			ctx:  context.TODO(),
+			req: &pb.UpdateAccountRequest{
+				Account: &pb.Account{
+					Id: "1",
+				},
+			},
+			err: errorSrv.ErrAccountNotFound,
+		},
+		{
+			name: "ErrUpdateAccountID",
+			ctx:  context.TODO(),
+			req: &pb.UpdateAccountRequest{
+				Account: &pb.Account{
+					Id: accountRsp.Account.Id,
+				},
+				UpdateMask: &fieldmaskpb.FieldMask{
+					Paths: []string{"id"},
+				},
+			},
+			err: errorSrv.ErrUpdateAccountID,
+		},
+		{
+			name: "ErrUpdateAccountUserID",
+			ctx:  context.TODO(),
+			req: &pb.UpdateAccountRequest{
+				Account: &pb.Account{
+					Id:     accountRsp.Account.Id,
+					UserId: "1",
+				},
+				UpdateMask: &fieldmaskpb.FieldMask{
+					Paths: []string{"user_id"},
+				},
+			},
+			err: errorSrv.ErrUpdateAccountUserID,
+		},
+		{
+			name: "ErrUpdateAccountBank",
+			ctx:  context.TODO(),
+			req: &pb.UpdateAccountRequest{
+				Account: &pb.Account{
+					Id:     accountRsp.Account.Id,
+					UserId: "1",
+					Bank:   pb.Bank_ACB,
+				},
+				UpdateMask: &fieldmaskpb.FieldMask{
+					Paths: []string{"bank"},
+				},
+			},
+			err: errorSrv.ErrUpdateAccountBank,
+		},
+		{
+			name: "ErrUpdateUnknowFields",
+			ctx:  context.TODO(),
+			req: &pb.UpdateAccountRequest{
+				Account: &pb.Account{
+					Id:     accountRsp.Account.Id,
+					UserId: "1",
+					Bank:   pb.Bank_ACB,
+				},
+				UpdateMask: &fieldmaskpb.FieldMask{
+					Paths: []string{"unknow", "id"},
+				},
+			},
+			err: errors.BadRequest("invalid field specified", map[string]string{
+				"update_mask": "account does not have field \"unknow\"",
+			}),
+		},
+		{
+			name: "ErrValidate",
+			ctx:  context.TODO(),
+			req: &pb.UpdateAccountRequest{
+				Account: &pb.Account{
+					Id:     accountRsp.Account.Id,
+					UserId: "1",
+					Name:   randSeq(101),
+					// Balance: -1,
+				},
+			},
+			err: errors.BadRequest("validate failed", map[string]string{
+				"Name": "greater than max",
+				// "Balance": "less than min",
+			}),
+		},
+		{
+			name: "ErrValidateWithUpdateMask",
+			ctx:  context.TODO(),
+			req: &pb.UpdateAccountRequest{
+				Account: &pb.Account{
+					Id:      accountRsp.Account.Id,
+					UserId:  "1",
+					Name:    randSeq(101),
+					Balance: -1,
+				},
+				UpdateMask: &fieldmaskpb.FieldMask{
+					Paths: []string{"balance"},
+				},
+			},
+			err: errors.BadRequest("validate failed", map[string]string{"Balance": "less than min"}),
+		},
+		{
+			name: "ErrValidateWithUpdateMaskMulti",
+			ctx:  context.TODO(),
+			req: &pb.UpdateAccountRequest{
+				Account: &pb.Account{
+					Id:      accountRsp.Account.Id,
+					UserId:  "1",
+					Name:    randSeq(101),
+					Balance: -1,
+				},
+				UpdateMask: &fieldmaskpb.FieldMask{
+					Paths: []string{
+						// "balance",
+						"name",
+					},
+				},
+			},
+			err: errors.BadRequest("validate failed", map[string]string{
+				"Name": "greater than max",
+				// "Balance": "less than min",
+			}),
+		},
+		{
+			name: "Success",
+			ctx:  context.TODO(),
+			req: &pb.UpdateAccountRequest{
+				Account: &pb.Account{
+					Id:      accountRsp.Account.Id,
+					UserId:  accountRsp.Account.UserId,
+					Name:    "test-updated",
+					Balance: accountRsp.Account.Balance + 100000,
+				},
+			},
+		},
+		{
+			name: "SuccessWithUpdateMask",
+			ctx:  context.TODO(),
+			req: &pb.UpdateAccountRequest{
+				Account: &pb.Account{
+					Id:      accountRsp.Account.Id,
+					UserId:  accountRsp.Account.UserId,
+					Name:    "test-updated-2",
+					Balance: accountRsp.Account.Balance + 200000,
+				},
+				UpdateMask: &fieldmaskpb.FieldMask{
+					Paths: []string{"balance", "name"},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := &accountServiceImpl{
-				dal:    tt.fields.dal,
-				logger: tt.fields.logger,
-			}
-			got, err := u.Update(tt.args.ctx, tt.args.req)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("accountServiceImpl.Update() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("accountServiceImpl.Update() = %v, want %v", got, tt.want)
+			timeUpdated := time.Now()
+			rsp, err := srv.Update(tt.ctx, tt.req)
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+				require.Nil(t, rsp)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, rsp)
+				require.NotNil(t, rsp.Account)
+				require.Equal(t, tt.req.Account.UserId, rsp.Account.UserId)
+				require.Equal(t, tt.req.Account.Name, rsp.Account.Name)
+				require.Equal(t, accountRsp.Account.Bank, rsp.Account.Bank)
+				require.Equal(t, tt.req.Account.Balance, rsp.Account.Balance)
+				require.LessOrEqual(t, timeUpdated.UTC().Second(), rsp.Account.UpdatedAt.AsTime().Second())
+				accountRsp.Account = rsp.Account
 			}
 		})
 	}
