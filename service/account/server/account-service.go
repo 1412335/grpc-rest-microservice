@@ -188,6 +188,7 @@ func (u *accountServiceImpl) Delete(ctx context.Context, req *pb.DeleteAccountRe
 	}, nil
 }
 
+// nolint:goconst
 func (u *accountServiceImpl) Update(ctx context.Context, req *pb.UpdateAccountRequest) (*pb.UpdateAccountResponse, error) {
 	if req.GetAccount().GetId() == "" {
 		return nil, errorSrv.ErrMissingAccountID

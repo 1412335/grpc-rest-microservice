@@ -14,5 +14,6 @@ import (
 func NewHandler(config *configs.ServiceConfig) proxy.Proxy {
 	return proxy.NewHandler(config, log.DefaultLogger, []proxy.RegisterServiceHandler{
 		pb.RegisterAccountServiceHandlerFromEndpoint,
+		pb.RegisterTransactionServiceHandlerFromEndpoint,
 	})
 }

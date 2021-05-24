@@ -62,8 +62,15 @@ func connectDB(t *testing.T) *postgres.DataAccessLayer {
 	require.NotNil(t, dal)
 	require.NotNil(t, dal.GetDatabase())
 
+	// migrate db
+	err = dal.GetDatabase().AutoMigrate(
+		&model.Account{},
+		&model.Transaction{},
+	)
+	require.NoError(t, err)
+
 	// truncate table
-	err = dal.GetDatabase().Exec("TRUNCATE TABLE accounts CASCADE").Error
+	err = dal.GetDatabase().Exec("TRUNCATE TABLE accounts, transactions CASCADE").Error
 	require.NoError(t, err)
 
 	// migrate db
@@ -381,10 +388,7 @@ func Test_accountServiceImpl_getAccountsByUserID(t *testing.T) {
 
 func Test_accountServiceImpl_Create(t *testing.T) {
 	// create service
-	srv := &accountServiceImpl{
-		dal:    connectDB(t),
-		logger: log.NewFactory(log.WithLevel("DEBUG")),
-	}
+	srv := newImplService(t)
 
 	tests := []struct {
 		name string

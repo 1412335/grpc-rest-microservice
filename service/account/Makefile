@@ -29,8 +29,14 @@ cover: test  ## Run unit tests and open the coverage report
 
 # export SSH_PRIVATE_KEY=$(cat ~/.ssh/id_ed25519)
 run: clean cover ## clean && lint && test && build & run service
-	docker-compose up -d --build account
+	docker-compose build --build-arg SSH_PRIVATE_KEY="$$(cat ~/.ssh/id_ed25519)"
+	docker-compose up -d account
 	docker-compose logs -f account
+
+build: lint ## clean && lint && build service
+	docker-compose down
+	docker-compose build --build-arg SSH_PRIVATE_KEY="$$(cat ~/.ssh/id_ed25519)"
+	docker-compose up account
 
 .PHONY: cli
 cli: ## Evans cli: calling grpc service (reflection.Register(server)) https://github.com/ktr0731/evans

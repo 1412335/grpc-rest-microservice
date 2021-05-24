@@ -35,6 +35,7 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.Option) *Server {
 	// migrate db
 	if err = dal.GetDatabase().AutoMigrate(
 		&model.Account{},
+		&model.Transaction{},
 	); err != nil {
 		log.Error("migrate db failed", zap.Error(err))
 		return nil
@@ -102,12 +103,16 @@ func NewServer(srvConfig *configs.ServiceConfig, opt ...server.Option) *Server {
 func (s *Server) Run() error {
 	return s.server.Run(func(srv *grpc.Server) error {
 		log.Info("Register", zap.String("service", "account"))
-
 		// implement service
-		api := NewAccountService(s.dal)
-
+		accountSrv := NewAccountService(s.dal)
 		// register impl service
-		pb.RegisterAccountServiceServer(srv, api)
+		pb.RegisterAccountServiceServer(srv, accountSrv)
+
+		log.Info("Register", zap.String("service", "transaction"))
+		// implement service
+		transSrv := NewTransactionService(s.dal, accountSrv.(*accountServiceImpl))
+		// register impl service
+		pb.RegisterTransactionServiceServer(srv, transSrv)
 		return nil
 	}, func() {
 		// close db connection

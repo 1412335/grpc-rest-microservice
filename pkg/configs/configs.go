@@ -75,7 +75,26 @@ type GRPC struct {
 
 // grpc-gateway proxy
 type Proxy struct {
+	Host string
 	Port int
+	// Value to set for Access-Control-Allow-Origin header.
+	CorsAllowOrigin string
+	// Value to set for Access-Control-Allow-Credentials header.
+	CorsAllowCredentials string
+	// Value to set for Access-Control-Allow-Methods header.
+	CorsAllowMethods string
+	// Value to set for Access-Control-Allow-Headers header.
+	CorsAllowHeaders string
+	// Prefix that this gateway is running on. For example, if your API endpoint
+	// was "/foo/bar" in your protofile, and you wanted to run APIs under "/api",
+	// set this to "/api/".
+	ApiPrefix string
+	// Map of headers to send in the http response
+	ResponseHeaders map[string]string
+	// Sets the maximum message size in bytes the client can receive.
+	MaxCallRecvMsgSize int
+	// Sets the maximum message size in bytes the client can send.
+	MaxCallSendMsgSize int
 }
 
 // json web token
