@@ -6,7 +6,6 @@ import (
 	"time"
 
 	pb "account/api"
-	errorSrv "account/error"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/cache"
 	"github.com/1412335/grpc-rest-microservice/pkg/errors"
@@ -138,12 +137,6 @@ func (a *Account) BeforeUpdate(tx *gorm.DB) error {
 
 // Updating data in same transaction
 func (a *Account) AfterUpdate(tx *gorm.DB) error {
-	// find user by id
-	if e := tx.First(a).Error; e == gorm.ErrRecordNotFound {
-		return errorSrv.ErrAccountNotFound
-	} else if e != nil {
-		return errorSrv.ErrConnectDB
-	}
 	// cache user
 	if err := a.Cache(); err != nil {
 		return err

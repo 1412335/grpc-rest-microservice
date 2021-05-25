@@ -5,7 +5,6 @@ import (
 	"time"
 
 	pb "account/api"
-	errorSrv "account/error"
 
 	"github.com/1412335/grpc-rest-microservice/pkg/cache"
 	"github.com/1412335/grpc-rest-microservice/pkg/errors"
@@ -62,22 +61,10 @@ func (a *Transaction) GetCache() error {
 }
 
 func (a *Transaction) Cache() error {
-	if bytes, err := json.Marshal(a); err != nil {
-		return err
-	} else if err := cache.Set(a.genCacheKey(), string(bytes)); err == cache.ErrCacheNotAvailable {
-		return nil
-	} else if err != nil {
-		return err
-	}
 	return nil
 }
 
 func (a *Transaction) DelCache() error {
-	if err := cache.Delete(a.genCacheKey()); err == cache.ErrCacheNotAvailable {
-		return nil
-	} else if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -126,12 +113,6 @@ func (a *Transaction) BeforeUpdate(tx *gorm.DB) error {
 
 // Updating data in same transaction
 func (a *Transaction) AfterUpdate(tx *gorm.DB) error {
-	// find user by id
-	if e := tx.First(a).Error; e == gorm.ErrRecordNotFound {
-		return errorSrv.ErrTransactionNotFound
-	} else if e != nil {
-		return errorSrv.ErrConnectDB
-	}
 	// cache user
 	if err := a.Cache(); err != nil {
 		return err

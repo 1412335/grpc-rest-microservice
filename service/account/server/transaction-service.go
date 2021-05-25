@@ -159,15 +159,6 @@ func (u *transactionServiceImpl) Create(ctx context.Context, req *pb.CreateTrans
 		case pb.TransactionType_UNKNOW:
 			return errorSrv.ErrUnknowTypeTransaction
 		}
-
-		u.logger.For(ctx).Info("data", zap.Any("data", req))
-
-		// update account balance
-		if err := tx.Save(&acc).Error; err != nil {
-			u.logger.For(ctx).Error("Update account balance", zap.Any("data", acc), zap.Error(err))
-			return errorSrv.ErrConnectDB
-		}
-
 		// create transaction
 		trans := &model.Transaction{
 			ID:              uuid.New().String(),
@@ -180,8 +171,13 @@ func (u *transactionServiceImpl) Create(ctx context.Context, req *pb.CreateTrans
 			u.logger.For(ctx).Error("Validate trans", zap.Error(err), zap.Any("details", status.Convert(err).Details()))
 			return err
 		}
-		if err := tx.Create(trans).Error; err != nil {
+		if err := tx.Omit("Account").Create(trans).Error; err != nil {
 			u.logger.For(ctx).Error("Create trans", zap.Any("data", trans), zap.Error(err))
+			return errorSrv.ErrConnectDB
+		}
+		// update account balance
+		if err := tx.Select("Balance").Save(&acc).Error; err != nil {
+			u.logger.For(ctx).Error("Update account balance", zap.Any("data", acc), zap.Error(err))
 			return errorSrv.ErrConnectDB
 		}
 		//
@@ -204,8 +200,27 @@ func (u *transactionServiceImpl) Delete(ctx context.Context, req *pb.DeleteTrans
 		return nil, errorSrv.ErrMissingTransactionID
 	}
 	err := u.dal.GetDatabase().Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&model.Transaction{ID: req.GetId().Value}).Error; err != nil {
+		trans := &model.Transaction{ID: req.GetId().Value}
+		if err := u.getTransactionByID(tx.Statement.Context, trans); err != nil {
+			return err
+		}
+		// delete transaction
+		if err := tx.Delete(trans).Error; err != nil {
 			u.logger.For(ctx).Error("Delete transaction", zap.Error(err))
+			return errorSrv.ErrConnectDB
+		}
+		// increase account balance
+		account := trans.Account
+		switch trans.TransactionType {
+		case pb.TransactionType_WITHDRAW.String():
+			account.Balance += trans.Amount
+		case pb.TransactionType_DEPOSIT.String():
+			account.Balance -= trans.Amount
+		case pb.TransactionType_UNKNOW.String():
+			return errorSrv.ErrUnknowTypeTransaction
+		}
+		if err := tx.Select("Balance").Save(&account).Error; err != nil {
+			u.logger.For(ctx).Error("Update account balance", zap.Error(err))
 			return errorSrv.ErrConnectDB
 		}
 		return nil

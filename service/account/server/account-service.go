@@ -231,6 +231,10 @@ func (u *accountServiceImpl) Update(ctx context.Context, req *pb.UpdateAccountRe
 			u.logger.For(ctx).Error("Validate account", zap.Error(err))
 			return err
 		}
+		if err := tx.Save(account).Error; err != nil {
+			u.logger.For(ctx).Error("Update account", zap.Error(err))
+			return errorSrv.ErrConnectDB
+		}
 		// response
 		rsp.Account = account.Transform2GRPC()
 		rsp.Account.UpdatedAt = timestamppb.New(account.UpdatedAt)
