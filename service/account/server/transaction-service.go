@@ -67,26 +67,29 @@ func (u *transactionServiceImpl) getTransactions(ctx context.Context, req *pb.Li
 	var transactions []model.Transaction
 	// build sql statement
 	psql := u.dal.GetDatabase().WithContext(ctx)
+	if req.GetAccountId() != nil {
+		psql = psql.Where("transactions.account_id = ?", req.GetAccountId().Value)
+	}
 	if req.GetUserId() != nil {
-		psql = psql.Where("user_id = ?", req.GetUserId().Value)
+		psql = psql.Where("\"Account\".\"user_id\" = ?", req.GetUserId().Value)
 	}
 	if req.GetId() != nil {
-		psql = psql.Where("id = ?", req.GetId().Value)
+		psql = psql.Where("transactions.id = ?", req.GetId().Value)
 	}
 	if req.GetAmountMin() != nil {
-		psql = psql.Where("amount >= ?", req.GetAmountMin().Value)
+		psql = psql.Where("transactions.amount >= ?", req.GetAmountMin().Value)
 	}
 	if req.GetAmountMax() != nil {
-		psql = psql.Where("amount <= ?", req.GetAmountMax().Value)
+		psql = psql.Where("transactions.amount <= ?", req.GetAmountMax().Value)
 	}
 	if req.GetCreatedSince() != nil {
-		psql = psql.Where("created_at >= ?", req.GetCreatedSince().AsTime())
+		psql = psql.Where("transactions.created_at >= ?", req.GetCreatedSince().AsTime())
 	}
 	if req.GetOlderThen() != nil {
-		psql = psql.Where("created_at >= ?", time.Now().Add(req.GetOlderThen().AsDuration()))
+		psql = psql.Where("transactions.created_at >= ?", time.Now().Add(req.GetOlderThen().AsDuration()))
 	}
 	// exec
-	if err := psql.Order("created_at desc").Joins("Account").Find(&transactions).Error; err != nil {
+	if err := psql.Order("transactions.created_at desc").Joins("Account").Find(&transactions).Error; err != nil {
 		u.logger.For(ctx).Error("Lookup transactions", zap.Error(err))
 		return nil, errorSrv.ErrConnectDB
 	}
@@ -233,6 +236,7 @@ func (u *transactionServiceImpl) Delete(ctx context.Context, req *pb.DeleteTrans
 	}, nil
 }
 
+// nolint:gocyclo
 func (u *transactionServiceImpl) Update(ctx context.Context, req *pb.UpdateTransactionRequest) (*pb.UpdateTransactionResponse, error) {
 	if req.GetTransaction().GetAccountId() == "" {
 		return nil, errorSrv.ErrMissingAccountID
@@ -241,60 +245,67 @@ func (u *transactionServiceImpl) Update(ctx context.Context, req *pb.UpdateTrans
 		return nil, errorSrv.ErrMissingTransactionID
 	}
 
-	trans := &model.Transaction{
-		AccountID: req.GetTransaction().GetAccountId(),
-		ID:        req.GetTransaction().GetId(),
-	}
 	rsp := &pb.UpdateTransactionResponse{}
 	err := u.dal.GetDatabase().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// find user by id
+		trans := &model.Transaction{
+			AccountID: req.GetTransaction().GetAccountId(),
+			ID:        req.GetTransaction().GetId(),
+		}
+		// find trans
 		if e := u.getTransactionByID(tx.Statement.Context, trans); e != nil {
 			return e
 		}
 		u.logger.For(ctx).Info("mask", zap.Strings("path", req.GetUpdateMask().GetPaths()))
 		// If there is no update mask do a regular update
+		var paths []string
 		if req.GetUpdateMask() == nil || len(req.GetUpdateMask().GetPaths()) == 0 {
-			trans.UpdateFromGRPC(req.GetTransaction())
+			paths = []string{"amount"}
 		} else {
-			for _, path := range req.GetUpdateMask().GetPaths() {
-				switch path {
-				case "id":
-					return errorSrv.ErrUpdateTransactionID
-				case "account_id":
-					return errorSrv.ErrUpdateTransactionAccountID
-				case "user_id":
-					return errorSrv.ErrUpdateTransactionUserID
-				case "transaction_type":
-					return errorSrv.ErrUpdateTransactionType
-				case "amount":
-					trans.Amount = req.GetTransaction().GetAmount()
-				default:
-					return errors.BadRequest("invalid field specified", map[string]string{
-						"update_mask": fmt.Sprintf("account does not have field %q", path),
-					})
+			paths = req.GetUpdateMask().GetPaths()
+		}
+		for _, path := range paths {
+			switch path {
+			case "id":
+				return errorSrv.ErrUpdateTransactionID
+			case "account_id":
+				return errorSrv.ErrUpdateTransactionAccountID
+			case "user_id":
+				return errorSrv.ErrUpdateTransactionUserID
+			case "transaction_type":
+				return errorSrv.ErrUpdateTransactionType
+			case "amount":
+				switch trans.TransactionType {
+				case pb.TransactionType_WITHDRAW.String():
+					trans.Account.Balance += trans.Amount - req.GetTransaction().GetAmount()
+				case pb.TransactionType_DEPOSIT.String():
+					trans.Account.Balance += -trans.Amount + req.GetTransaction().GetAmount()
+				case pb.TransactionType_UNKNOW.String():
+					return errorSrv.ErrUnknowTypeTransaction
 				}
+				if trans.Account.Balance < 0 {
+					return errorSrv.ErrInvalidTransactionAmount
+				}
+				trans.Amount = req.GetTransaction().GetAmount()
+			default:
+				return errors.BadRequest("invalid field specified", map[string]string{
+					"update_mask": fmt.Sprintf("account does not have field %q", path),
+				})
 			}
 		}
 		if err := trans.Validate(); err != nil {
 			u.logger.For(ctx).Error("Validate trans", zap.Error(err))
 			return err
 		}
-
-		// // validate amount
-		// accountBalance := trans.Account.Balance
-		// switch trans.TransactionType {
-		// case pb.TransactionType_WITHDRAW.String():
-		// 	accountBalance += trans.Amount - req.GetTransaction().GetAmount()
-		// 	if accountBalance < 0 {
-		// 		return errorSrv.ErrInvalidWithdrawTransactionAmount
-		// 	}
-		// case pb.TransactionType_DEPOSIT.String():
-		// 	accountBalance = accountBalance - trans.Amount + req.GetTransaction().GetAmount()
-		// 	if accountBalance < 0 {
-		// 		return errorSrv.ErrInvalidTransactionAmount
-		// 	}
-		// }
-
+		// update trans
+		if err := tx.Select("Amount").Save(trans).Error; err != nil {
+			u.logger.For(ctx).Error("Update trans", zap.Error(err))
+			return errorSrv.ErrConnectDB
+		}
+		// update account balance
+		if err := tx.Select("Balance").Save(&trans.Account).Error; err != nil {
+			u.logger.For(ctx).Error("Update account", zap.Error(err))
+			return errorSrv.ErrConnectDB
+		}
 		// response
 		rsp.Transaction = trans.Transform2GRPC()
 		rsp.Transaction.UpdatedAt = timestamppb.New(trans.UpdatedAt)
@@ -318,14 +329,14 @@ func (u *transactionServiceImpl) List(ctx context.Context, req *pb.ListTransacti
 }
 
 func (u *transactionServiceImpl) ListStream(req *pb.ListTransactionsRequest, streamSrv pb.TransactionService_ListStreamServer) error {
-	// transactions, err := u.getTransactions(streamSrv.Context(), req)
-	// if err != nil {
-	// 	return err
-	// }
-	// for _, trans := range transactions {
-	// 	if err := streamSrv.Send(trans); err != nil {
-	// 		return err
-	// 	}
-	// }
+	transactions, err := u.getTransactions(streamSrv.Context(), req)
+	if err != nil {
+		return err
+	}
+	for _, trans := range transactions {
+		if err := streamSrv.Send(trans); err != nil {
+			return err
+		}
+	}
 	return nil
 }
