@@ -144,8 +144,22 @@ func (r *Redis) Del(key string, opts ...DeleteOption) error {
 			return err
 		}
 	}
+	var keys []string
 	rkey := fmt.Sprintf("%s%s", dOpts.Prefix, key)
-	return r.client.Del(ctx, rkey).Err()
+	// Handle Prefix
+	// TODO suffix
+	if r.prefix != "" {
+		prefixKey := fmt.Sprintf("%s*", rkey)
+		fkeys, err := r.client.Keys(ctx, prefixKey).Result()
+		if err != nil {
+			return err
+		}
+		// TODO Limit Offset
+		keys = append(keys, fkeys...)
+	} else {
+		keys = []string{rkey}
+	}
+	return r.client.Del(ctx, keys...).Err()
 }
 
 //Write save data to redis

@@ -11,10 +11,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/1412335/grpc-rest-microservice/pkg/cache"
 	"github.com/1412335/grpc-rest-microservice/pkg/configs"
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/postgres"
+	"github.com/1412335/grpc-rest-microservice/pkg/dal/redis"
 	"github.com/1412335/grpc-rest-microservice/pkg/errors"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
@@ -26,7 +29,10 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-var letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+var (
+	letters    = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	RedisStore *redis.Redis
+)
 
 func randSeq(n int) string {
 	b := make([]byte, n)
@@ -44,6 +50,28 @@ func connectDBError(t *testing.T) *postgres.DataAccessLayer {
 	require.Error(t, err)
 	require.Nil(t, dal)
 	return dal
+}
+
+func initCache(t *testing.T) {
+	cachePrefix := "service-cache-testing"
+	if RedisStore == nil {
+		// connect redis
+		redisStore, err := redis.New(redis.WithNodes([]string{"host.docker.internal:6379"}))
+		require.NoError(t, err)
+		require.NotNil(t, redisStore)
+		RedisStore = redisStore
+		// cache w redis store
+		cache.DefaultCache, err = cache.NewRedisCache(redisStore, cache.WithPrefix(cachePrefix))
+		require.NoError(t, err)
+		require.NotNil(t, cache.DefaultCache)
+	}
+	// clear cache
+	keys, err := RedisStore.GetClient().Keys(context.TODO(), cachePrefix+"*").Result()
+	require.NoError(t, err)
+	if len(keys) > 0 {
+		err = RedisStore.GetClient().Del(context.TODO(), keys...).Err()
+		require.NoError(t, err)
+	}
 }
 
 func connectDB(t *testing.T) *postgres.DataAccessLayer {
@@ -78,6 +106,9 @@ func connectDB(t *testing.T) *postgres.DataAccessLayer {
 		&model.Account{},
 	)
 	require.NoError(t, err)
+
+	// setup cache for testing
+	initCache(t)
 
 	// create server
 	return dal
@@ -135,6 +166,15 @@ func Test_accountServiceImpl_getAccountByID(t *testing.T) {
 	accountRsp, err := srv.Create(context.TODO(), account)
 	require.NoError(t, err)
 	require.NotNil(t, accountRsp)
+	acc := &model.Account{
+		ID:     accountRsp.Account.Id,
+		UserID: accountRsp.Account.UserId,
+	}
+	err = acc.GetCache()
+	require.NoError(t, err)
+	if !reflect.DeepEqual(acc.Transform2GRPC(), accountRsp.Account) {
+		t.Errorf("account.GetCache() = %v, want %v", acc.Transform2GRPC(), accountRsp.Account)
+	}
 
 	tests := []struct {
 		name    string
@@ -459,6 +499,16 @@ func Test_accountServiceImpl_Create(t *testing.T) {
 				require.Equal(t, tt.req.Bank, got.Account.Bank)
 				require.Equal(t, tt.req.Balance, got.Account.Balance)
 				require.LessOrEqual(t, timeCreated.UTC().Second(), got.Account.CreatedAt.AsTime().Second())
+				// check cache
+				acc := &model.Account{
+					ID:     got.Account.Id,
+					UserID: got.Account.UserId,
+				}
+				err = acc.GetCache()
+				require.NoError(t, err)
+				if !reflect.DeepEqual(acc.Transform2GRPC(), got.Account) {
+					t.Errorf("account.GetCache() = %v, want %v", acc.Transform2GRPC(), got.Account)
+				}
 			}
 		})
 	}
@@ -508,6 +558,7 @@ func Test_accountServiceImpl_Delete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			tt.ctx = utils.SetContextValue(tt.ctx, "userID", accountRsp.Account.UserId)
 			got, err := srv.Delete(tt.ctx, tt.req)
 			if tt.err != nil {
 				require.ErrorIs(t, err, tt.err)
@@ -518,6 +569,13 @@ func Test_accountServiceImpl_Delete(t *testing.T) {
 				require.Equal(t, tt.req.Id, got.Id)
 				err := srv.getAccountByID(tt.ctx, &model.Account{UserID: accountRsp.Account.UserId, ID: accountRsp.Account.Id})
 				require.ErrorIs(t, err, errorSrv.ErrAccountNotFound)
+				// check cache
+				acc := &model.Account{
+					ID:     accountRsp.Account.Id,
+					UserID: accountRsp.Account.UserId,
+				}
+				err = acc.GetCache()
+				require.Equal(t, err.Error(), "cache: key is missing")
 			}
 		})
 	}
@@ -726,6 +784,20 @@ func Test_accountServiceImpl_Update(t *testing.T) {
 				require.Equal(t, tt.req.Account.Balance, rsp.Account.Balance)
 				require.LessOrEqual(t, timeUpdated.UTC().Second(), rsp.Account.UpdatedAt.AsTime().Second())
 				accountRsp.Account = rsp.Account
+				// check cache
+				acc := &model.Account{
+					ID:     rsp.Account.Id,
+					UserID: rsp.Account.UserId,
+				}
+				// v, err := RedisStore.GetClient().Get(context.TODO(), "account-service-cache-testing"+acc.UserID+"_"+acc.ID).Result()
+				// fmt.Printf("%v", v)
+				err = acc.GetCache()
+				require.NoError(t, err)
+				accpb := acc.Transform2GRPC()
+				accpb.UpdatedAt = timestamppb.New(acc.UpdatedAt)
+				if !reflect.DeepEqual(accpb, rsp.Account) {
+					t.Errorf("account.GetCache() = %v, want %v", accpb, rsp.Account)
+				}
 			}
 		})
 	}

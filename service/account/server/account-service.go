@@ -12,6 +12,7 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/postgres"
 	"github.com/1412335/grpc-rest-microservice/pkg/errors"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+	"github.com/1412335/grpc-rest-microservice/pkg/utils"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -173,8 +174,9 @@ func (u *accountServiceImpl) Delete(ctx context.Context, req *pb.DeleteAccountRe
 	if req.GetId() == "" {
 		return nil, errorSrv.ErrMissingAccountID
 	}
+	userID, _ := utils.GetContextValue(ctx, "userID")
 	err := u.dal.GetDatabase().Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&model.Account{ID: req.GetId()}).Error; err != nil {
+		if err := tx.Delete(&model.Account{ID: req.GetId(), UserID: userID}).Error; err != nil {
 			u.logger.For(ctx).Error("Delete account", zap.Error(err))
 			return errorSrv.ErrConnectDB
 		}

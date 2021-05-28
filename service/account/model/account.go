@@ -65,9 +65,14 @@ func (a *Account) GetCache() error {
 }
 
 func (a *Account) Cache() error {
-	if bytes, err := json.Marshal(a); err != nil {
+	bytes, err := json.Marshal(a)
+	if err != nil {
 		return err
-	} else if err := cache.Set(a.genCacheKey(), string(bytes)); err == cache.ErrCacheNotAvailable {
+	}
+	if err := a.DelCache(); err != nil {
+		return err
+	}
+	if err := cache.Set(a.genCacheKey(), string(bytes)); err == cache.ErrCacheNotAvailable {
 		return nil
 	} else if err != nil {
 		return err
