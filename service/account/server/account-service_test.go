@@ -18,12 +18,15 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/errors"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
 	"github.com/1412335/grpc-rest-microservice/pkg/utils"
+	gomock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
+
+//go:generate mockgen -destination mocks_test.go -package server account/api AccountService_ListStreamServer
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -915,6 +918,127 @@ func Test_accountServiceImpl_List(t *testing.T) {
 					t.Errorf("accountServiceImpl.List() = %v, want %v", rsp.Accounts, tt.want)
 				}
 			}
+		})
+	}
+}
+
+func Test_accountServiceImpl_ListStream(t *testing.T) {
+	// create service
+	srv := newImplService(t)
+
+	// create accounts
+	reqAccs := []*pb.CreateAccountRequest{
+		{
+			UserId:  "4a40f3c8-b699-4716-9334-3ec1330c9aee",
+			Name:    "test-1",
+			Bank:    pb.Bank_ACB,
+			Balance: 10000,
+		},
+		{
+			UserId:  "4a40f3c8-b699-4716-9334-3ec1330c9aee",
+			Name:    "test-2",
+			Bank:    pb.Bank_VCB,
+			Balance: 20000,
+		},
+	}
+	rspAccCreated := make([]*pb.Account, len(reqAccs))
+	for i, acc := range reqAccs {
+		rsp, err := srv.Create(context.TODO(), acc)
+		require.NoError(t, err)
+		require.NotNil(t, rsp.Account)
+		require.Equal(t, acc.UserId, rsp.Account.UserId)
+		require.Equal(t, acc.Name, rsp.Account.Name)
+		require.Equal(t, acc.Bank, rsp.Account.Bank)
+		require.Equal(t, acc.Balance, rsp.Account.Balance)
+		rspAccCreated[i] = rsp.Account
+		<-time.After(1 * time.Second)
+	}
+	sort.Slice(rspAccCreated, func(i, j int) bool {
+		return rspAccCreated[i].CreatedAt.AsTime().After(rspAccCreated[j].CreatedAt.AsTime())
+	})
+
+	tests := []struct {
+		name string
+		req  *pb.ListAccountsRequest
+		want []*pb.Account
+		err  error
+	}{
+		{
+			name: "ErrAccountNotFound",
+			req: &pb.ListAccountsRequest{
+				Id: wrapperspb.String("1"),
+			},
+			err: errorSrv.ErrAccountNotFound,
+		},
+		{
+			name: "SuccessWithID",
+			req: &pb.ListAccountsRequest{
+				Id: wrapperspb.String(rspAccCreated[0].Id),
+			},
+			want: rspAccCreated[:1],
+		},
+		{
+			name: "SuccessWithUserID",
+			req: &pb.ListAccountsRequest{
+				UserId: wrapperspb.String(rspAccCreated[0].UserId),
+			},
+			want: rspAccCreated,
+		},
+		{
+			name: "SuccessWithBalanceMin",
+			req: &pb.ListAccountsRequest{
+				BalanceMin: wrapperspb.Double(15000),
+			},
+			want: rspAccCreated[:1],
+		},
+		{
+			name: "SuccessWithBalanceMax",
+			req: &pb.ListAccountsRequest{
+				BalanceMax: wrapperspb.Double(5000),
+			},
+			err: errorSrv.ErrAccountNotFound,
+		},
+		{
+			name: "SuccessWithName",
+			req: &pb.ListAccountsRequest{
+				Name: wrapperspb.String("test"),
+			},
+			want: rspAccCreated,
+		},
+		{
+			name: "SuccessWithCreatedSinceLastMinute",
+			req: &pb.ListAccountsRequest{
+				CreatedSince: timestamppb.New(time.Now().Add(-1 * time.Minute)),
+			},
+			want: rspAccCreated,
+		},
+		{
+			name: "SuccessWithCreatedFromLastMinute",
+			req: &pb.ListAccountsRequest{
+				OlderThen: durationpb.New(-1 * time.Minute),
+			},
+			want: rspAccCreated,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			mockServer := NewMockAccountService_ListStreamServer(ctrl)
+			if tt.err != nil {
+				mockServer.EXPECT().Context()
+				err := srv.ListStream(tt.req, mockServer)
+				require.ErrorIs(t, err, tt.err)
+			} else {
+				call := make([]*gomock.Call, len(tt.want)+1)
+				call[0] = mockServer.EXPECT().Context()
+				for i, want := range tt.want {
+					call[i+1] = mockServer.EXPECT().Send(want).Return(nil)
+				}
+				gomock.InOrder(call...)
+				err := srv.ListStream(tt.req, mockServer)
+				require.NoError(t, err)
+			}
+			ctrl.Finish()
 		})
 	}
 }

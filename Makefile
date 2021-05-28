@@ -16,7 +16,8 @@ install:
 		github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway \
 		github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger \
 		github.com/mwitkow/go-proto-validators/protoc-gen-govalidators \
-		github.com/rakyll/statik
+		github.com/rakyll/statik \
+		github.com/golang/mock/mockgen@v1.5.0
 
 # gen cert
 .PHONY: gen-cert

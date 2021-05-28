@@ -11,6 +11,10 @@ gen-api: ## gen grpc + gateway
 .PHONY: gen
 gen: gen-api gen-openapi ## gen grpc + gateway + openui w swagger
 
+.PHONY: gen-mock
+gen-mock:
+	mockgen -destination ./server/mocks_test.go -package server account/api AccountService_ListStreamServer
+
 .PHONY: fmt
 fmt: ## go fmt
 	go fmt -mod=mod $(go list ./... | grep -v /api)
