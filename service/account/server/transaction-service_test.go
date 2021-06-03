@@ -13,6 +13,7 @@ import (
 	"github.com/1412335/grpc-rest-microservice/pkg/dal/postgres"
 	"github.com/1412335/grpc-rest-microservice/pkg/errors"
 	"github.com/1412335/grpc-rest-microservice/pkg/log"
+	gomock "github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
@@ -859,6 +860,172 @@ func Test_transactionServiceImpl_List(t *testing.T) {
 						t.Errorf("transactionServiceImpl.List() = %v, want %v", rsp.Transactions[i], want)
 					}
 				}
+			}
+		})
+	}
+}
+
+func Test_transactionServiceImpl_ListStream(t *testing.T) {
+	// create service
+	srv := newImplTransactionService(t)
+
+	accSrv := newImplService(t)
+	// create account
+	reqAccounts := []*pb.CreateAccountRequest{
+		{
+			UserId:  "4a40f3c8-b699-4716-9334-3ec1330c9aee",
+			Name:    "test-1",
+			Bank:    pb.Bank_ACB,
+			Balance: 10000,
+		},
+		{
+			UserId:  "4a40f3c8-b699-4716-9334-3ec1330c9aee",
+			Name:    "test-2",
+			Bank:    pb.Bank_VIB,
+			Balance: 50000,
+		},
+	}
+	rspAccCreated := make([]*pb.Account, len(reqAccounts))
+	for i, acc := range reqAccounts {
+		rsp, err := accSrv.Create(context.TODO(), acc)
+		require.NoError(t, err)
+		require.NotNil(t, rsp)
+		rspAccCreated[i] = rsp.Account
+	}
+
+	// create accounts
+	reqTrans := []*pb.CreateTransactionRequest{
+		{
+			UserId:          rspAccCreated[0].UserId,
+			AccountId:       rspAccCreated[0].Id,
+			Amount:          10000,
+			TransactionType: pb.TransactionType_DEPOSIT,
+		},
+		{
+			UserId:          rspAccCreated[0].UserId,
+			AccountId:       rspAccCreated[1].Id,
+			Amount:          5000,
+			TransactionType: pb.TransactionType_WITHDRAW,
+		},
+		{
+			UserId:          rspAccCreated[0].UserId,
+			AccountId:       rspAccCreated[1].Id,
+			Amount:          15000,
+			TransactionType: pb.TransactionType_DEPOSIT,
+		},
+	}
+	rspTransCreated := make([]*pb.Transaction, len(reqTrans))
+	for i, trans := range reqTrans {
+		rsp, err := srv.Create(context.TODO(), trans)
+		require.NoError(t, err)
+		require.NotNil(t, rsp.Transaction)
+		require.Equal(t, trans.UserId, rsp.Transaction.UserId)
+		require.Equal(t, trans.AccountId, rsp.Transaction.AccountId)
+		require.Equal(t, trans.Amount, rsp.Transaction.Amount)
+		require.Equal(t, trans.TransactionType, rsp.Transaction.TransactionType)
+		rspTransCreated[i] = rsp.Transaction
+		<-time.After(1 * time.Second)
+	}
+	sort.Slice(rspTransCreated, func(i, j int) bool {
+		return rspTransCreated[i].CreatedAt.AsTime().After(rspTransCreated[j].CreatedAt.AsTime())
+	})
+
+	tests := []struct {
+		name string
+		req  *pb.ListTransactionsRequest
+		want []*pb.Transaction
+		err  error
+	}{
+		{
+			name: "ErrAccountNotFound",
+			req: &pb.ListTransactionsRequest{
+				Id: wrapperspb.String("1"),
+			},
+			err: errorSrv.ErrTransactionNotFound,
+		},
+		{
+			name: "ErrAccountNotFoundID",
+			req: &pb.ListTransactionsRequest{
+				Id:        wrapperspb.String(rspTransCreated[2].Id),
+				AccountId: wrapperspb.String(rspTransCreated[1].AccountId),
+			},
+			err: errorSrv.ErrTransactionNotFound,
+		},
+		{
+			name: "ErrAccountNotFoundUserID",
+			req: &pb.ListTransactionsRequest{
+				Id:     wrapperspb.String(rspTransCreated[2].Id),
+				UserId: wrapperspb.String("1"),
+			},
+			err: errorSrv.ErrTransactionNotFound,
+		},
+		{
+			name: "SuccessWithID",
+			req: &pb.ListTransactionsRequest{
+				Id: wrapperspb.String(rspTransCreated[2].Id),
+			},
+			want: rspTransCreated[2:],
+		},
+		{
+			name: "SuccessWithAccountID",
+			req: &pb.ListTransactionsRequest{
+				AccountId: wrapperspb.String(rspTransCreated[0].AccountId),
+			},
+			want: rspTransCreated[:2],
+		},
+		{
+			name: "SuccessWithUserID",
+			req: &pb.ListTransactionsRequest{
+				UserId: wrapperspb.String(rspTransCreated[0].UserId),
+			},
+			want: rspTransCreated,
+		},
+		{
+			name: "SuccessWithAmountMin",
+			req: &pb.ListTransactionsRequest{
+				AmountMin: wrapperspb.Double(10000),
+			},
+			want: []*pb.Transaction{rspTransCreated[0], rspTransCreated[2]},
+		},
+		{
+			name: "SuccessWithAmountMax",
+			req: &pb.ListTransactionsRequest{
+				AmountMax: wrapperspb.Double(5000),
+			},
+			want: rspTransCreated[1:2],
+		},
+		{
+			name: "SuccessWithCreatedSinceLastMinute",
+			req: &pb.ListTransactionsRequest{
+				CreatedSince: timestamppb.New(time.Now().Add(-1 * time.Minute)),
+			},
+			want: rspTransCreated,
+		},
+		{
+			name: "SuccessWithCreatedFromLastMinute",
+			req: &pb.ListTransactionsRequest{
+				OlderThen: durationpb.New(-1 * time.Minute),
+			},
+			want: rspTransCreated,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			mockServer := NewMockTransactionService_ListStreamServer(ctrl)
+			if tt.err != nil {
+				mockServer.EXPECT().Context()
+				err := srv.ListStream(tt.req, mockServer)
+				require.ErrorIs(t, err, tt.err)
+			} else {
+				call := make([]*gomock.Call, len(tt.want)+1)
+				call[0] = mockServer.EXPECT().Context()
+				for i, want := range tt.want {
+					call[i+1] = mockServer.EXPECT().Send(want).Return(nil)
+				}
+				gomock.InOrder(call...)
+				err := srv.ListStream(tt.req, mockServer)
+				require.NoError(t, err)
 			}
 		})
 	}

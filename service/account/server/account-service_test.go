@@ -26,7 +26,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-//go:generate mockgen -destination mocks_test.go -package server account/api AccountService_ListStreamServer
+//go:generate mockgen -destination mocks_test.go -package server account/api AccountService_ListStreamServer,TransactionService_ListStreamServer
 
 func init() {
 	rand.Seed(time.Now().UnixNano())

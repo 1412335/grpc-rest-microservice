@@ -13,7 +13,7 @@ gen: gen-api gen-openapi ## gen grpc + gateway + openui w swagger
 
 .PHONY: gen-mock
 gen-mock:
-	mockgen -destination ./server/mocks_test.go -package server account/api AccountService_ListStreamServer
+	mockgen -destination ./server/mocks_test.go -package server account/api AccountService_ListStreamServer,TransactionService_ListStreamServer
 
 .PHONY: fmt
 fmt: ## go fmt
