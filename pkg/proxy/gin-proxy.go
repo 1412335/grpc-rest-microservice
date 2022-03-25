@@ -355,10 +355,10 @@ func (h *Handler) Run() error {
 		sig := <-signals
 		h.logger.For(ctx).Info("Received signal", zap.Any("signal", sig))
 		shutdown, can := context.WithTimeout(ctx, 10*time.Second)
+		defer can()
 		if err := srv.Shutdown(shutdown); err != nil {
 			h.logger.For(ctx).Error("Server shutdown failed", zap.Error(err))
 		}
-		defer can()
 	}()
 
 	h.logger.For(ctx).Info("Serving gRPC-Gateway on", zap.String("addr", "http://"+addr), zap.String("openapi", "http://"+addr+"/openapi-ui/"))

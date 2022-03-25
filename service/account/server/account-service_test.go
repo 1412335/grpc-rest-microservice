@@ -5,7 +5,9 @@ import (
 	errorSrv "account/error"
 	"account/model"
 	"context"
+	"fmt"
 	"math/rand"
+	"os"
 	"reflect"
 	"sort"
 	"testing"
@@ -30,6 +32,13 @@ import (
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
+}
+
+func TestMain(m *testing.M) {
+	fmt.Println("setup")
+	code := m.Run()
+	fmt.Println("teardowm")
+	os.Exit(code)
 }
 
 var (
@@ -59,7 +68,7 @@ func initCache(t *testing.T) {
 	cachePrefix := "service-cache-testing"
 	if RedisStore == nil {
 		// connect redis
-		redisStore, err := redis.New(redis.WithNodes([]string{"host.docker.internal:6379"}))
+		redisStore, err := redis.New(redis.WithNodes([]string{"localhost:6379"}))
 		require.NoError(t, err)
 		require.NotNil(t, redisStore)
 		RedisStore = redisStore

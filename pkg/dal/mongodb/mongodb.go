@@ -61,8 +61,8 @@ func (dal *DataAccessLayer) GetClient(ctx context.Context) (interface{}, error) 
 		// Set client options
 		clientOptions := options.Client().ApplyURI(uri).
 			SetMaxPoolSize(dal.dbConfig.PoolSize).
-			SetMaxConnIdleTime(100 * time.Millisecond).
-			SetConnectTimeout(10 * time.Second)
+			SetMaxConnIdleTime(dal.dbConfig.MaxConnIdleTime).
+			SetConnectTimeout(dal.dbConfig.ConnectTimeout)
 		if dal.dbConfig.Auth != nil {
 			clientOptions.SetAuth(options.Credential{
 				AuthSource: dal.dbConfig.Auth.Source,
